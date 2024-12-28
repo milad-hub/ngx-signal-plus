@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "signal-plus": {
+      "projectType": "library",
+      "root": "projects/signal-plus",
+      "sourceRoot": "projects/signal-plus/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/signal-plus/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/signal-plus/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/signal-plus/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/signal-plus/src/test.ts",
+            "tsConfig": "projects/signal-plus/tsconfig.spec.json",
+            "karmaConfig": "projects/signal-plus/karma.conf.js",
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

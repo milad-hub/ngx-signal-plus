@@ -1,0 +1,29 @@
+# Source
+src/*
+!src/public-api.ts
+!src/lib/**/*
+
+# Tests
+*.spec.ts
+*.spec.js
+*.test.ts
+*.test.js
+/test
+/tests
+/coverage
+
+# Config
+karma.conf.js
+tsconfig.*.json
+.eslintrc
+.prettierrc
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Misc
+.DS_Store
+Thumbs.db 
