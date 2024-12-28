@@ -23,7 +23,7 @@
 
 Signal Plus is a comprehensive utility library for Angular Signals that provides enhanced functionality, operators, and utilities.
 
-Version: 1.0.0-beta.0
+Version: 1.0.0-beta.2
 
 ### Requirements
 
