@@ -3,7 +3,7 @@
  * @description Demo component showcasing signal operator usage
  * 
  * @package ngx-signal-plus
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 import { CommonModule } from '@angular/common';

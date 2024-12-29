@@ -9,7 +9,7 @@
  * - Batching operations
  * 
  * @package ngx-signal-plus
- * @version 1.0.0
+ * @version 1.0.1
  * @license MIT
  */
 

@@ -3,7 +3,7 @@
  * @description Provides core functionality for signal operations and management
  * 
  * @package ngx-signal-plus
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 import { computed, DestroyRef, effect, EffectRef, inject, Injectable, Injector, OnDestroy, runInInjectionContext, Signal, signal, WritableSignal } from '@angular/core';

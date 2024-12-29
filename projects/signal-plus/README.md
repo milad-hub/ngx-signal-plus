@@ -2,7 +2,7 @@
 
 A utility library providing operators and state management tools for Angular Signals.
 
-[![npm version](https://img.shields.io/badge/npm-1.0.0--beta.2-blue.svg)](https://www.npmjs.com/package/ngx-signal-plus)
+[![npm version](https://img.shields.io/badge/npm-1.0.1-blue.svg)](https://www.npmjs.com/package/ngx-signal-plus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
