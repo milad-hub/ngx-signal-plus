@@ -1,18 +1,19 @@
 # ngx-signal-plus
 
-A utility library providing operators and state management tools for Angular Signals.
+A comprehensive utility library for Angular Signals
+
+Version: 1.0.1
 
 [![npm version](https://img.shields.io/badge/npm-1.0.1-blue.svg)](https://www.npmjs.com/package/ngx-signal-plus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
-- Signal operators (map, filter, etc.)
-- State management utilities
-- History tracking (undo/redo)
-- Type-safe operations
-- Storage persistence
-- Async handling
+- Enhanced Signal Management
+- Tree-shakable imports
+- State persistence
+- History tracking
+- Validation support
 
 ## Installation
 
@@ -29,7 +30,9 @@ npm install ngx-signal-plus
 ## Basic Usage
 
 ```typescript
-import { SignalPlusService, spMap, spFilter } from "ngx-signal-plus";
+// Import specific modules for better tree-shaking
+import { SignalPlusService } from "ngx-signal-plus/core";
+import { spMap, spFilter } from "ngx-signal-plus/operators";
 
 @Component({
   selector: "app-counter",
@@ -49,6 +52,30 @@ export class CounterComponent {
 
   constructor(private signalPlus: SignalPlusService) {}
 }
+```
+
+## Import Options
+
+You can import specific modules to optimize bundle size:
+
+```typescript
+// Core functionality
+import { SignalPlusService } from 'ngx-signal-plus/core';
+
+// Operators
+import { spMap, spFilter } from 'ngx-signal-plus/operators';
+
+// Utilities
+import { spWithHistory, spPersistent } from 'ngx-signal-plus/utils';
+
+// Types
+import type { SignalOptions } from 'ngx-signal-plus/models';
+```
+
+Or import everything (not recommended for production):
+
+```typescript
+import { SignalPlusService, spMap, spWithHistory } from 'ngx-signal-plus';
 ```
 
 ## Core Components

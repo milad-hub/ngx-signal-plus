@@ -5,9 +5,10 @@
   "keywords": [
     "angular",
     "signals",
+    "angular-signals",
+    "signal-state",
     "state management",
     "reactive",
-    "utilities",
     "operators",
     "persistence",
     "validation"
