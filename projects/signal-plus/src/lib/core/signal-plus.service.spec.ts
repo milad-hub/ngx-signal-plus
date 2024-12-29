@@ -15,8 +15,8 @@
 
 import { Injector, runInInjectionContext } from '@angular/core';
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { SignalPlus } from './models/signal-plus.model';
-import { debounceTime, map } from './operators/signal-operators';
+import { SignalPlus } from '../models/signal-plus.model';
+import { debounceTime, map } from '../operators/signal-operators';
 import { SignalPlusService } from './signal-plus.service';
 
 describe('SignalPlusService', () => {

@@ -8,8 +8,8 @@
 
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, Injector, OnDestroy, OnInit, runInInjectionContext, Signal, signal, WritableSignal } from '@angular/core';
-import { SignalPlus } from './models/signal-plus.model';
-import { debounceTime } from './operators/signal-operators';
+import { SignalPlus } from '../models/signal-plus.model';
+import { debounceTime } from '../operators/signal-operators';
 import { SignalPlusService } from './signal-plus.service';
 
 /**

@@ -3,5 +3,7 @@
   "dest": "../../dist/signal-plus",
   "lib": {
     "entryFile": "src/public-api.ts"
-  }
+  },
+  "allowedNonPeerDependencies": ["tslib"],
+  "assets": ["README.md", "LICENSE"]
 }

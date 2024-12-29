@@ -7,9 +7,9 @@
  */
 
 import { computed, DestroyRef, effect, EffectRef, inject, Injectable, Injector, OnDestroy, runInInjectionContext, Signal, signal, WritableSignal } from '@angular/core';
-import { HistoryManager } from './managers/history-manager';
-import { SignalOptions, SignalPlus } from './models/signal-plus.model';
-import { debounceTime as debounceFn, distinctUntilChanged as distinctFn, SignalOperator } from './operators/signal-operators';
+import { HistoryManager } from '../managers/history-manager';
+import { SignalOptions, SignalPlus } from '../models/signal-plus.model';
+import { debounceTime as debounceFn, distinctUntilChanged as distinctFn, SignalOperator } from '../operators/signal-operators';
 
 /**
  * Service that provides signal plus functionality with enhanced features.

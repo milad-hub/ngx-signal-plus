@@ -49,6 +49,30 @@ Version: 1.0.0-beta.2
 npm install ngx-signal-plus
 ```
 
+## Import Options
+
+You can import specific modules to optimize bundle size:
+
+```typescript
+// Core functionality
+import { SignalPlusService } from 'ngx-signal-plus/core';
+
+// Operators
+import { spMap, spFilter } from 'ngx-signal-plus/operators';
+
+// Utilities
+import { spWithHistory, spPersistent } from 'ngx-signal-plus/utils';
+
+// Types
+import type { SignalOptions } from 'ngx-signal-plus/models';
+```
+
+Or import everything (not recommended for production):
+
+```typescript
+import { SignalPlusService, spMap, spWithHistory } from 'ngx-signal-plus';
+```
+
 ## Core Concepts
 
 Signal Plus extends Angular's signals with additional functionality:

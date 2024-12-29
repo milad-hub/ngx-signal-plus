@@ -16,7 +16,7 @@
 
 import { DestroyRef, Injector, effect, runInInjectionContext } from '@angular/core';
 import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
-import { SignalPlus } from './models/signal-plus.model';
+import { SignalPlus } from '../models/signal-plus.model';
 import { SignalPlusComponent } from './signal-plus.component';
 import { SignalPlusService } from './signal-plus.service';
 
