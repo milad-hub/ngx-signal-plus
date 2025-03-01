@@ -1,60 +1,95 @@
 /**
- * @fileoverview Signal Plus Component
- * @description Demo component showcasing signal operator usage
+ * @fileoverview SignalPlus Demo Component
+ * @description A standalone component that demonstrates the core features of the SignalPlus library.
+ * This component serves as both documentation and a testing ground for the library's functionality.
  * 
- * @package ngx-signal-plus
- * @version 1.0.1
+ * Features demonstrated:
+ * - Basic signal presets (counter, toggle)
+ * - Form input handling with validation
+ * - Persistent storage integration
+ * - History tracking and undo/redo
+ * - Debounced search functionality
+ * 
+ * @example
+ * ```typescript
+ * // Standalone component usage
+ * @Component({
+ *   imports: [SignalPlusComponent]
+ * })
+ * 
+ * // Or in NgModule
+ * @NgModule({
+ *   imports: [SignalPlusComponent]
+ * })
+ * ```
  */
 
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, inject, Injector, OnDestroy, OnInit, runInInjectionContext, Signal, signal, WritableSignal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { SignalPlus } from '../models/signal-plus.model';
-import { debounceTime } from '../operators/signal-operators';
 import { SignalPlusService } from './signal-plus.service';
+import { sp, spCounter, spForm, spToggle } from '../utils/create';
+import { SignalBuilder } from '../core/signal-builder';
 
 /**
- * Demo component that showcases various features of the signal plus
- * including basic counter functionality, derived signals, and history management.
- * 
- * @example
- * ```html
- * <lib-signal-plus></lib-signal-plus>
- * ```
+ * Demo component showcasing SignalPlus features and usage patterns.
+ * Provides interactive examples of different signal types and configurations.
  */
 @Component({
   selector: 'lib-signal-plus',
   standalone: true,
   imports: [CommonModule],
   template: `
-    @if (counter(); as count) {
-      <div class="signal-plus-demo">
-        <h3>Signal Plus Demo</h3>
+    <div class="signal-plus-demo">
+      <h3>Signal Plus Demo</h3>
+      
+      <div class="counter">
+        <h4>Basic Counter (Preset)</h4>
+        <p>Current value: {{ counter.value }}</p>
+        <p>Previous value: {{ counter.previousValue }}</p>
+        <p>Is valid: {{ counter.isValid() ? 'Yes' : 'No' }}</p>
         
-        <div class="counter">
-          <h4>Basic Counter</h4>
-          <p>Current value: {{ count.value }}</p>
-          <p>Previous value: {{ count.previousValue }}</p>
-          <p>Is valid: {{ count.isValid() ? 'Yes' : 'No' }}</p>
-          <p>Has changed: {{ count.hasChanged() ? 'Yes' : 'No' }}</p>
-          
-          <button (click)="increment()">Increment</button>
-          <button (click)="decrement()">Decrement</button>
-          <button (click)="count.reset()">Reset</button>
-          <button (click)="count.undo()" [disabled]="!canUndo()">Undo</button>
-          <button (click)="count.redo()" [disabled]="!canRedo()">Redo</button>
-        </div>
-
-        <div class="derived">
-          <h4>Derived Values</h4>
-          @if (doubled(); as d) {
-            <p>Doubled: {{ d.value }}</p>
-          }
-          @if (debounced(); as db) {
-            <p>Debounced: {{ db?.value }}</p>
-          }
-        </div>
+        <button (click)="increment()">Increment</button>
+        <button (click)="decrement()">Decrement</button>
+        <button (click)="counter.reset()">Reset</button>
+        <button (click)="counter.undo()" [disabled]="!canUndo()">Undo</button>
       </div>
-    }
+
+      <div class="form">
+        <h4>Text Input (Simple Creation)</h4>
+        <input [value]="input.value" 
+               (input)="handleInput($event)"
+               placeholder="Type here...">
+        <p class="hint">Value updates after 300ms of inactivity</p>
+      </div>
+
+      <div class="amount">
+        <h4>Amount Input (Builder Pattern)</h4>
+        <p>Value: {{ amount.value }}</p>
+        <input type="number" 
+               [value]="amount.value"
+               [class.invalid]="!amount.isValid()"
+               (input)="updateAmount($event)">
+        @if (!amount.isValid()) {
+          <p class="error-message">Value must be between 0 and 10</p>
+        }
+      </div>
+
+      <div class="toggle">
+        <h4>Theme Toggle (Persistent)</h4>
+        <button (click)="onThemeChange()">
+          {{ darkMode.value ? 'Dark' : 'Light' }} Mode
+        </button>
+      </div>
+
+      <div class="search">
+        <h4>Search Input (Debounced)</h4>
+        <input [value]="search.value"
+               (input)="onSearch($event)"
+               placeholder="Search...">
+        <p class="hint">Last search: {{ search.value }}</p>
+      </div>
+    </div>
   `,
   styles: [`
     .signal-plus-demo {
@@ -63,11 +98,28 @@ import { SignalPlusService } from './signal-plus.service';
       border-radius: 4px;
     }
     
-    .counter, .derived {
+    .counter, .form, .amount {
       margin-top: 1rem;
       padding: 1rem;
       background: #f5f5f5;
       border-radius: 4px;
+    }
+    
+    input {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    input.invalid {
+      border-color: #dc3545;
     }
     
     button {
@@ -84,94 +136,147 @@ import { SignalPlusService } from './signal-plus.service';
       background: #ccc;
       cursor: not-allowed;
     }
+
+    .error-message {
+      color: #dc3545;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
   `]
 })
-export class SignalPlusComponent implements OnInit, OnDestroy {
+export class SignalPlusComponent {
+  /** Service instance for creating and managing signals */
   private readonly signalPlus: SignalPlusService = inject(SignalPlusService);
-  private readonly injector: Injector = inject(Injector);
 
-  // Create base signals
-  private readonly counter$: WritableSignal<SignalPlus<number> | null> = signal<SignalPlus<number> | null>(null);
-  private readonly doubled$: WritableSignal<number> = signal<number>(0);
-  private readonly debounced$: WritableSignal<number> = signal<number>(0);
+  /**
+   * Basic counter with integer validation and history tracking.
+   * Demonstrates the simplest usage pattern with presets.
+   * Features:
+   * - Integer validation
+   * - History tracking for undo
+   * - Reset capability
+   */
+  readonly counter = spCounter(0, { min: 0 });
 
-  // Create computed views
-  readonly counter: Signal<SignalPlus<number> | null> = computed(() => this.counter$());
-  readonly doubled: Signal<{ value: number }> = computed(() => ({ value: this.doubled$() }));
-  readonly debounced: Signal<{ value: number }> = computed(() => ({ value: this.debounced$() }));
+  /**
+   * Text input with debounce and persistence.
+   * Shows how to handle form inputs with automatic storage.
+   * Features:
+   * - Debounced updates (300ms)
+   * - Persistent storage
+   * - Automatic value sync
+   */
+  readonly input = spForm.text('', { 
+    minLength: 3,
+    debounce: 300
+  });
 
-  constructor() {
-    // Initialize effects in constructor
-    this.initializeEffects();
-  }
+  /**
+   * Number input with range validation.
+   * Demonstrates validation and error handling.
+   * Features:
+   * - Range validation (0-10)
+   * - Error state handling
+   * - Visual feedback
+   */
+  readonly amount = new SignalBuilder(0)
+    .validate((value: number) => value >= 0 && value <= 10)
+    .onError((error: Error) => {
+        console.error(error);
+    })
+    .build();
 
-  private initializeEffects(): void {
-    runInInjectionContext(this.injector, () => {
-      // Set up doubled effect
-      effect(() => {
-        const plus: SignalPlus<number> | null = this.counter$();
-        const value: number = plus?.value ?? 0;
-        this.doubled$.set(value * 2);
-      });
+  /**
+   * Theme toggle with persistent storage.
+   * Shows how to maintain state across page reloads.
+   * Features:
+   * - Boolean state management
+   * - Local storage persistence
+   * - Immediate UI updates
+   */
+  readonly darkMode = spToggle(false, 'theme-mode');
 
-      // Create a source signal for the counter value
-      const counterValue: Signal<number> = computed<number>(() => this.counter$()?.value ?? 0);
+  /**
+   * Search field with debounce and distinct values.
+   * Demonstrates time-based operations and duplicate filtering.
+   * Features:
+   * - Debounced input
+   * - Distinct value filtering
+   * - Real-time updates
+   */
+  readonly search = spForm.text('', {
+    debounce: 300,
+    minLength: 2
+  });
 
-      // Create and subscribe to debounced signal
-      const debouncedSignal: Signal<number> = debounceTime<number>(500)(counterValue);
-      effect(() => {
-        this.debounced$.set(debouncedSignal());
-      });
-    });
-  }
-
-  ngOnInit(): void {
-    try {
-      runInInjectionContext(this.injector, () => {
-        const plus: SignalPlus<number> = this.signalPlus.create({
-          initialValue: 0,
-          storageKey: 'demo-counter',
-          persist: true,
-          validators: [value => value >= 0 && value <= 10],
-          transform: value => Math.round(value)
-        });
-
-        this.counter$.set(plus);
-      });
-    } catch (error) {
-      console.error('Failed to initialize signal plus:', error);
-      this.counter$.set(null);
-    }
-  }
-
+  /**
+   * Increments the counter value.
+   * Uses update pattern for atomic operations.
+   * Ensures thread-safe value updates.
+   */
   increment(): void {
-    const plus: SignalPlus<number> | null = this.counter();
-    if (plus && plus.value < 10) {
-      plus.update(value => Math.min(value + 1, 10));
-    }
+    this.counter.update((value: number) => value + 1);
   }
 
+  /**
+   * Decrements the counter value.
+   * Uses update pattern for atomic operations.
+   * Ensures thread-safe value updates.
+   */
   decrement(): void {
-    const plus: SignalPlus<number> | null = this.counter();
-    if (plus && plus.value > 0) {
-      plus.update(value => Math.max(value - 1, 0));
+    this.counter.update((value: number) => value - 1);
+  }
+
+  /**
+   * Handles text input changes with type safety.
+   * @param event Input event from text field
+   * Automatically debounces updates and persists value.
+   */
+  handleInput(event: Event): void {
+    const target: HTMLInputElement = event.target as HTMLInputElement;
+    this.input.setValue(target.value);
+  }
+
+  /**
+   * Updates amount with validation.
+   * @param event Input event from number field
+   * Validates range and provides error feedback.
+   */
+  updateAmount(event: Event): void {
+    const target: HTMLInputElement = event.target as HTMLInputElement;
+    const value: number = +target.value;
+    try {
+        this.amount.setValue(value);
+    } catch (error) {
+        console.error(error);
     }
   }
 
+  /**
+   * Handles search input with debounce.
+   * @param event Input event from search field
+   * Provides real-time search functionality with performance optimization.
+   */
+  onSearch(event: Event): void {
+    const value: string = (event.target as HTMLInputElement).value;
+    this.search.setValue(value);
+  }
+
+  /**
+   * Toggles theme mode with persistence.
+   * Uses update pattern for boolean toggle.
+   * Automatically persists preference to localStorage.
+   */
+  onThemeChange(): void {
+    this.darkMode.update((value: boolean) => !value);
+  }
+
+  /**
+   * Checks if undo operation is available.
+   * @returns boolean indicating if undo is possible
+   * Ensures undo button is disabled when no history exists.
+   */
   canUndo(): boolean {
-    const history: number[] | undefined = this.counter()?.history();
-    return history ? history.length > 1 : false;
-  }
-
-  canRedo(): boolean {
-    const counter: SignalPlus<number> | null = this.counter();
-    if (!counter) return false;
-
-    const history: number[] = counter.history();
-    return history.length > 0 && counter.hasChanged();
-  }
-
-  ngOnDestroy(): void {
-    this.counter$.set(null);
+    return this.counter.history().length > 1;
   }
 }
