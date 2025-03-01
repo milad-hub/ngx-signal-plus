@@ -3,45 +3,38 @@
 ## Table of Contents
 
 - [Overview](#overview)
-- [Core Components](#core-components)
-- [Signal Operators](#signal-operators)
-- [Requirements](#requirements)
 - [Installation](#installation)
-- [Core Concepts](#core-concepts)
-- [Utility Functions](#utility-functions)
-- [Types](#types)
-- [Error Handling](#error-handling)
+- [Core Features](#core-features)
+- [Signal Creation](#signal-creation)
+- [Signal Enhancement](#signal-enhancement)
+- [Signal Operators](#signal-operators)
+- [Form Handling](#form-handling)
+- [Managers](#managers)
+- [Validators and Presets](#validators-and-presets)
+- [Types and Interfaces](#types-and-interfaces)
 - [Best Practices](#best-practices)
 - [Advanced Usage](#advanced-usage)
-- [Performance](#performance)
-- [Security](#security)
 - [Troubleshooting](#troubleshooting)
-- [Migration](#migration)
-- [Contributing](#contributing)
 
 ## Overview
 
-Signal Plus is a comprehensive utility library for Angular Signals that provides enhanced functionality, operators, and utilities.
+`ngx-signal-plus` is a powerful utility library that enhances Angular Signals with additional features for robust state management. It provides a comprehensive set of tools for handling complex state scenarios while maintaining type safety and optimal performance.
 
-Version: 1.0.1
+### Key Features
+
+- Enhanced signal operations with built-in state tracking
+- Type-safe validations and transformations
+- Persistent storage with automatic serialization
+- Time-based operations (debounce, throttle, delay)
+- Automatic cleanup and memory management
+- Built-in undo/redo functionality
+- Performance optimizations with minimal overhead
+- Smart form input handling
 
 ### Requirements
 
-- Angular >= 16.0.0
-- Node.js >= 18.13.0
-- TypeScript >= 5.6.2
-
-### Browser Support
-
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-
-### Dependencies
-
-- @angular/core: >=16.0.0
-- @angular/common: >=16.0.0
+- Angular >= 16.0.0 (fully compatible with Angular 19)
+- TypeScript >= 5.0.0
 
 ## Installation
 
@@ -49,727 +42,1010 @@ Version: 1.0.1
 npm install ngx-signal-plus
 ```
 
-## Import Options
+## Core Features
 
-You can import specific modules to optimize bundle size:
+### Core Components and Services
 
-```typescript
-// Core functionality
-import { SignalPlusService } from 'ngx-signal-plus/core';
-
-// Operators
-import { spMap, spFilter } from 'ngx-signal-plus/operators';
-
-// Utilities
-import { spWithHistory, spPersistent } from 'ngx-signal-plus/utils';
-
-// Types
-import type { SignalOptions } from 'ngx-signal-plus/models';
-```
-
-Or import everything (not recommended for production):
+The package provides core building blocks for signal management:
 
 ```typescript
-import { SignalPlusService, spMap, spWithHistory } from 'ngx-signal-plus';
-```
+import { Component, inject } from '@angular/core';
+import { 
+  spSignalBuilder,
+  spSignalPlusService,
+  spSignalPlusComponent 
+} from 'ngx-signal-plus';
 
-## Core Concepts
-
-Signal Plus extends Angular's signals with additional functionality:
-
-- Signal transformation through operators
-- State management capabilities
-- Error handling and recovery
-- Resource cleanup
-- Type safety
-
-### Basic Usage
-
-```typescript
-import { SignalPlusService } from "ngx-signal-plus";
-
-const counter = signalPlus.create({
-  initialValue: 0,
-  persist: true,
-  storageKey: "counter",
-  validators: [(value) => value >= 0],
-  transform: (value) => Math.round(value),
-  debounceTime: 300,
-  distinctUntilChanged: true,
-});
-```
-
-## Core Components
-
-### SignalPlusComponent
-
-A standalone demo component that showcases signal plus features.
-
-```typescript
-import { SignalPlusComponent } from "ngx-signal-plus";
-
-// Standalone component usage
+// Use in standalone component
 @Component({
-  imports: [SignalPlusComponent]
-})
-
-// Or in NgModule
-@NgModule({
-  imports: [SignalPlusComponent]
-})
-```
-
-Features demonstrated:
-
-- Basic counter operations (increment/decrement)
-- Value tracking (current and previous values)
-- State validation
-- History management (undo/redo)
-- Derived signals (doubled values)
-- Time-based operations (debounced values)
-
-Example template usage:
-
-```html
-<lib-signal-plus></lib-signal-plus>
-```
-
-Component Output:
-
-```html
-<div class="signal-plus-demo">
-  <h3>Signal Plus Demo</h3>
-
-  <!-- Basic Counter -->
-  <div class="counter">
-    <h4>Basic Counter</h4>
-    <p>Current value: {{ count.value }}</p>
-    <p>Previous value: {{ count.previousValue }}</p>
-    <p>Is valid: {{ count.isValid() ? 'Yes' : 'No' }}</p>
-    <p>Has changed: {{ count.hasChanged() ? 'Yes' : 'No' }}</p>
-
-    <!-- Counter Controls -->
+  standalone: true,
+  selector: 'app-example',
+  imports: [spSignalPlusComponent],
+  template: `
+    <div>Counter: {{ counter.value() }}</div>
     <button (click)="increment()">Increment</button>
-    <button (click)="decrement()">Decrement</button>
-    <button (click)="reset()">Reset</button>
-    <button (click)="undo()">Undo</button>
-    <button (click)="redo()">Redo</button>
-  </div>
+    
+    @if (counter.value() > 5) {
+      <div>Counter is greater than 5!</div>
+    } @else {
+      <div>Keep clicking to reach 5</div>
+    }
+    
+    <div>History:</div>
+    <ul>
+      @for (item of history(); track $index) {
+        <li>{{ item }}</li>
+      } @empty {
+        <li>No history yet</li>
+      }
+    </ul>
+  `
+})
+export class YourComponent {
+  // Inject the service
+  private signalService = inject(spSignalPlusService);
 
-  <!-- Derived Values -->
-  <div class="derived">
-    <h4>Derived Values</h4>
-    <p>Doubled: {{ doubled.value }}</p>
-    <p>Debounced: {{ debounced.value }}</p>
-  </div>
-</div>
-```
-
-## Signal Operators
-
-### spMap<TInput, TOutput>
-
-Transforms signal values using a projection function.
-
-```typescript
-import { spMap } from "ngx-signal-plus";
-
-const source = signal(1);
-const doubled = source.pipe(spMap((x: number) => x * 2));
-// doubled() -> 2
-```
-
-### spFilter<T>
-
-Filters signal values based on a predicate function.
-
-```typescript
-import { spFilter } from "ngx-signal-plus";
-
-const source = signal(0);
-const positive = source.pipe(spFilter((x: number) => x > 0));
-```
-
-Features:
-
-- Maintains last valid value
-- Type-safe error propagation
-- Automatic error recovery
-
-### spDebounceTime<T>
-
-Debounces signal emissions by specified time.
-
-```typescript
-import { spDebounceTime } from "ngx-signal-plus";
-
-const debounced = source.pipe(spDebounceTime(300));
-```
-
-Parameters:
-
-- `duration`: Time in milliseconds to debounce
-
-### spDistinctUntilChanged<T>
-
-Emits only when value changes based on equality comparison.
-
-```typescript
-import { spDistinctUntilChanged } from "ngx-signal-plus";
-
-const distinct = source.pipe(spDistinctUntilChanged());
-```
-
-### spDelay<T>
-
-Delays signal emissions by specified time.
-
-```typescript
-import { spDelay } from "ngx-signal-plus";
-
-const delayed = source.pipe(spDelay(1000));
-```
-
-### spThrottleTime<T>
-
-Limits emission rate to specified interval.
-
-```typescript
-import { spThrottleTime } from "ngx-signal-plus";
-
-const throttled = source.pipe(spThrottleTime(1000));
-```
-
-### spSkip<T>
-
-Skips specified number of emissions.
-
-```typescript
-import { spSkip } from "ngx-signal-plus";
-
-const skipped = source.pipe(spSkip(2));
-```
-
-### spTake<T>
-
-Takes specified number of emissions and completes.
-
-```typescript
-import { spTake } from "ngx-signal-plus";
-
-const taken = source.pipe(spTake(2));
-```
-
-### spMerge<T>
-
-Merges multiple signals into a single signal.
-
-```typescript
-import { spMerge } from "ngx-signal-plus";
-
-const merged = spMerge(signal1, signal2);
-```
-
-### combineLatest<T>
-
-Combines latest values from multiple signals.
-
-```typescript
-import { combineLatest } from "ngx-signal-plus";
-
-const name = signal("John");
-const age = signal(25);
-
-const combined = combineLatest([name, age]);
-// combined() -> ['John', 25]
-
-name.set("Jane"); // combined() -> ['Jane', 25]
-age.set(30); // combined() -> ['Jane', 30]
-
-// Error handling
-try {
-  const combined = combineLatest([name, undefined]); // Throws TypeError
-} catch (err) {
-  if (err instanceof TypeError) {
-    console.error("Invalid signal in array");
+  // Create signals using the service
+  counter = this.signalService.create(0);
+  history = signal<number[]>([]);
+  
+  increment() {
+    this.counter.setValue(this.counter.value() + 1);
+    this.history.update(prev => [...prev, this.counter.value()]);
   }
 }
 ```
 
-## Utility Functions
+The `spSignalPlusComponent` provides lifecycle hooks and automatic cleanup, while `spSignalPlusService` offers a centralized way to create and manage signals throughout your application.
 
-### spWithHistory<T>
+### Signal Creation
 
-Creates a signal with undo/redo capabilities.
-
-```typescript
-import { spWithHistory } from "ngx-signal-plus";
-
-const counter = spWithHistory(0);
-counter.push(1);
-counter.undo(); // Returns to 0
-counter.redo(); // Goes back to 1
-```
-
-### spMemoized<T>
-
-Creates a memoized computed signal.
+Create enhanced signals with various configurations using the simplified API:
 
 ```typescript
-import { spMemoized } from "ngx-signal-plus";
+import { 
+  sp,
+  spCounter,
+  spForm,
+  spToggle
+} from 'ngx-signal-plus';
+import { signal } from '@angular/core';
 
-const memoized = spMemoized(() => expensiveComputation(), [dep1, dep2]);
-```
+// Simple text signal
+const name = sp('John').build();
+console.log(name.value()); // 'John'
+name.setValue('Jane');
+console.log(name.previousValue()); // 'John'
 
-### spValidated<T>
+// Counter with min/max validation
+const counter = spCounter(0, { min: 0, max: 100 });
+counter.setValue(counter.value() + 1); // 1
+counter.setValue(counter.value() - 1); // 0
+counter.setValue(50); // Sets to 50 if within range
 
-Creates a signal with validation.
+// Form inputs with validation
+const username = spForm.text('', {
+  minLength: 3,
+  maxLength: 20,
+  debounce: 300
+});
+username.setValue('ab'); // Not valid due to minLength
+console.log(username.isValid()); // false
 
-```typescript
-import { spValidated } from "ngx-signal-plus";
+const emailInput = spForm.email('user@example.com', {
+  debounce: 300
+});
+emailInput.setValue('invalid'); // Will not pass validation
 
-const email = spValidated("", (value) => /^[^@]+@[^@]+\.[^@]+$/.test(value));
-```
-
-### spAsync<T>
-
-Handles async operations with loading and error states.
-
-```typescript
-import { spAsync } from "ngx-signal-plus";
-
-interface User {
-  id: number;
-  name: string;
-}
-
-const users = spAsync<User[]>();
-
-// Basic usage
-await users.execute(fetchUsers());
-console.log(users.value()); // User[] or undefined
-console.log(users.loading()); // boolean
-console.log(users.error()); // Error | null
-
-// Error handling
-try {
-  await users.execute(Promise.reject(new Error("Failed to fetch")));
-} catch (err) {
-  console.log(users.error()?.message); // 'Failed to fetch'
-  console.log(users.loading()); // false
-  console.log(users.value()); // undefined
-}
-
-// Recovery after error
-await users.execute(fetchUsers()); // Clears error state if successful
-```
-
-### spBatch<T>
-
-Batches multiple updates into a single emission.
-
-```typescript
-import { spBatch } from "ngx-signal-plus";
-
-const counter = spBatch(0);
-let emissionCount = 0;
-
-effect(() => {
-  counter.value();
-  emissionCount++;
+// Number input with range validation
+const age = spForm.number({
+  initial: 18,
+  min: 0,
+  max: 120,
+  debounce: 300
 });
 
-// Multiple updates batched into one emission
-counter.update((v) => v + 1); // Not emitted yet
-counter.update((v) => v * 2); // Not emitted yet
-counter.update((v) => v + 3); // All updates processed in next tick
-
-// After next tick: value = ((0 + 1) * 2) + 3 = 5
-// emissionCount = 2 (initial + one batch)
+// Toggle with persistence
+const darkMode = spToggle(false, 'theme-mode'); // Automatically persists to storage
+darkMode.setValue(!darkMode.value()); // Toggle the value
 ```
 
-### spCleanup<T>
+### SignalPlus Interface
 
-Manages resource cleanup with automatic disposal.
-
-```typescript
-import { spCleanup } from "ngx-signal-plus";
-
-// Example with WebSocket
-const connection = spCleanup<WebSocket | null>(null);
-
-// Set value with cleanup
-connection.set(new WebSocket("ws://example.com"), () => {
-  connection.value?.close();
-});
-
-// Automatic cleanup on new value
-connection.set(new WebSocket("ws://example.com/new"), () => {
-  connection.value?.close();
-}); // Previous WebSocket is automatically closed
-
-// Manual cleanup
-connection.destroy(); // Closes current WebSocket
-```
-
-### spPersistent<T>
-
-Persists signal values to localStorage.
-
-```typescript
-import { spPersistent } from "ngx-signal-plus";
-
-const persistent = spPersistent("key", initialValue);
-```
-
-### spDebounced<T>
-
-Creates a debounced signal.
-
-```typescript
-import { spDebounced } from "ngx-signal-plus";
-
-const debounced = spDebounced(signal, 300);
-```
-
-### spThrottled<T>
-
-Creates a throttled signal.
-
-```typescript
-import { spThrottled } from "ngx-signal-plus";
-
-const throttled = spThrottled(signal, 300);
-```
-
-## Types
-
-### SignalOptions<T>
-
-Configuration options for creating a signal plus instance.
-
-```typescript
-interface SignalOptions<T> {
-  // Initial value for the signal
-  initialValue: T;
-
-  // Key for persisting signal value in storage
-  storageKey?: string;
-
-  // Enable persistence to localStorage
-  persist?: boolean;
-
-  // Array of validation functions
-  validators?: ((value: T) => boolean)[];
-
-  // Transform function applied before setting value
-  transform?: (value: T) => T;
-
-  // Debounce time in milliseconds
-  debounceTime?: number;
-
-  // Only emit when value changes
-  distinctUntilChanged?: boolean;
-}
-```
-
-### SignalHistory<T>
-
-Interface for managing signal value history.
-
-```typescript
-interface SignalHistory<T> {
-  // Previous values
-  past: T[];
-
-  // Current value
-  present: T;
-
-  // Future values (for redo operations)
-  future: T[];
-}
-```
-
-### SignalState
-
-Interface for tracking signal state information.
-
-```typescript
-interface SignalState {
-  // Loading state flag
-  loading: boolean;
-
-  // Error state
-  error: Error | null;
-
-  // Last update timestamp
-  timestamp: number;
-}
-```
-
-### SignalPlus<T>
-
-Core plus interface for signals.
+All enhanced signals implement the `SignalPlus<T>` interface, which provides the following methods:
 
 ```typescript
 interface SignalPlus<T> {
-  value: T;
-  previousValue: T | undefined;
-  signal: Signal<T>;
-  writable: WritableSignal<T>;
-  setValue(newValue: T): void;
-  update(fn: (current: T) => T): void;
-  reset(): void;
-  validate(): boolean;
-  isValid: Signal<boolean>;
-  isDirty: Signal<boolean>;
-  hasChanged: Signal<boolean>;
-  history: Signal<T[]>;
-  undo(): void;
-  redo(): void;
-  subscribe(callback: (value: T) => void): () => void;
-  pipe<R>(...operators: SignalOperator<T, R>[]): SignalPlus<R>;
+  // Core signal functionality
+  value(): T;                    // Get the current value
+  setValue(value: T): void;      // Set a new value
+  previousValue(): T | undefined; // Get the previous value before last change
+  
+  // Validation
+  isValid(): boolean;            // Check if the current value is valid
+  errors(): string[];            // Get any validation error messages
+  
+  // History management
+  undo(): boolean;               // Undo the last change, returns success
+  redo(): boolean;               // Redo previously undone change, returns success
+  canUndo(): boolean;            // Check if undo is available
+  canRedo(): boolean;            // Check if redo is available
+  resetHistory(): void;          // Clear history stack
+  
+  // State management
+  reset(): void;                 // Reset to initial value
 }
 ```
 
-## Error Handling
+### Signal Enhancement
 
-### Try-Catch Pattern
+Enhance existing signals with additional features using the builder pattern:
 
 ```typescript
-effect(() => {
-  try {
-    const value = filteredSignal();
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      console.error(err.message);
-    }
+import { enhance } from 'ngx-signal-plus';
+import { signal } from '@angular/core';
+
+// Create an enhanced signal with multiple features
+const enhanced = enhance(signal(0))
+  .persist('counter') // Persist to storage
+  .validate(n => n >= 0, 'Must be positive') // Add validation
+  .transform(Math.round) // Transform values
+  .withHistory(5) // Enable undo/redo with history size
+  .debounce(300) // Add debounce
+  .distinctUntilChanged() // Prevent duplicate updates
+  .onError(error => console.error(error)) // Handle errors
+  .build();
+
+// Use the enhanced signal
+enhanced.setValue(5.7); // Stored as 6 (after rounding)
+enhanced.undo(); // Reverts to previous value
+console.log(enhanced.isValid()); // Check validation
+```
+
+#### Builder Methods
+
+The SignalBuilder provides a fluent API with the following methods:
+
+- `.persist(key: string)`: Persists the signal to localStorage using the provided key
+- `.validate(fn: Validator<T>, message?: string)`: Adds a validation function
+- `.transform(fn: Transform<T>)`: Adds a transformation to be applied to values
+- `.withHistory(size?: number)`: Enables undo/redo with optional history size
+- `.debounce(ms: number)`: Adds debouncing to signal updates
+- `.throttle(ms: number)`: Adds throttling to signal updates
+- `.distinctUntilChanged()`: Prevents duplicate updates
+- `.onError(handler: ErrorHandler)`: Sets a handler for validation/transform errors
+- `.build()`: Finalizes the configuration and returns the enhanced signal
+
+## Signal Operators
+
+Transform and combine signals using powerful operators:
+
+```typescript
+import { 
+  spMap,
+  spFilter,
+  spDebounceTime,
+  spDistinctUntilChanged,
+  spDelay,
+  spThrottleTime,
+  spSkip,
+  spTake,
+  spMerge,
+  spCombineLatest
+} from 'ngx-signal-plus';
+import { signal, computed } from '@angular/core';
+
+// Transform values
+const price = signal(100);
+const withTax = price.pipe(
+  spMap(n => n * 1.2),
+  spMap(n => Math.round(n * 100) / 100)
+);
+console.log(withTax()); // 120.00
+
+// Filter values
+const numbers = signal(0);
+const positive = numbers.pipe(
+  spFilter(n => n > 0),
+  spDistinctUntilChanged()
+);
+
+// Time-based operations
+const input = signal('');
+const debouncedInput = input.pipe(spDebounceTime(300));
+const scrollY = signal(0);
+const throttledScroll = scrollY.pipe(spThrottleTime(100));
+const value = signal(0);
+const delayedUpdate = value.pipe(spDelay(1000));
+
+// Pagination
+const items = signal([1, 2, 3, 4, 5]);
+const firstThree = items.pipe(spTake(3));
+const skipFirst = items.pipe(spSkip(1));
+
+// Combine multiple signals
+const firstName = signal('John');
+const lastName = signal('Doe');
+const fullName = spCombineLatest([firstName, lastName])
+  .pipe(spMap(([first, last]) => `${first} ${last}`));
+
+// Merge signals
+const signal1 = signal('a');
+const signal2 = signal('b');
+const merged = spMerge([signal1, signal2]);
+```
+
+### Available Operators
+
+| Operator | Description |
+|----------|-------------|
+| `spMap` | Transforms the value of a signal using a mapping function |
+| `spFilter` | Only passes through values that meet the filter criteria |
+| `spDebounceTime` | Delays updates until the specified time has passed with no new updates |
+| `spThrottleTime` | Limits the rate of updates to once per specified interval |
+| `spDelay` | Delays the emission of values by a specified time |
+| `spDistinctUntilChanged` | Only emits when the current value is different from the previous |
+| `spSkip` | Skips the first n items in an array signal |
+| `spTake` | Takes only the first n items from an array signal |
+| `spMerge` | Combines multiple signals into one, emitting when any input signal changes |
+| `spCombineLatest` | Combines multiple signals, emitting arrays of the latest values from each |
+
+## Form Handling
+
+The `spForm` namespace provides specialized signals for form inputs with built-in validation, transformation, and debouncing:
+
+```typescript
+import { spForm } from 'ngx-signal-plus';
+import { computed } from '@angular/core';
+
+// Text input with validation and debounce
+const username = spForm.text('', {
+  minLength: 3,
+  maxLength: 20,
+  debounce: 300
+});
+
+// Email input with validation
+const email = spForm.email('', {
+  debounce: 500
+});
+
+// Number input with range validation
+const age = spForm.number({
+  min: 0,
+  max: 120,
+  initial: 30,
+  debounce: 300
+});
+
+// Form validation
+const isFormValid = computed(() => 
+  username.isValid() && 
+  email.isValid() && 
+  age.isValid()
+);
+
+// Form submission
+const handleSubmit = () => {
+  if (!isFormValid()) {
+    // Show error
+    return;
+  }
+  
+  // Submit form
+  submit({
+    username: username.value(),
+    email: email.value(),
+    age: age.value()
+  });
+};
+```
+
+### Form Signal Options
+
+#### Text Input Options (FormTextOptions)
+```typescript
+interface FormTextOptions {
+  minLength?: number;  // Minimum length requirement
+  maxLength?: number;  // Maximum length requirement
+  debounce?: number;   // Debounce time in milliseconds
+}
+```
+
+#### Email Input Options
+Email inputs use the same options as text inputs but include automatic email format validation.
+
+#### Number Input Options (FormNumberOptions)
+```typescript
+interface FormNumberOptions {
+  min?: number;       // Minimum value allowed
+  max?: number;       // Maximum value allowed
+  debounce?: number;  // Debounce time in milliseconds
+  initial?: number;   // Initial value
+}
+```
+
+## Managers
+
+Built-in managers for handling common state management patterns:
+
+```typescript
+import { 
+  spHistoryManager,
+  spStorageManager 
+} from 'ngx-signal-plus';
+
+// History management with undo/redo
+const history = new spHistoryManager(0, { maxSize: 10 });
+history.push(1);
+history.push(2);
+history.undo(); // Returns to 1
+history.redo(); // Returns to 2
+console.log(history.canUndo()); // true
+console.log(history.canRedo()); // false
+
+// Storage management with type safety
+interface UserPreferences {
+  theme: 'light' | 'dark';
+  fontSize: number;
+}
+
+const storage = new spStorageManager<UserPreferences>('user-prefs');
+
+// Save with type checking
+storage.save({
+  theme: 'dark',
+  fontSize: 16
+});
+
+// Load with automatic type inference
+const prefs = storage.load();
+console.log(prefs?.theme); // 'dark'
+
+// Remove from storage
+storage.remove();
+```
+
+### History Manager API
+
+```typescript
+interface HistoryManager<T> {
+  // Core functionality
+  push(value: T): void;        // Add a value to history
+  undo(): T | undefined;       // Move backward in history
+  redo(): T | undefined;       // Move forward in history
+  
+  // State checking
+  canUndo(): boolean;          // Check if undo is available
+  canRedo(): boolean;          // Check if redo is available
+  
+  // Current state
+  current(): T;                // Get current value
+  
+  // Management
+  clear(): void;               // Clear all history
+  size(): number;              // Get history size
+  history(): T[];              // Get all history values (read-only)
+}
+```
+
+### Storage Manager API
+
+```typescript
+interface StorageManager<T> {
+  save(value: T): void;                // Save value to storage
+  load(): T | undefined;               // Load value from storage
+  remove(): void;                      // Remove value from storage
+  getKey(): string;                    // Get storage key
+  hasValue(): boolean;                 // Check if value exists in storage
+  onChange(callback: Callback<T>): void; // Register change listener
+}
+```
+
+## Validators and Presets
+
+The library provides built-in validators and presets for common scenarios.
+
+### Validators
+
+The `spValidators` namespace contains ready-to-use validation functions for various data types:
+
+```typescript
+import { spValidators } from 'ngx-signal-plus';
+import { sp } from 'ngx-signal-plus';
+
+// String validation
+const text = sp('')
+  .validate(spValidators.string.required, 'Value is required')
+  .validate(spValidators.string.minLength(3), 'Minimum length is 3')
+  .validate(spValidators.string.maxLength(50), 'Maximum length is 50')
+  .validate(spValidators.string.email, 'Must be a valid email format')
+  .validate(spValidators.string.pattern(/^[A-Z]/), 'Must start with uppercase letter')
+  .build();
+
+// Number validation
+const number = sp(0)
+  .validate(spValidators.number.min(0), 'Must be positive')
+  .validate(spValidators.number.max(100), 'Must be less than 100')
+  .validate(spValidators.number.integer, 'Must be an integer')
+  .validate(spValidators.number.between(18, 65), 'Must be between 18 and 65')
+  .build();
+
+// Array validation
+const array = sp([])
+  .validate(spValidators.array.minLength(1), 'At least one item required')
+  .validate(spValidators.array.maxLength(10), 'Maximum of 10 items allowed')
+  .validate(spValidators.array.unique(), 'Items must be unique')
+  .build();
+
+// Custom validation
+const password = sp('')
+  .validate(value => {
+    const hasUppercase = /[A-Z]/.test(value);
+    const hasNumber = /\d/.test(value);
+    const hasSpecial = /[!@#$%^&*]/.test(value);
+    
+    return (hasUppercase && hasNumber && hasSpecial) || 
+      'Password must include uppercase, number, and special character';
+  })
+  .build();
+```
+
+### Validator Types
+
+| Category | Validators |
+|----------|------------|
+| String | `required`, `minLength`, `maxLength`, `email`, `pattern`, `url` |
+| Number | `min`, `max`, `between`, `integer`, `positive`, `negative` |
+| Array | `minLength`, `maxLength`, `unique`, `contains` |
+| Object | `required`, `hasKeys`, `schema` |
+| Custom | Create custom validators with `spValidators.create()` |
+
+### Presets
+
+The `spPresets` namespace provides ready-to-use configurations for common scenarios:
+
+```typescript
+import { spPresets } from 'ngx-signal-plus';
+
+// Form field presets
+const username = spPresets.textField({
+  initial: '',
+  validators: [
+    spValidators.string.required,
+    spValidators.string.minLength(3)
+  ],
+  debounce: 300,
+  persistent: true,
+  storageKey: 'username'
+});
+
+// Counter preset
+const counter = spPresets.counter({
+  initial: 0,
+  min: 0,
+  max: 100,
+  step: 5,
+  withHistory: true,
+  historySize: 10
+});
+
+// Toggle preset
+const darkMode = spPresets.toggle({
+  initial: false,
+  persistent: true,
+  storageKey: 'theme-mode',
+  onChange: value => {
+    // Apply theme change
+    document.body.classList.toggle('dark-theme', value);
+  }
+});
+
+// Search input preset
+const searchInput = spPresets.searchInput({
+  initial: '',
+  debounce: 500,
+  minLength: 3,
+  onSearch: async (term) => {
+    // Perform search operation
+    const results = await searchApi(term);
+    // Handle results
   }
 });
 ```
 
-### Error Recovery
+### Available Presets
 
-Signals automatically maintain last valid state and recover when valid values resume.
+| Preset | Description |
+|--------|-------------|
+| `textField` | Text input with validation, debouncing, and optional persistence |
+| `counter` | Numeric counter with min/max limits, step size, and history |
+| `toggle` | Boolean toggle with persistence and change callback |
+| `searchInput` | Debounced search input with minimum length and search callback |
+| `numberInput` | Number input with range limits, step size, and validation |
+| `selectInput` | Selection from predefined options with validation |
+
+## Types and Interfaces
+
+Type definitions for better TypeScript integration:
 
 ```typescript
-const filtered = source.pipe(spFilter((x: number) => {
-  if (x < 0) throw new Error("Invalid value");
-  return x > 0;
-}));
+import type {
+  SignalPlus,
+  SignalOptions,
+  BuilderOptions,
+  FormTextOptions,
+  FormNumberOptions,
+  Validator,
+  Transform,
+  ErrorHandler,
+  SignalHistory,
+  SignalState
+} from 'ngx-signal-plus';
 
-// Error thrown but last valid value maintained
-source.set(-1); // Throws but keeps last value
-source.set(5); // Recovers with new value
+// Create typed signal
+const signal: SignalPlus<number> = sp(0).build();
+
+// Form text options
+const textOptions: FormTextOptions = {
+  minLength: 3,
+  maxLength: 20,
+  debounce: 300
+};
+
+// Form number options
+const numberOptions: FormNumberOptions = {
+  min: 0, 
+  max: 100,
+  debounce: 300,
+  initial: 50
+};
+
+// Custom validator type
+const validator: Validator<string> = (value: string) => {
+  return value.length > 0;
+};
+
+// Custom transform type
+const transform: Transform<number> = (value: number) => {
+  return Math.abs(value);
+};
+
+// Error handler type
+const errorHandler: ErrorHandler = (error: Error) => {
+  console.error(error);
+};
+```
+
+### Key Type Definitions
+
+```typescript
+// Core signal interface
+type SignalPlus<T> = {
+  value(): T;
+  setValue(value: T): void;
+  previousValue(): T | undefined;
+  isValid(): boolean;
+  errors(): string[];
+  undo(): boolean;
+  redo(): boolean;
+  canUndo(): boolean;
+  canRedo(): boolean;
+  resetHistory(): void;
+  reset(): void;
+};
+
+// Validator function type
+type Validator<T> = (value: T) => boolean | string | void;
+
+// Transform function type
+type Transform<T> = (value: T) => T;
+
+// Error handler function type
+type ErrorHandler = (error: Error) => void;
 ```
 
 ## Best Practices
 
-### 1. Resource Management
+### Performance Optimization
 
-Always cleanup effects and subscriptions:
+1. Use `spDistinctUntilChanged` to prevent unnecessary updates when values haven't changed
+2. Apply `spDebounceTime` for input fields or frequent updates
+3. Use `spThrottleTime` for scroll or resize events
+4. Implement proper cleanup in components using `onDestroy`
+5. Use `spMerge` and `spCombineLatest` efficiently for combining signals
+6. Keep history size limited when using `withHistory()`
+7. Use `computed` for derived state to minimize recalculations
 
-```typescript
-const effectRef = effect(() => {
-  // Effect logic
-});
-onDestroy(() => effectRef.destroy());
-```
+### Type Safety
 
-### 2. Type Safety
+1. Always specify generic types for signals and managers
+2. Use built-in validators for form inputs
+3. Implement comprehensive error handlers
+4. Use the simplified API functions for common patterns
+5. Define interfaces for complex state objects
+6. Take advantage of TypeScript's inference with the API
 
-Use proper type annotations:
+### State Management
 
-```typescript
-const typed = signal<number>(0);
-const doubled = typed.pipe(spMap((x: number) => x * 2));
-```
-
-### 3. Error Boundaries
-
-Implement error boundaries in effects:
-
-```typescript
-effect(() => {
-  try {
-    // Signal operations
-  } catch (err: unknown) {
-    // Type-safe error handling
-    if (err instanceof Error) {
-      handleError(err);
-    }
-  }
-});
-```
-
-### 4. Performance
-
-Use memoization for expensive computations:
-
-```typescript
-const memoized = spMemoized(() => expensiveOperation(), [dependency1, dependency2]);
-```
-
-### 5. State Management
-
-Leverage history and validation:
-
-```typescript
-const validated = spValidated(0, (x) => x >= 0);
-const withHistory = spWithHistory(0);
-```
+1. Use `spHistoryManager` for undo/redo functionality
+2. Implement `spStorageManager` for persistent state
+3. Use signal enhancement with `enhance` for complex state
+4. Apply appropriate validation rules
+5. Organize related signals using services
+6. Consider the state hierarchy in larger applications
 
 ## Advanced Usage
 
 ### Custom Operators
 
-Create custom operators:
+Create custom operators for specific needs:
 
 ```typescript
-function customOperator<T>(): SignalOperator<T> {
-  return (source: Signal<T>) => {
-    // Implementation
-  };
+import { SignalOperator, Signal, computed } from '@angular/core';
+
+// Custom operator that doubles the value
+function double<T extends number>(): SignalOperator<T, T> {
+  return (source: Signal<T>) => computed(() => {
+    return source() * 2;
+  });
 }
+
+// Custom operator with parameters
+function multiply(factor: number): SignalOperator<number, number> {
+  return (source: Signal<number>) => computed(() => {
+    return source() * factor;
+  });
+}
+
+// Usage
+const value = signal(5);
+const doubled = value.pipe(double());
+const multiplied = value.pipe(multiply(3));
 ```
 
-### Composition Patterns
+### Complex State Management
 
-Combine multiple operators:
+Handle complex state scenarios:
 
 ```typescript
-const result = plus.pipe(
-  spFilter((x) => x > 0),
-  spMap((x) => x * 2),
-  spDebounceTime(300)
+import { signal, effect } from '@angular/core';
+import { enhance } from 'ngx-signal-plus';
+
+interface User {
+  id: string;
+  name: string;
+}
+
+interface Preferences {
+  theme: 'light' | 'dark';
+  fontSize: number;
+}
+
+interface Theme {
+  mode: 'light' | 'dark';
+  primary: string;
+  secondary: string;
+}
+
+interface AppState {
+  user: User;
+  preferences: Preferences;
+  theme: Theme;
+}
+
+const initialState: AppState = {
+  user: { id: '', name: '' },
+  preferences: { theme: 'light', fontSize: 16 },
+  theme: { mode: 'light', primary: '#007bff', secondary: '#6c757d' }
+};
+
+// Validation function
+const validateState = (state: AppState): boolean => {
+  return !!state.user.id && !!state.user.name;
+};
+
+// Normalization function
+const normalizeState = (state: AppState): AppState => {
+  return {
+    ...state,
+    preferences: {
+      ...state.preferences,
+      theme: state.preferences.theme || 'light',
+      fontSize: state.preferences.fontSize || 16
+    }
+  };
+};
+
+// Error handler
+const handleError = (error: Error): void => {
+  console.error('State error:', error);
+};
+
+const state = enhance(signal<AppState>(initialState))
+  .persist('app-state')
+  .validate(validateState)
+  .transform(normalizeState)
+  .debounce(300)
+  .withHistory()
+  .onError(handleError)
+  .build();
+
+// Update specific parts of state
+state.setValue({
+  ...state.value(),
+  theme: { ...state.value().theme, mode: 'dark' }
+});
+
+// Track state changes using the effect API
+const trackChanges = effect(() => {
+  const newState = state.value();
+  // analytics.trackStateChange(newState);
+  console.log('State updated:', newState);
+});
+
+// Cleanup when no longer needed
+// trackChanges.destroy(); // When needed
+```
+
+### Complex Form Validation
+
+Implement complex form validation with custom logic:
+
+```typescript
+import { spForm } from 'ngx-signal-plus';
+import { enhance } from 'ngx-signal-plus';
+import { computed, signal, effect } from '@angular/core';
+
+// Password with custom validation
+const password = spForm.text('', {
+  minLength: 8,
+  debounce: 300
+});
+
+// Confirmation field with custom validation
+const passwordConfirm = enhance(signal(''))
+  .validate(value => {
+    if (value !== password.value()) {
+      return 'Passwords do not match';
+    }
+    return true;
+  })
+  .debounce(300)
+  .build();
+
+// Update confirmation validation when password changes
+const passwordEffect = effect(() => {
+  const pwd = password.value();
+  // This will trigger validation on passwordConfirm
+  passwordConfirm.setValue(passwordConfirm.value());
+});
+
+// Combined form validation
+const isPasswordValid = computed(() => 
+  password.isValid() && 
+  passwordConfirm.isValid() &&
+  password.value().length >= 8
 );
+
+// Clean up effect when done
+// passwordEffect.destroy(); // When needed
 ```
 
-## Performance
+### Integration with Angular Forms
 
-### Memory Management
-
-- Effects are automatically cleaned up
-- Use `spCleanup` for manual resource management
-- Implement `ngOnDestroy` for component cleanup
-
-### Optimization Tips
-
-1. Use `spMemoized` for expensive computations
-2. Implement `spDistinctUntilChanged` to prevent unnecessary updates
-3. Batch updates with `spBatch`
-4. Use appropriate debounce/throttle times
-
-### Performance Example
+Integrate with Angular's forms using a custom approach:
 
 ```typescript
-// Add memoization for expensive computations
-const computed = spMemoized(() => expensiveOperation(), [dep1, dep2]);
+import { Component, inject } from '@angular/core';
+import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { spForm, spSignalPlusComponent } from 'ngx-signal-plus';
+import { effect } from '@angular/core';
 
-// Use batching for multiple updates
-const batchedSignal = spBatch(0);
-```
+// Define submit function type
+interface UserData {
+  username: string;
+  email: string;
+}
 
-## Security
+type SubmitFn = (data: UserData) => void;
 
-### LocalStorage
+@Component({
+  selector: 'app-user-form',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, spSignalPlusComponent],
+  template: `
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div>
+        <label for="username">Username</label>
+        <input id="username" type="text" formControlName="username">
+        
+        @if (!usernameSignal.isValid()) {
+          <div class="error">Username must be 3-20 characters</div>
+        }
+      </div>
+      
+      <div>
+        <label for="email">Email</label>
+        <input id="email" type="email" formControlName="email">
+        
+        @if (!emailSignal.isValid()) {
+          <div class="error">Please enter a valid email</div>
+        }
+      </div>
+      
+      <button type="submit" [disabled]="!isValid()">Submit</button>
+      
+      @if (formSubmitted) {
+        <div class="success">Form submitted successfully!</div>
+      }
+    </form>
+    
+    <div class="form-preview">
+      <h3>Form Data Preview</h3>
+      @if (isValid()) {
+        <dl>
+          <dt>Username:</dt>
+          <dd>{{ usernameSignal.value() }}</dd>
+          <dt>Email:</dt>
+          <dd>{{ emailSignal.value() }}</dd>
+        </dl>
+      } @else {
+        <p>Please fill out the form correctly</p>
+      }
+    </div>
+  `
+})
+export class UserFormComponent {
+  form = new FormGroup({
+    username: new FormControl(''),
+    email: new FormControl('')
+  });
+  
+  // Enhanced signals
+  usernameSignal = spForm.text('', { minLength: 3, maxLength: 20 });
+  emailSignal = spForm.email('');
+  formSubmitted = signal(false);
+  
+  // Optional: Submit function that could be injected
+  private submit: SubmitFn = inject(SUBMIT_TOKEN, { optional: true }) || 
+    ((data) => console.log('Form submitted:', data));
+  
+  constructor() {
+    // Sync Angular form value to signal
+    effect(() => {
+      const usernameValue = this.form.get('username')?.value;
+      if (usernameValue !== undefined && usernameValue !== this.usernameSignal.value()) {
+        this.usernameSignal.setValue(usernameValue);
+      }
+      
+      const emailValue = this.form.get('email')?.value;
+      if (emailValue !== undefined && emailValue !== this.emailSignal.value()) {
+        this.emailSignal.setValue(emailValue);
+      }
+    });
+    
+    // Optionally sync signal values back to the form
+    effect(() => {
+      const username = this.usernameSignal.value();
+      this.form.get('username')?.setValue(username, { emitEvent: false });
+      
+      const email = this.emailSignal.value();
+      this.form.get('email')?.setValue(email, { emitEvent: false });
+    });
+  }
+  
+  isValid(): boolean {
+    return this.usernameSignal.isValid() && this.emailSignal.isValid();
+  }
+  
+  onSubmit() {
+    if (this.isValid()) {
+      this.submit({
+        username: this.usernameSignal.value(),
+        email: this.emailSignal.value()
+      });
+      this.formSubmitted.set(true);
+    }
+  }
+}
 
-When using `spPersistent`:
-
-- Don't store sensitive information
-- Validate data on retrieval
-- Handle storage quota exceeded
-
-### Input Validation
-
-Always validate inputs:
-
-```typescript
-const validated = spValidated(initialValue, (value) => validateInput(value));
+// Injection token definition (would be in a separate file)
+import { InjectionToken } from '@angular/core';
+export const SUBMIT_TOKEN = new InjectionToken<SubmitFn>('submit.function');
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
-1. Memory Leaks
+1. **Storage Errors**: If you encounter errors with the persistence feature, check that the storage quota hasn't been exceeded and that the browser has permission to use localStorage.
 
-```typescript
-// Wrong
-effect(() => {
-  /* ... */
-});
+   ```typescript
+   // Safer storage implementation
+   const counter = sp(0)
+     .persist('counter')
+     .onError(error => {
+       console.warn('Storage error:', error);
+       // Continue without persistence
+     })
+     .build();
+   ```
 
-// Correct
-const effectRef = effect(() => {
-  /* ... */
-});
-onDestroy(() => effectRef.destroy());
-```
+2. **Memory Leaks**: Make sure to clean up effects and subscriptions in components:
 
-2. Signal Updates Not Reflecting
+   ```typescript
+   import { Component } from '@angular/core';
+   import { effect } from '@angular/core';
+   import { sp, spSignalPlusComponent } from 'ngx-signal-plus';
+   
+   @Component({
+     standalone: true,
+     selector: 'app-counter',
+     imports: [spSignalPlusComponent],
+     template: `
+       <div>Count: {{ counter.value() }}</div>
+       <button (click)="increment()">+</button>
+       <button (click)="decrement()">-</button>
+       
+       @if (counter.value() > 10) {
+         <div class="warning">High value!</div>
+       }
+       
+       <div>History:</div>
+       @if (counter.canUndo()) {
+         <button (click)="counter.undo()">Undo</button>
+       }
+     `
+   })
+   export class YourComponent {
+     counter = sp(0).withHistory(10).build();
+     
+     // Effect cleanup is handled automatically by spSignalPlusComponent
+     constructor() {
+       // This effect will be automatically cleaned up
+       effect(() => {
+         console.log('Counter changed:', this.counter.value());
+       });
+     }
+     
+     increment() {
+       this.counter.setValue(this.counter.value() + 1);
+     }
+     
+     decrement() {
+       this.counter.setValue(this.counter.value() - 1);
+     }
+     
+     // For manual cleanup if needed:
+     // ngOnDestroy() {
+     //   this.counterEffect.destroy();
+     // }
+   }
+   ```
 
-```typescript
-// Check if running in Angular zone
-runInInjectionContext(injector, () => {
-  // Signal operations
-});
-```
+3. **Performance Issues**: If you notice performance problems, consider:
+   - Limiting history size
+   - Using `distinctUntilChanged` for signals that update frequently
+   - Using `debounce` or `throttle` for rapid updates
+   - Reducing the complexity of computed values
 
-3. Type Errors
+4. **Validation Errors**: If validation is not working as expected:
+   - Check your validator functions
+   - Ensure validators return boolean values or error messages
+   - Check the validation chain order
 
-```typescript
-// Use explicit typing
-const signal = plus.create<number>({
-  initialValue: 0,
-});
-```
-
-## Migration
-
-### From RxJS
-
-```typescript
-// RxJS
-const subject$ = new BehaviorSubject(0);
-subject$.pipe(
-  map((x) => x * 2),
-  filter((x) => x > 0)
-);
-
-// Signal Plus
-const signal = plus.create({ initialValue: 0 });
-signal.pipe(
-  spMap((x) => x * 2),
-  spFilter((x) => x > 0)
-);
-```
-
-## Contributing
-
-For detailed information about contributing to this project, please see our [Contributing Guide](../CONTRIBUTING.md).
-
-### Development
-
-1. Fork the repository
-2. Create your feature branch
-3. Write tests for your changes
-4. Submit a pull request
-
-### Code Style
-
-- Follow Angular style guide
-- Use TypeScript strict mode
-- Include JSDoc comments
-- Write unit tests for new features
-
-### Documentation
-
-When adding new features, please update:
-
-- API documentation
-- Code examples
-- Type definitions
-- Test cases
-
-For more details about development setup and processes, refer to our [CONTRIBUTING.md](../CONTRIBUTING.md).
+   ```typescript
+   // Debugging validators
+   const counter = sp(0)
+     .validate(value => {
+       console.log('Running validator 1:', value);
+       return value >= 0;
+     })
+     .validate(value => {
+       console.log('Running validator 2:', value);
+       return value <= 100;
+     })
+     .build();
+   ```
