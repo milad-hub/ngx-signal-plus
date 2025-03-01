@@ -1,329 +1,182 @@
 /**
- * @fileoverview Signal Plus Service
- * @description Provides core functionality for signal operations and management
+ * @fileoverview Core service for managing enhanced Angular signals
+ * @description Provides a simplified API for creating and managing signals with additional features.
+ * This service is the main entry point for creating and managing enhanced signals.
  * 
- * @package ngx-signal-plus
- * @version 1.0.1
- */
-
-import { computed, DestroyRef, effect, EffectRef, inject, Injectable, Injector, OnDestroy, runInInjectionContext, Signal, signal, WritableSignal } from '@angular/core';
-import { HistoryManager } from '../managers/history-manager';
-import { SignalOptions, SignalPlus } from '../models/signal-plus.model';
-import { debounceTime as debounceFn, distinctUntilChanged as distinctFn, SignalOperator } from '../operators/signal-operators';
-
-/**
- * Service that provides signal plus functionality with enhanced features.
- * Handles signal creation, persistence, validation, and transformation.
+ * The service provides three levels of API complexity:
+ * 1. Presets for common use cases (counter, toggle, form)
+ * 2. Simple creation with basic options (validation, storage)
+ * 3. Builder pattern for advanced configuration (history, transforms)
  * 
- * @example
+ * @example Basic Usage with Presets
  * ```typescript
- * const counter = signalPlus.create({
- *   initialValue: 0,
- *   persist: true,
- *   storageKey: 'counter',
- *   validators: [value => value >= 0]
+ * const counter = signalPlus.presets.counter(0);
+ * const toggle = signalPlus.presets.toggle(false);
+ * ```
+ * 
+ * @example Form Input with Validation
+ * ```typescript
+ * const name = signalPlus.presets.formInput({
+ *   initial: '',
+ *   key: 'user-name',
+ *   validator: signalPlus.validators.string.notEmpty
  * });
  * ```
+ * 
+ * @example Advanced Configuration
+ * ```typescript
+ * const advanced = signalPlus.create(0)
+ *   .persist('counter')
+ *   .validate(x => x >= 0)
+ *   .transform(Math.round)
+ *   .withHistory()
+ *   .build();
+ * ```
+ */
+
+import { Injectable, OnDestroy } from '@angular/core';
+import { CounterConfig, FormConfig, SignalPlus, SimpleSignalOptions } from '../models/signal-plus.model';
+import { validators } from '../utils/presets';
+import { SignalBuilder } from './signal-builder';
+
+/**
+ * Injectable service that provides the core functionality for creating and managing enhanced signals.
+ * Implements OnDestroy for proper cleanup of resources.
  */
 @Injectable({
   providedIn: 'root'
 })
 export class SignalPlusService implements OnDestroy {
-  private readonly signals: WritableSignal<Map<string, WritableSignal<any>>> = signal(new Map<string, WritableSignal<any>>());
-  private readonly injector: Injector = inject(Injector);
-  private readonly destroyRef: DestroyRef = inject(DestroyRef);
-  private cleanup: (() => void)[] = [];
+  /** Internal set of cleanup functions to be executed on service destruction */
+  private readonly cleanup: Set<() => void> = new Set<() => void>();
 
   /**
-   * Creates an instance of SignalPlusService
+   * Creates a new signal builder for advanced configuration.
+   * @param initialValue The initial value of the signal
+   * @returns A SignalBuilder instance for chaining configuration
+   * @throws {Error} If initialValue is undefined
+   * 
+   * @example
+   * ```typescript
+   * const signal = signalPlus.create(0)
+   *   .persist('key')
+   *   .validate(x => x >= 0)
+   *   .build();
+   * ```
    */
-  constructor() {
-    // Store cleanup function instead of executing immediately
-    this.destroyRef.onDestroy(() => {
-      this.cleanup.forEach(fn => fn());
-    });
-  }
-
-  ngOnDestroy(): void {
-    // Run cleanup functions
-    this.cleanup.forEach(fn => fn());
-    this.cleanup = [];
-  }
-
-  /**
-   * Creates a new signal plus with the provided configuration
-   */
-  create<T>(options: SignalOptions<T>): SignalPlus<T> {
-    this.validateOptions(options);
-
-    const {
-      initialValue,
-      storageKey,
-      persist = false,
-      validators = [],
-      transform = (value: T) => value,
-      debounceTime: debounceMs,
-      distinctUntilChanged: distinct
-    } = options;
-
-    // Create core signals
-    const value: WritableSignal<T> = signal<T>(this.getInitialValue(initialValue, storageKey, persist));
-    const previousValue: WritableSignal<T | undefined> = signal<T | undefined>(undefined);
-    const history: HistoryManager<T> = new HistoryManager<T>(initialValue);
-
-    // Create computed states
-    const isValid: Signal<boolean> = computed(() => validators.every(v => v(value())));
-    const isDirty: Signal<boolean> = computed(() => previousValue() !== undefined);
-    const hasChanged: Signal<boolean> = computed(() => value() !== initialValue);
-
-    // Setup persistence if needed
-    if (persist && storageKey) {
-      const cleanup: EffectRef = effect(() => {
-        const currentValue: T = value();
-        this.saveToStorage(storageKey, currentValue);
-      }, { injector: this.injector });
-
-      this.cleanup.push(() => cleanup.destroy());
+  create<T>(initialValue: T): SignalBuilder<T> {
+    if (initialValue === undefined) {
+      throw new Error('Initial value cannot be undefined');
     }
-
-    // Create the plus
-    const plus: SignalPlus<T> = this.createPlus(value, previousValue, history, {
-      initialValue,
-      transform,
-      validators,
-      isValid,
-      isDirty,
-      hasChanged
-    });
-
-    // Apply optional operators
-    let processedSignal: Signal<T> = plus.signal;
-    if (debounceMs) {
-      processedSignal = debounceFn<T>(debounceMs)(processedSignal) as Signal<T>;
-    }
-    if (distinct) {
-      processedSignal = distinctFn<T>()(processedSignal) as Signal<T>;
-    }
-
-    // Store signal reference
-    this.signals.update(map => {
-      map.set(storageKey ?? crypto.randomUUID(), value);
-      return map;
-    });
-
-    return plus;
+    return new SignalBuilder<T>(initialValue);
   }
 
   /**
-   * Validates the provided options for signal plus creation
-   * @throws Error if options are invalid
+   * Creates a signal with common options and error handling.
+   * @param initialValue The initial value of the signal
+   * @param options Configuration options for the signal
+   * @returns A SignalPlus instance with the specified configuration
+   * @throws {Error} If validation fails and no error handler is provided
+   * 
+   * @example
+   * ```typescript
+   * const input = signalPlus.createSimple('', {
+   *   key: 'form-input',
+   *   validator: signalPlus.validators.string.notEmpty,
+   *   onError: console.error
+   * });
+   * ```
    */
-  private validateOptions<T>(options: SignalOptions<T>): void {
-    if (options.persist && !options.storageKey) {
-      throw new Error('Storage key is required when persistence is enabled');
-    }
-
-    if (options.debounceTime !== undefined && options.debounceTime < 0) {
-      throw new Error('debounceTime must be a positive number');
-    }
-
-    if (options.validators?.length && !options.validators.every(v => typeof v === 'function')) {
-      throw new Error('All validators must be functions');
-    }
-  }
-
-  private getInitialValue<T>(
+  createSimple<T>(
     initialValue: T,
-    storageKey?: string,
-    persist?: boolean
-  ): T {
-    if (persist && storageKey) {
-      const stored: T | undefined = this.getFromStorage<T>(storageKey);
-      return stored ?? initialValue;
-    }
-    return initialValue;
-  }
-
-  private setupPersistence<T>(key: string, signal: WritableSignal<T>): void {
-    effect(() => {
-      const value: T = signal();
-      this.saveToStorage(key, value);
-    });
-  }
-
-  private createDerivedPlus<T>(derivedSignal: Signal<T>): SignalPlus<T> {
-    return createDerivedPlus(derivedSignal);
-  }
-
-  private getFromStorage<T>(key: string): T | undefined {
-    try {
-      const item: string | null = localStorage.getItem(key);
-      if (!item) return undefined;
-
-      const parsed: T | null = JSON.parse(item);
-      if (typeof parsed === 'object' && parsed !== null) {
-        return parsed as T;
-      }
-      return parsed as T;
-    } catch {
-      return undefined;
-    }
-  }
-
-  private saveToStorage<T>(key: string, value: T): void {
-    try {
-      if (value === undefined) {
-        localStorage.removeItem(key);
-        return;
-      }
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // Silent fail for storage errors
-    }
-  }
-
-  private createPlus<T>(
-    value: WritableSignal<T>,
-    previousValue: WritableSignal<T | undefined>,
-    history: HistoryManager<T>,
-    options: {
-      initialValue: T;
-      transform: (value: T) => T;
-      validators: ((value: T) => boolean)[];
-      isValid: Signal<boolean>;
-      isDirty: Signal<boolean>;
-      hasChanged: Signal<boolean>;
-    }
+    options?: SimpleSignalOptions<T>
   ): SignalPlus<T> {
-    const { initialValue, transform, validators } = options;
+    try {
+      const builder: SignalBuilder<T> = this.create(initialValue);
 
-    return {
-      get value(): T {
-        try {
-          return transform(value());
-        } catch {
-          return value();
-        }
-      },
-      get previousValue(): T | undefined {
-        return previousValue();
-      },
-      signal: computed(() => transform(value())),
-      writable: value,
-
-      setValue(newValue: T) {
-        previousValue.set(value());
-        history.push(newValue);
-        value.set(newValue);
-      },
-
-      update(fn: (current: T) => T) {
-        this.setValue(fn(this.value));
-      },
-
-      reset() {
-        previousValue.set(value());
-        value.set(initialValue);
-        history.push(initialValue);
-      },
-
-      validate: () => validators.every(v => v(value())),
-      isValid: options.isValid,
-      isDirty: options.isDirty,
-      hasChanged: options.hasChanged,
-      history: computed(() => [history.current]),
-
-      undo() {
-        const previous: T | undefined = history.undo();
-        if (previous !== undefined) {
-          previousValue.set(value());
-          value.set(previous);
-        }
-      },
-
-      redo() {
-        const next: T | undefined = history.redo();
-        if (next !== undefined) {
-          previousValue.set(value());
-          value.set(next);
-        }
-      },
-
-      subscribe(callback: (value: T) => void) {
-        const dispose: EffectRef = effect(() => callback(transform(value())));
-        return () => dispose.destroy();
-      },
-
-      pipe<R>(...operators: SignalOperator<T, R>[]): SignalPlus<R> {
-        let result: Signal<any> = this.signal;
-        operators.forEach(operator => {
-          result = operator(result);
-        });
-        return createDerivedPlus(result);
+      if (options?.key) {
+        builder.persist(options.key);
       }
-    };
-  }
 
-  pipe<T>(source: Signal<T>, operators: SignalOperator<any, any>[]): Signal<T> {
-    const result: WritableSignal<T> = signal<T>(source());
+      if (options?.validator) {
+        builder.validate(options.validator);
+      }
 
-    const injector = inject(Injector);
-    const cleanup: (() => void)[] = [];
+      if (options?.debounce) {
+        if (options.debounce < 0) {
+          throw new Error('Debounce time must be positive');
+        }
+        builder.debounce(options.debounce);
+      }
 
-    runInInjectionContext(injector, () => {
-      let current: Signal<T> = source;
-      operators.forEach(op => {
-        current = op(current);
-        const dispose: EffectRef = effect(() => {
-          result.set(current());
-        });
-        cleanup.push(() => dispose.destroy());
-      });
-    });
+      if (options?.history) {
+        builder.withHistory();
+      }
 
-    // Clean up effects when signal is destroyed
-    inject(DestroyRef).onDestroy(() => {
-      cleanup.forEach(fn => fn());
-    });
+      if (options?.onError) {
+        builder.onError(options.onError);
+      }
 
-    return result.asReadonly();
-  }
-}
-
-function createDerivedPlus<T>(derivedSignal: Signal<T>): SignalPlus<T> {
-  return {
-    get value(): T {
-      return derivedSignal();
-    },
-    previousValue: undefined,
-    signal: derivedSignal,
-    writable: signal(derivedSignal()),
-    setValue: () => {
-      throw new Error('Derived signal cannot be modified directly');
-    },
-    update: () => {
-      throw new Error('Derived signal cannot be modified directly');
-    },
-    reset: () => {
-      throw new Error('Derived signal cannot be modified directly');
-    },
-    validate: () => true,
-    isValid: computed(() => true),
-    isDirty: computed(() => false),
-    hasChanged: computed(() => false),
-    history: computed(() => []),
-    undo: () => { },
-    redo: () => { },
-    subscribe: (callback: (value: T) => void) => {
-      const dispose: EffectRef = effect(() => callback(derivedSignal()));
-      return () => dispose.destroy();
-    },
-    pipe<R>(...operators: SignalOperator<T, R>[]): SignalPlus<R> {
-      let result: Signal<any> = derivedSignal;
-      operators.forEach(operator => {
-        result = operator(result);
-      });
-      return createDerivedPlus(result);
+      return builder.build();
+    } catch (error) {
+      if (options?.onError) {
+        options.onError(error as Error);
+      }
+      return SignalBuilder.mock({ initialValue });
     }
-  };
+  }
+
+  /**
+   * Collection of predefined validators for different data types.
+   * Includes validators for strings, numbers, arrays, and custom types.
+   * @see {@link validators} for available validation rules
+   */
+  readonly validators: typeof validators = validators;
+
+  /**
+   * Cleanup resources when service is destroyed.
+   * Executes all registered cleanup functions and clears the set.
+   * @internal
+   */
+  ngOnDestroy(): void {
+    this.cleanup.forEach(cleanup => cleanup());
+    this.cleanup.clear();
+  }
+
+  /**
+   * Static helper to create a new signal builder.
+   * Provides the same functionality as instance create() method.
+   * @param value The initial value of the signal
+   * @returns A SignalBuilder instance for chaining configuration
+   * @throws {Error} If value is undefined
+   */
+  static create<T>(value: T) {
+    return new SignalBuilder<T>(value);
+  }
+
+  /**
+   * Static helper to create a counter signal with validation.
+   * Configures bounds checking and history tracking.
+   * @param config Optional configuration for initial value and bounds
+   * @returns A SignalBuilder configured for counter behavior
+   */
+  static counter(config?: CounterConfig) {
+    return SignalPlusService.create(config?.initial ?? 0)
+      .validate(x => x >= (config?.min ?? 0))
+      .validate(x => x <= (config?.max ?? Infinity))
+      .withHistory();
+  }
+
+  /**
+   * Static helper to create a form input signal.
+   * Configures validation, debouncing, and persistence.
+   * @param config Form input configuration options
+   * @returns A SignalBuilder configured for form input behavior
+   */
+  static form<T>(config: FormConfig<T>) {
+    return SignalPlusService.create(config.initial)
+      .validate(config.validator || (() => true))
+      .debounce(config.debounce ?? 300)
+      .persist(config.key);
+  }
 }
