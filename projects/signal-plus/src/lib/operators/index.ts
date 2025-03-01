@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Operator exports for ngx-signal-plus
+ */
+
 export {
     map as spMap,
     filter as spFilter,
@@ -8,5 +12,5 @@ export {
     skip as spSkip,
     take as spTake,
     merge as spMerge,
-    type SignalOperator
+    combineLatest as spCombineLatest
 } from './signal-operators'; 

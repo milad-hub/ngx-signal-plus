@@ -1,11 +1,10 @@
-export {
-    signalWithHistory as spWithHistory,
-    persistentSignal as spPersistent,
-    memoized as spMemoized,
-    batchSignal as spBatch,
-    validatedSignal as spValidated,
-    asyncSignal as spAsync,
-    cleanupSignal as spCleanup,
-    debouncedSignal as spDebounced,
-    throttledSignal as spThrottled
-} from './signal-utils'; 
+/**
+ * @fileoverview Utility exports for ngx-signal-plus
+ */
+
+// Managers
+export { HistoryManager as spHistoryManager, StorageManager as spStorageManager } from '../managers';
+
+// Utilities
+export { enhance as spEnhance } from './enhance';
+export { presets as spPresets, validators as spValidators } from './presets';
