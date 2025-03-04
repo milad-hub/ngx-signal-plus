@@ -9,6 +9,7 @@
 - [Signal Enhancement](#signal-enhancement)
 - [Signal Operators](#signal-operators)
 - [Form Handling](#form-handling)
+- [Transactions and Batching](#transactions-and-batching)
 - [Managers](#managers)
 - [Validators and Presets](#validators-and-presets)
 - [Types and Interfaces](#types-and-interfaces)
@@ -364,6 +365,208 @@ interface FormNumberOptions {
   initial?: number;   // Initial value
 }
 ```
+
+## Transactions and Batching
+
+When working with multiple related signals, it's often necessary to update them together in a coordinated way. ngx-signal-plus provides two mechanisms for this:
+
+1. **Transactions**: Atomic operations with automatic rollback on failure
+2. **Batching**: Simple grouping of updates without rollback capability
+
+### Transactions
+
+Transactions ensure that a group of signal updates either all succeed together or all fail together with automatic rollback to the initial state.
+
+#### Basic Usage
+
+```typescript
+import { spTransaction } from 'ngx-signal-plus';
+
+// All changes succeed or all are rolled back
+spTransaction(() => {
+  userProfile.setValue({...});
+  userPreferences.setValue({...});
+});
+```
+
+#### Error Handling
+
+If any operation inside a transaction throws an error or fails validation, all changes are automatically rolled back:
+
+```typescript
+try {
+  spTransaction(() => {
+    counter1.setValue(10);
+    counter2.setValue(-5); // If counter2 has validation for positive values
+    counter3.setValue(15);
+  });
+} catch (error) {
+  // All signals remain unchanged
+  console.error('Transaction failed:', error);
+}
+```
+
+#### When to Use Transactions
+
+Use transactions when:
+- Multiple signals represent a single logical state
+- Partial updates would leave your application in an inconsistent state
+- You need automatic rollback capability
+- You're updating related form fields that must be updated together
+
+### Batching
+
+Batching groups multiple signal updates without providing rollback capabilities. It's useful for performance optimization and avoiding unnecessary intermediate reactions.
+
+#### Basic Usage
+
+```typescript
+import { spBatch } from 'ngx-signal-plus';
+
+// All operations happen as a batch
+spBatch(() => {
+  counter1.setValue(counter1.value + 1);
+  counter2.setValue(counter2.value + 1);
+});
+```
+
+#### Error Handling
+
+Unlike transactions, batching doesn't roll back if an error occurs:
+
+```typescript
+try {
+  spBatch(() => {
+    counter1.setValue(10); // This update stays
+    counter2.setValue(-5); // If this fails validation
+    counter3.setValue(15); // This won't execute
+  });
+} catch (error) {
+  // counter1 is updated, others depend on whether they executed before the error
+  console.error('Batch operation failed:', error);
+}
+```
+
+#### When to Use Batching
+
+Use batching when:
+- Performance is a concern
+- Multiple independent signals need updating
+- Complete rollback isn't necessary
+- You're making bulk updates to multiple signals
+
+### Best Practices
+
+1. **Keep transactions short and focused**
+   - Long transactions increase the risk of conflicts and performance issues
+
+2. **Avoid nested transactions**
+   - Nested transactions are explicitly disallowed
+
+3. **Handle transaction errors gracefully**
+   - Always use try/catch when working with transactions
+
+4. **Consider batching for performance critical code**
+   - Batching can significantly improve performance in UI updates
+
+5. **Test transaction behavior thoroughly**
+   - Ensure proper rollback behavior in error cases
+
+### Common Patterns
+
+#### Form Updates
+
+```typescript
+// Update multiple form fields atomically
+spTransaction(() => {
+  nameField.setValue(user.name);
+  emailField.setValue(user.email);
+  addressField.setValue(user.address);
+});
+```
+
+#### State Synchronization
+
+```typescript
+// Keep multiple pieces of state in sync
+spTransaction(() => {
+  userState.setValue(newUserData);
+  permissionsState.setValue(newPermissions);
+  preferencesState.setValue(newPreferences);
+});
+```
+
+#### Counter Operations
+
+```typescript
+// Update multiple counters efficiently
+spBatch(() => {
+  visitsCounter.setValue(visitsCounter.value + 1);
+  totalCounter.setValue(totalCounter.value + 1);
+});
+```
+
+### API Reference
+
+#### `spTransaction<T>(fn: () => T): T`
+
+Executes a function as an atomic transaction with automatic rollback on error.
+
+Parameters:
+- `fn`: Function containing signal operations
+
+Returns:
+- The return value of the provided function
+
+Throws:
+- Any error that occurred during execution, after performing rollback
+
+#### `spBatch<T>(fn: () => T): T`
+
+Executes a function as a batch operation without rollback capabilities.
+
+Parameters:
+- `fn`: Function containing signal operations
+
+Returns:
+- The return value of the provided function
+
+Throws:
+- Any error that occurred during execution (no rollback)
+
+#### `spIsTransactionActive(): boolean`
+
+Checks if a transaction is currently active.
+
+Returns:
+- `true` if a transaction is active, `false` otherwise
+
+#### `spIsInTransaction<T>(signal: SignalPlus<T>): boolean`
+
+Checks if a signal is part of an active transaction.
+
+Parameters:
+- `signal`: The signal to check
+
+Returns:
+- `true` if the signal is in an active transaction, `false` otherwise
+
+#### `spIsInBatch<T>(signal?: SignalPlus<T>): boolean`
+
+Checks if a batch operation is currently active or if a specific signal is part of an active batch.
+
+Parameters:
+- `signal` (optional): The signal to check
+
+Returns:
+- `true` if a batch is active or the signal is in an active batch, `false` otherwise
+
+#### `spGetModifiedSignals(): SignalPlus<any>[]`
+
+Gets all signals that have been modified in the current transaction.
+
+Returns:
+- Array of signals modified in the current transaction, or empty array if no transaction is active
 
 ## Managers
 
