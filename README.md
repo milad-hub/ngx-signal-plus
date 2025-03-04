@@ -2,9 +2,6 @@
 
 A powerful utility library that enhances Angular Signals with additional features for robust state management.
 
-[![npm version](https://img.shields.io/badge/npm-1.1.0-blue.svg)](https://www.npmjs.com/package/ngx-signal-plus)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 ## Features
 
 - Enhanced signal operations with built-in state tracking
@@ -16,6 +13,7 @@ A powerful utility library that enhances Angular Signals with additional feature
 - Form handling with validation
 - Automatic cleanup and memory management
 - Performance optimizations
+- Transactions and batching for atomic operations
 
 ## Installation
 
@@ -202,6 +200,7 @@ const settings = storage.load();
 | **Signal Creation** | `sp`, `spCounter`, `spToggle`, `spForm` |
 | **Signal Enhancement** | `enhance`, validation, transformation, persistence, history |
 | **Signal Operators** | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spSkip`, `spTake`, `spMerge`, `spCombineLatest` |
+| **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals` |
 | **Utilities** | `spValidators`, `spPresets` |
 | **State Management** | `spHistoryManager`, `spStorageManager` |
 | **Components** | `spSignalPlusComponent`, `spSignalPlusService`, `spSignalBuilder` |
