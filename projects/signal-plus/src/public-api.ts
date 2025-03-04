@@ -71,3 +71,13 @@ export {
     spHistoryManager,
     spStorageManager
 } from './lib/managers';
+
+// Transactions and Batching
+export {
+    spTransaction,
+    spBatch,
+    spIsInTransaction,
+    spIsInBatch,
+    spIsTransactionActive,
+    spGetModifiedSignals
+} from './lib/utils/transactions';
