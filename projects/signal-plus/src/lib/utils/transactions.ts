@@ -25,24 +25,7 @@
  */
 
 import { SignalPlus } from '../models/signal-plus.model';
-
-/**
- * Interface for the transaction context that tracks transaction state and signal changes
- */
-interface TransactionContext {
-  active: boolean;
-  originalValues: Map<SignalPlus<any>, any>;
-  patchedSignals: Map<SignalPlus<any>, (value: any) => void>;
-  modifiedSignals: SignalPlus<any>[];
-}
-
-/**
- * Interface for the batch context that tracks batching state
- */
-interface BatchContext {
-  active: boolean;
-  signals: Set<SignalPlus<any>>;
-}
+import { TransactionContext, BatchContext } from '../models/transactions.models';
 
 // Global state management for transactions and batching
 const state = {
