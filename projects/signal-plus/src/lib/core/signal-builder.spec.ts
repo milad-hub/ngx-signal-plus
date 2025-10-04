@@ -1286,4 +1286,165 @@ describe('SignalBuilder', () => {
             expect(consoleSpy).toHaveBeenCalledWith('Error in error handler:', jasmine.any(Error));
         });
     });
+
+    describe('generic type safety', () => {
+        describe('type inference through chain', () => {
+            it('should maintain number type through full chain', () => {
+                const counter: SignalPlus<number> = new SignalBuilder(0)
+                    .persist('counter')
+                    .withHistory(10)
+                    .validate((value: number) => value >= 0)
+                    .build();
+                const value: number = counter.value;
+                const previousValue: number = counter.previousValue;
+                const initialValue: number = counter.initialValue;
+                const isValid: boolean = counter.isValid();
+                const history: number[] = counter.history();
+                expect(value).toBe(0);
+                expect(typeof value).toBe('number');
+            });
+
+            it('should maintain string type through chain', () => {
+                const text: SignalPlus<string> = new SignalBuilder('hello')
+                    .persist('text')
+                    .withHistory(5)
+                    .validate((value: string) => value.length > 0)
+                    .build();
+                const value: string = text.value;
+                expect(typeof value).toBe('string');
+                expect(value).toBe('hello');
+            });
+
+            it('should maintain complex object type through chain', () => {
+                interface User {
+                    id: number;
+                    name: string;
+                }
+                const user: SignalPlus<User> = new SignalBuilder<User>({ id: 1, name: 'John' })
+                    .persist('user')
+                    .withHistory(10)
+                    .validate((u: User) => u.id > 0)
+                    .build();
+                const value: User = user.value;
+                expect(value.id).toBe(1);
+                expect(value.name).toBe('John');
+            });
+
+            it('should maintain array type through chain', () => {
+                const numbers: SignalPlus<number[]> = new SignalBuilder<number[]>([1, 2, 3])
+                    .withHistory(5)
+                    .validate((arr: number[]) => arr.length > 0)
+                    .build();
+                const value: number[] = numbers.value;
+                expect(Array.isArray(value)).toBe(true);
+                expect(value).toEqual([1, 2, 3]);
+            });
+        });
+
+        describe('history size parameter', () => {
+            it('should accept number as history size', () => {
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory(3)
+                    .build();
+                signal.setValue(1);
+                signal.setValue(2);
+                signal.setValue(3);
+                signal.setValue(4);
+                const history: number[] = signal.history();
+                expect(history.length).toBeLessThanOrEqual(3);
+            });
+
+            it('should accept boolean as persist flag', () => {
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .persist('test-persist')
+                    .withHistory(true)
+                    .build();
+                signal.setValue(1);
+                signal.setValue(2);
+                const stored = localStorage.getItem('test-persist');
+                expect(stored).toBeTruthy();
+                const parsed = JSON.parse(stored!);
+                expect(parsed.history).toBeDefined();
+            });
+
+            it('should limit history to specified size', () => {
+                const historySize = 5;
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory(historySize)
+                    .build();
+                for (let i = 1; i <= 10; i++) {
+                    signal.setValue(i);
+                }
+                const history: number[] = signal.history();
+                expect(history.length).toBe(historySize);
+                expect(history).toEqual([6, 7, 8, 9, 10]);
+            });
+
+            it('should work with no parameter (unlimited history)', () => {
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory()
+                    .build();
+                for (let i = 1; i <= 100; i++) {
+                    signal.setValue(i);
+                }
+                const history: number[] = signal.history();
+                expect(history.length).toBe(101);
+            });
+        });
+
+        describe('method chaining with proper types', () => {
+            it('should allow chaining in any order with type safety', () => {
+                const signal1: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory(10)
+                    .persist('test1')
+                    .validate((n: number) => n >= 0)
+                    .build();
+                const signal2: SignalPlus<number> = new SignalBuilder(0)
+                    .validate((n: number) => n >= 0)
+                    .withHistory(10)
+                    .persist('test2')
+                    .build();
+                expect(signal1.value).toBe(0);
+                expect(signal2.value).toBe(0);
+            });
+
+            it('should maintain type through transform', () => {
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .transform(Math.round)
+                    .withHistory(10)
+                    .build();
+                signal.setValue(5.7);
+                expect(signal.value).toBe(6);
+                signal.setValue(3.2);
+                expect(signal.value).toBe(3);
+            });
+
+            it('should maintain type through debounce', () => {
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .debounce(100)
+                    .withHistory(10)
+                    .build();
+                const value: number = signal.value;
+                expect(typeof value).toBe('number');
+            });
+        });
+
+        describe('type inference with utility functions', () => {
+            it('should infer type from initial value', () => {
+                const builder = new SignalBuilder(42);
+                const signal: SignalPlus<number> = builder
+                    .withHistory(10)
+                    .build();
+                expect(signal.value).toBe(42);
+            });
+
+            it('should work with explicit type annotation', () => {
+                const builder = new SignalBuilder<string>('test');
+                const signal: SignalPlus<string> = builder
+                    .withHistory(5)
+                    .build();
+                expect(typeof signal.value).toBe('string');
+            });
+        });
+    });
 });
