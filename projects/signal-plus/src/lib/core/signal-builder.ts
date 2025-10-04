@@ -68,12 +68,18 @@ export class SignalBuilder<T> {
 
     /**
      * Enables history tracking for undo/redo operations
-     * @param persist Optional flag to persist history
+     * @param sizeOrPersist Optional history size (number) or persist flag (boolean)
      * @returns Builder instance for chaining
      */
-    withHistory(persist?: boolean): SignalBuilder<T> {
+    withHistory(sizeOrPersist?: number | boolean): SignalBuilder<T> {
         this.options.enableHistory = true;
-        this.options.persistHistory = persist;
+        
+        if (typeof sizeOrPersist === 'number') {
+            this.options.historySize = sizeOrPersist;
+        } else if (typeof sizeOrPersist === 'boolean') {
+            this.options.persistHistory = sizeOrPersist;
+        }
+        
         return this;
     }
 
@@ -352,7 +358,14 @@ export class SignalBuilder<T> {
                         // Clear redo stack when new value is set
                         redoStack = [];
                         const currentHistory: T[] = history();
-                        history.set([...currentHistory, structuredClone(transformedValue)]);
+                        const newHistory = [...currentHistory, structuredClone(transformedValue)];
+                        
+                        // Enforce history size limit if specified
+                        if (this.options.historySize && newHistory.length > this.options.historySize) {
+                            history.set(newHistory.slice(-this.options.historySize));
+                        } else {
+                            history.set(newHistory);
+                        }
                     }
 
                     // Handle storage

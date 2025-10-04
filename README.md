@@ -52,7 +52,7 @@ export class CounterComponent {
   counter = sp(0)
     .persist('counter')
     .withHistory(10)
-    .validate(value => value >= 0, 'Must be positive')
+    .validate(value => value >= 0)
     .build();
   
   // Use signal operators

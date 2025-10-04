@@ -153,6 +153,8 @@ export interface BuilderOptions<T> {
   distinctUntilChanged?: boolean;
   /** Enable undo/redo history. Requires more memory when true */
   enableHistory?: boolean;
+  /** Maximum size of history stack. Defaults to unlimited if not specified */
+  historySize?: number;
   /** Enable automatic resource cleanup on destroy */
   autoCleanup?: boolean;
   /** Primary error handler function. Called first on errors */
