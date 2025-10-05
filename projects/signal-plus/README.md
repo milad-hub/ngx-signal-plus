@@ -23,7 +23,7 @@ npm install ngx-signal-plus
 
 ## Requirements
 
-- Angular >= 16.0.0 (fully compatible with Angular 19)
+- Angular >= 16.0.0 (fully compatible with Angular 16-20)
 - TypeScript >= 5.0.0
 
 ## Basic Usage
