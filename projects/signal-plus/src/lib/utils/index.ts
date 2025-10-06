@@ -16,3 +16,13 @@ export {
   spGetModifiedSignals,
   spIsTransactionActive
 } from './transactions';
+export {
+  isBrowser,
+  hasLocalStorage,
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+  safeLocalStorageRemove,
+  safeSetTimeout,
+  safeClearTimeout,
+  safeAddEventListener
+} from './platform';

@@ -1,6 +1,14 @@
 import { Signal, WritableSignal, computed, signal } from '@angular/core';
 import { BuilderOptions, ErrorHandler, SignalPlus, Transform, Validator } from '../models/signal-plus.model';
 import { SignalOperator } from '../operators/signal-operators';
+import { 
+    isBrowser, 
+    safeLocalStorageGet, 
+    safeLocalStorageSet, 
+    safeSetTimeout, 
+    safeClearTimeout, 
+    safeAddEventListener 
+} from '../utils/platform';
 
 /**
  * @fileoverview Builder class for creating enhanced Angular signals
@@ -188,7 +196,7 @@ export class SignalBuilder<T> {
         let previousValue: T = structuredClone(this.options.initialValue);
         let initialValue: T = structuredClone(this.options.initialValue);
         const history: WritableSignal<T[]> = signal([]);
-        let debounceTimeout: number | null = null;
+        let debounceTimeout: number | undefined | null = null;
         let redoStack: T[] = [];
         let pendingValue: T | null = null;
         let isProcessingDebounce = false;
@@ -200,9 +208,9 @@ export class SignalBuilder<T> {
         }
 
         // Load initial value from storage if available
-        if (this.options.storageKey) {
+        if (this.options.storageKey && isBrowser()) {
             try {
-                const stored = localStorage.getItem(this.options.storageKey);
+                const stored = safeLocalStorageGet(this.options.storageKey);
                 if (stored) {
                     try {
                         let parsedValue: T;
@@ -265,8 +273,11 @@ export class SignalBuilder<T> {
             }
         };
 
-        if (this.options.storageKey) {
-            window.addEventListener('storage', handleStorageEvent);
+        // Store cleanup callback for storage listener
+        let storageListenerCleanup: (() => void) | undefined;
+        
+        if (this.options.storageKey && isBrowser()) {
+            storageListenerCleanup = safeAddEventListener('storage', handleStorageEvent);
         }
 
         let nextSubId: number = 0;
@@ -301,6 +312,18 @@ export class SignalBuilder<T> {
                 if (subscribers.size === 0) {
                     // Only mark as cleaned up for subscriber notifications
                     isCleanedUp = true;
+                    
+                    // Cleanup storage event listener
+                    if (storageListenerCleanup) {
+                        storageListenerCleanup();
+                        storageListenerCleanup = undefined;
+                    }
+                    
+                    // Clear any pending debounce timeout
+                    if (debounceTimeout !== null) {
+                        safeClearTimeout(debounceTimeout);
+                        debounceTimeout = null;
+                    }
                 }
             };
         };
@@ -369,7 +392,7 @@ export class SignalBuilder<T> {
                     }
 
                     // Handle storage
-                    if (this.options.storageKey) {
+                    if (this.options.storageKey && isBrowser()) {
                         try {
                             isProcessingStorage = true;
                             const shouldStoreHistory: boolean = Boolean(this.options.enableHistory && this.options.persistHistory);
@@ -377,11 +400,11 @@ export class SignalBuilder<T> {
                                 ? { value: transformedValue, history: history() }
                                 : transformedValue;
                             try {
-                                localStorage.setItem(this.options.storageKey, JSON.stringify(dataToStore));
+                                safeLocalStorageSet(this.options.storageKey, JSON.stringify(dataToStore));
                             } catch (error) {
                                 if (error instanceof TypeError && error.message.includes('circular')) {
                                     // Handle circular references by storing only the value
-                                    localStorage.setItem(this.options.storageKey, JSON.stringify(transformedValue));
+                                    safeLocalStorageSet(this.options.storageKey, JSON.stringify(transformedValue));
                                 } else {
                                     throw error;
                                 }
@@ -410,7 +433,7 @@ export class SignalBuilder<T> {
         const processValue: (value: T) => void = (value: T) => {
             // Clear existing debounce timeout
             if (debounceTimeout !== null) {
-                clearTimeout(debounceTimeout);
+                safeClearTimeout(debounceTimeout);
                 debounceTimeout = null;
             }
 
@@ -419,7 +442,7 @@ export class SignalBuilder<T> {
                 if (this.options.debounceTime && this.options.debounceTime > 0) {
                     isProcessingDebounce = true;
                     pendingValue = value;
-                    debounceTimeout = window.setTimeout(() => {
+                    debounceTimeout = safeSetTimeout(() => {
                         try {
                             const finalValue = pendingValue;
                             pendingValue = null;
@@ -491,7 +514,7 @@ export class SignalBuilder<T> {
                         }
 
                         // Handle storage
-                        if (this.options.storageKey) {
+                        if (this.options.storageKey && isBrowser()) {
                             try {
                                 isProcessingStorage = true;
                                 const shouldStoreHistory: boolean = Boolean(this.options.enableHistory && this.options.persistHistory);
@@ -499,11 +522,11 @@ export class SignalBuilder<T> {
                                     ? { value: transformedValue, history: [transformedValue] }
                                     : transformedValue;
                                 try {
-                                    localStorage.setItem(this.options.storageKey, JSON.stringify(dataToStore));
+                                    safeLocalStorageSet(this.options.storageKey, JSON.stringify(dataToStore));
                                 } catch (error) {
                                     if (error instanceof TypeError && error.message.includes('circular')) {
                                         // Handle circular references by storing only the value
-                                        localStorage.setItem(this.options.storageKey, JSON.stringify(transformedValue));
+                                        safeLocalStorageSet(this.options.storageKey, JSON.stringify(transformedValue));
                                     } else {
                                         throw error;
                                     }
