@@ -8,6 +8,7 @@
  * - JSON serialization and deserialization
  * - Comprehensive error handling
  * - Storage availability checking
+ * - SSR (Server-Side Rendering) compatible
  * 
  * @example Basic Usage
  * ```typescript
@@ -23,6 +24,13 @@
  * StorageManager.remove('prefs');
  * ```
  */
+
+import { 
+    hasLocalStorage, 
+    safeLocalStorageGet, 
+    safeLocalStorageSet, 
+    safeLocalStorageRemove 
+} from '../utils/platform';
 
 /**
  * Manages persistent storage operations with error handling and namespacing.
@@ -100,10 +108,17 @@ export class StorageManager {
      */
     static save<T>(key: string, value: T): void {
         if (!this.validateKey(key)) return;
+        if (!hasLocalStorage()) {
+            console.warn('localStorage is not available (SSR or disabled)');
+            return;
+        }
 
         try {
             const storageKey: string = this.PREFIX + key;
-            localStorage.setItem(storageKey, JSON.stringify(value));
+            const success = safeLocalStorageSet(storageKey, JSON.stringify(value));
+            if (!success) {
+                console.warn('Failed to save to localStorage');
+            }
         } catch (error) {
             console.warn(`Failed to save to localStorage: ${error}`);
         }
@@ -133,10 +148,13 @@ export class StorageManager {
      */
     static load<T>(key: string): T | undefined {
         if (!this.validateKey(key)) return undefined;
+        if (!hasLocalStorage()) {
+            return undefined;
+        }
 
         try {
             const storageKey: string = this.PREFIX + key;
-            const item: string | null = localStorage.getItem(storageKey);
+            const item: string | null = safeLocalStorageGet(storageKey);
             return item ? JSON.parse(item) : undefined;
         } catch (error) {
             console.warn(`Failed to load from localStorage: ${error}`);
@@ -162,10 +180,13 @@ export class StorageManager {
      */
     static remove(key: string): void {
         if (!this.validateKey(key)) return;
+        if (!hasLocalStorage()) {
+            return;
+        }
 
         try {
             const storageKey: string = this.PREFIX + key;
-            localStorage.removeItem(storageKey);
+            safeLocalStorageRemove(storageKey);
         } catch (error) {
             console.warn(`Failed to remove from localStorage: ${error}`);
         }
@@ -191,13 +212,6 @@ export class StorageManager {
      * ```
      */
     static isAvailable(): boolean {
-        try {
-            const testKey: string = this.PREFIX + 'test';
-            localStorage.setItem(testKey, 'test');
-            localStorage.removeItem(testKey);
-            return true;
-        } catch {
-            return false;
-        }
+        return hasLocalStorage();
     }
 }

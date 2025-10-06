@@ -31,6 +31,7 @@
  */
 
 import { computed, effect, Signal, signal, WritableSignal } from '@angular/core';
+import { hasLocalStorage, safeLocalStorageGet, safeLocalStorageSet } from './platform';
 
 /**
  * Creates a signal with history tracking capabilities
@@ -538,38 +539,42 @@ export function asyncSignal<T>() {
 export function persistentSignal<T>(key: string, initialValue: T) {
   const value: WritableSignal<T> = signal<T>(initialValue);
   
-  // Try to load initial value from storage
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      value.set(JSON.parse(stored));
-    }
-  } catch (e) {
-    console.error('Error loading from storage:', e);
-  }
-
-  // Set up persistence effect
-  effect(() => {
-    const current: T = value();
-    // Before saving, check if existing stored data is valid JSON
+  // Try to load initial value from storage (only in browser)
+  if (hasLocalStorage()) {
     try {
-      const stored = localStorage.getItem(key);
-      if (stored !== null) {
-        JSON.parse(stored);
+      const stored = safeLocalStorageGet(key);
+      if (stored) {
+        value.set(JSON.parse(stored));
       }
     } catch (e) {
       console.error('Error loading from storage:', e);
     }
-    try {
-      localStorage.setItem(key, JSON.stringify(current));
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-        console.error('Storage quota exceeded');
-      } else {
-        console.error('Error saving to storage:', e);
+  }
+
+  // Set up persistence effect (only in browser)
+  if (hasLocalStorage()) {
+    effect(() => {
+      const current: T = value();
+      // Before saving, check if existing stored data is valid JSON
+      try {
+        const stored = safeLocalStorageGet(key);
+        if (stored !== null) {
+          JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Error loading from storage:', e);
       }
-    }
-  });
+      try {
+        safeLocalStorageSet(key, JSON.stringify(current));
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+          console.error('Storage quota exceeded');
+        } else {
+          console.error('Error saving to storage:', e);
+        }
+      }
+    });
+  }
 
   return {
     value: computed(() => value()),
