@@ -1,6 +1,6 @@
 {
   "name": "ngx-signal-plus",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "A comprehensive utility library for Angular Signals that provides enhanced functionality, operators, and utilities",
   "keywords": [
     "angular",
