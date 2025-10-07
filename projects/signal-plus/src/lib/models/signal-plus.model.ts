@@ -215,101 +215,129 @@ export interface SignalOptions<T> {
  * ```
  */
 export interface SignalPlus<T> {
-    /** Current value of the signal. Updates trigger reactivity */
-    value: T;
-   
-    /** Previous value of the signal. Useful for change detection */
-    previousValue: T;
-   
-    /** Initial value of the signal. Used for reset operations */
-    initialValue: T;
-   
-    /** Read-only signal for reactive computations */
-    signal: Signal<T>;
-   
-    /** Writable signal for direct value manipulation */
-    writable: WritableSignal<T>;
+  /** Current value of the signal. Updates trigger reactivity */
+  value: T;
 
-    /**
-     * Sets a new value directly
-     * @param value - The new value to set
-     * @throws {Error} If validation fails
-     * @remarks Value is transformed before validation
-     */
-    set(value: T): void;
+  /** Previous value of the signal. Useful for change detection */
+  previousValue: T;
 
-    /**
-     * Sets a new value directly (alias for set)
-     * @param value - The new value to set
-     * @throws {Error} If validation fails
-     * @remarks Value is transformed before validation
-     */
-    setValue(value: T): void;
-   
-    /**
-     * Updates value using a transform function
-     * @param fn - Function that receives current value and returns new value
-     * @throws {Error} If validation fails
-     * @remarks Transform is applied before validation
-     */
-    update(fn: (current: T) => T): void;
-   
-    /**
-     * Resets to initial or default value
-     * @remarks Clears history if history tracking is enabled
-     */
-    reset(): void;
-   
-    /**
-     * Runs all validators and returns result
-     * @returns boolean indicating if all validators passed
-     */
-    validate(): boolean;
+  /** Initial value of the signal. Used for reset operations */
+  initialValue: T;
 
-    /** Signal indicating if all validators are passing */
-    isValid: Signal<boolean>;
-   
-    /** Signal indicating if current value differs from initial value */
-    isDirty: Signal<boolean>;
-   
-    /** Signal indicating if value has changed since last update */
-    hasChanged: Signal<boolean>;
+  /** Read-only signal for reactive computations */
+  signal: Signal<T>;
 
-    /** Signal containing value history if history is enabled */
-    history: Signal<T[]>;
-   
-    /**
-     * Reverts to previous value
-     * @throws {Error} If no history or at start of history
-     */
-    undo(): void;
-   
-    /**
-     * Restores previously undone value
-     * @throws {Error} If no future values available
-     */
-    redo(): void;
+  /** Writable signal for direct value manipulation */
+  writable: WritableSignal<T>;
 
-    /**
-     * Subscribes to value changes
-     * @param callback - Function called with new value on changes
-     * @returns Cleanup function to unsubscribe
-     */
-    subscribe(callback: (value: T) => void): () => void;
-   
-    /**
-     * Applies transformation operators
-     * @param operators - Signal operators to apply
-     * @returns New SignalPlus instance with transformed value
-     * @example
-     * ```typescript
-     * signal.pipe(
-     *   map(x => x * 2),
-     *   filter(x => x > 0)
-     * )
-     * ```
-     */
-    pipe<R>(...operators: any[]): SignalPlus<R>;
+  /**
+   * Sets a new value directly
+   * @param value - The new value to set
+   * @throws {Error} If validation fails
+   * @remarks Value is transformed before validation
+   */
+  set(value: T): void;
+
+  /**
+   * Sets a new value directly (alias for set)
+   * @param value - The new value to set
+   * @throws {Error} If validation fails
+   * @remarks Value is transformed before validation
+   */
+  setValue(value: T): void;
+
+  /**
+   * Updates value using a transform function
+   * @param fn - Function that receives current value and returns new value
+   * @throws {Error} If validation fails
+   * @remarks Transform is applied before validation
+   */
+  update(fn: (current: T) => T): void;
+
+  /**
+   * Resets to initial or default value
+   * @remarks Clears history if history tracking is enabled
+   */
+  reset(): void;
+
+  /**
+   * Runs all validators and returns result
+   * @returns boolean indicating if all validators passed
+   */
+  validate(): boolean;
+
+  /** Signal indicating if all validators are passing */
+  isValid: Signal<boolean>;
+
+  /** Signal indicating if current value differs from initial value */
+  isDirty: Signal<boolean>;
+
+  /** Signal indicating if value has changed since last update */
+  hasChanged: Signal<boolean>;
+
+  /** Signal containing value history if history is enabled */
+  history: Signal<T[]>;
+
+  /**
+   * Reverts to previous value
+   * @throws {Error} If no history or at start of history
+   */
+  undo(): void;
+
+  /**
+   * Restores previously undone value
+   * @throws {Error} If no future values available
+   */
+  redo(): void;
+
+  /**
+   * Subscribes to value changes
+   * @param callback - Function called with new value on changes
+   * @returns Cleanup function to unsubscribe
+   */
+  subscribe(callback: (value: T) => void): () => void;
+
+  /**
+   * Applies transformation operators
+   * @param operators - Signal operators to apply
+   * @returns New SignalPlus instance with transformed value
+   * @example
+   * ```typescript
+   * signal.pipe(
+   *   map(x => x * 2),
+   *   filter(x => x > 0)
+   * )
+   * ```
+   */
+  pipe<R>(...operators: any[]): SignalPlus<R>;
+
+  /**
+   * Explicitly destroys the signal and cleans up all resources
+   * 
+   * @remarks
+   * This method should be called when you're done with a signal to ensure:
+   * - Storage event listeners are removed
+   * - Pending debounce timers are cleared
+   * - Subscribers are notified (optional)
+   * - Memory is freed
+   * 
+   * Note: After calling destroy(), the signal should not be used anymore.
+   * 
+   * @example
+   * ```typescript
+   * const signal = new SignalBuilder(0)
+   *   .persist('key')
+   *   .debounce(300)
+   *   .build();
+   * 
+   * // Use the signal...
+   * signal.setValue(42);
+   * 
+   * // When done, clean up
+   * signal.destroy();
+   * ```
+   */
+  destroy(): void;
 }
 
 /**

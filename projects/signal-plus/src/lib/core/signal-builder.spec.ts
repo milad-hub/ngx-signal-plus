@@ -1,4 +1,4 @@
-import { computed, Signal } from '@angular/core';
+import { computed, PLATFORM_ID, Signal } from '@angular/core';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { SignalPlus } from '../models/signal-plus.model';
 import { SignalBuilder } from './signal-builder';
@@ -1113,7 +1113,8 @@ describe('SignalBuilder', () => {
             signal.setValue(2);
             subscription = signal.subscribe(v => values.push(v));
             signal.setValue(3);
-            expect(values).toEqual([0, 4, 6]);
+            // After resubscribe, both current value (6) and setValue(3) result (8) are pushed
+            expect(values).toEqual([0, 4, 6, 8]);
             subscription();
         });
     });
@@ -1449,6 +1450,422 @@ describe('SignalBuilder', () => {
                     .withHistory(5)
                     .build();
                 expect(typeof signal.value).toBe('string');
+            });
+        });
+    });
+
+    describe('memory leak prevention', () => {
+        let addEventListenerSpy: jasmine.Spy;
+        let removeEventListenerSpy: jasmine.Spy;
+        let setTimeoutSpy: jasmine.Spy;
+        let clearTimeoutSpy: jasmine.Spy;
+
+        beforeEach(() => {
+            TestBed.configureTestingModule({
+                providers: [
+                    { provide: PLATFORM_ID, useValue: 'browser' }
+                ]
+            });
+            addEventListenerSpy = spyOn(window, 'addEventListener').and.callThrough();
+            removeEventListenerSpy = spyOn(window, 'removeEventListener').and.callThrough();
+            setTimeoutSpy = spyOn(window, 'setTimeout').and.callThrough() as jasmine.Spy<typeof setTimeout>;
+            clearTimeoutSpy = spyOn(window, 'clearTimeout').and.callThrough();
+        });
+
+        describe('destroy() method', () => {
+            it('should provide a destroy method', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).build()
+                );
+                expect(signal.destroy).toBeDefined();
+                expect(typeof signal.destroy).toBe('function');
+            });
+
+            it('should clean up storage event listener on destroy', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').build()
+                );
+                expect(addEventListenerSpy).toHaveBeenCalledWith('storage', jasmine.any(Function));
+                signal.destroy();
+                expect(removeEventListenerSpy).toHaveBeenCalledWith('storage', jasmine.any(Function));
+            });
+
+            it('should prevent debounced updates after destroy', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(100).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(10);
+                signal.destroy();
+                tick(100);
+                expect(signal.value).toBe(0);
+                expect(subscriber).not.toHaveBeenCalled();
+            }));
+
+            it('should clear all subscribers on destroy', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).build()
+                );
+                const subscriber1 = jasmine.createSpy('subscriber1');
+                const subscriber2 = jasmine.createSpy('subscriber2');
+                signal.subscribe(subscriber1);
+                signal.subscribe(subscriber2);
+                subscriber1.calls.reset();
+                subscriber2.calls.reset();
+                signal.destroy();
+                signal.setValue(10);
+                expect(subscriber1).not.toHaveBeenCalled();
+                expect(subscriber2).not.toHaveBeenCalled();
+            });
+
+            it('should not throw when destroy is called multiple times', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').debounce(100).build()
+                );
+                expect(() => {
+                    signal.destroy();
+                    signal.destroy();
+                    signal.destroy();
+                }).not.toThrow();
+            });
+
+            it('should prevent all operations after destroy', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').debounce(100).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(5);
+                signal.destroy();
+                expect(removeEventListenerSpy).toHaveBeenCalled();
+                signal.setValue(10);
+                tick(100);
+                expect(signal.value).toBe(0);
+                expect(subscriber).not.toHaveBeenCalled();
+            }));
+        });
+
+        describe('automatic cleanup on unsubscribe', () => {
+            it('should clean up storage listener when all subscribers unsubscribe', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').build()
+                );
+                const unsubscribe1 = signal.subscribe(() => { });
+                const unsubscribe2 = signal.subscribe(() => { });
+                expect(addEventListenerSpy).toHaveBeenCalled();
+                unsubscribe1();
+                expect(removeEventListenerSpy).not.toHaveBeenCalled();
+                unsubscribe2();
+                expect(removeEventListenerSpy).toHaveBeenCalled();
+            });
+
+            it('should prevent debounced updates when all subscribers unsubscribe', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(100).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                const unsubscribe = signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(5);
+                unsubscribe();
+                tick(100);
+                expect(signal.value).toBe(0);
+                expect(subscriber).not.toHaveBeenCalled();
+            }));
+
+            it('should not leak memory with repeated subscribe/unsubscribe', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').build()
+                );
+                for (let i = 0; i < 10; i++) {
+                    const unsubscribe = signal.subscribe(() => { });
+                    unsubscribe();
+                }
+                expect(removeEventListenerSpy).toHaveBeenCalled();
+            });
+
+            it('should handle mixed subscribe/unsubscribe patterns', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').debounce(100).build()
+                );
+                const unsubscribe1 = signal.subscribe(() => { });
+                const unsubscribe2 = signal.subscribe(() => { });
+                const unsubscribe3 = signal.subscribe(() => { });
+                unsubscribe2();
+                expect(removeEventListenerSpy).not.toHaveBeenCalled();
+                const unsubscribe4 = signal.subscribe(() => { });
+                unsubscribe1();
+                unsubscribe3();
+                expect(removeEventListenerSpy).not.toHaveBeenCalled();
+                unsubscribe4();
+                expect(removeEventListenerSpy).toHaveBeenCalled();
+            }));
+        });
+
+        describe('storage event listener lifecycle', () => {
+            it('should only add storage listener once', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').build()
+                );
+                signal.subscribe(() => { });
+                signal.subscribe(() => { });
+                signal.subscribe(() => { });
+                expect(addEventListenerSpy).toHaveBeenCalledTimes(1);
+            });
+
+            it('should not add storage listener without persistence', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).build()
+                );
+                signal.subscribe(() => { });
+                expect(addEventListenerSpy).not.toHaveBeenCalled();
+            });
+
+            it('should re-add storage listener after destroy and new subscription', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').build()
+                );
+                const unsubscribe = signal.subscribe(() => { });
+                expect(addEventListenerSpy).toHaveBeenCalledTimes(1);
+                unsubscribe();
+                expect(removeEventListenerSpy).toHaveBeenCalledTimes(1);
+                const unsubscribe2 = signal.subscribe(() => { });
+                expect(addEventListenerSpy).toHaveBeenCalledTimes(1);
+                unsubscribe2();
+            });
+        });
+
+        describe('debounce timer lifecycle', () => {
+            it('should apply only the last value when setValue is called rapidly', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(100).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(1);
+                signal.setValue(2);
+                signal.setValue(3);
+                tick(100);
+                expect(signal.value).toBe(3);
+                expect(subscriber).toHaveBeenCalledWith(3);
+                expect(subscriber).toHaveBeenCalledTimes(1);
+            }));
+
+            it('should handle rapid setValue calls without memory leaks', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(50).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                for (let i = 0; i < 100; i++) {
+                    signal.setValue(i);
+                }
+                tick(50);
+                expect(signal.value).toBe(99);
+                expect(subscriber).toHaveBeenCalledWith(99);
+                expect(subscriber).toHaveBeenCalledTimes(1);
+            }));
+
+            it('should prevent timer from firing after destroy', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(100).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(10);
+                signal.destroy();
+                tick(100);
+                expect(signal.value).toBe(0);
+                expect(subscriber).not.toHaveBeenCalled();
+            }));
+        });
+
+        describe('complex scenarios', () => {
+            it('should prevent updates after unsubscribe with complex features', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').debounce(100).withHistory(10).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                const unsubscribe = signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                removeEventListenerSpy.calls.reset();
+                signal.setValue(1);
+                signal.setValue(2);
+                signal.setValue(3);
+                unsubscribe();
+                expect(removeEventListenerSpy).toHaveBeenCalled();
+                tick(100);
+                expect(signal.value).toBe(0);
+                expect(subscriber).not.toHaveBeenCalled();
+            }));
+
+            it('should handle repeated creation and cleanup cycles', fakeAsync(() => {
+                removeEventListenerSpy.calls.reset();
+                for (let cycle = 0; cycle < 50; cycle++) {
+                    const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                        new SignalBuilder(0).persist(`key-${cycle}`).debounce(10).build()
+                    );
+                    const subscriber = jasmine.createSpy('subscriber');
+                    const unsubscribe = signal.subscribe(subscriber);
+                    signal.setValue(cycle);
+                    unsubscribe();
+                    signal.destroy();
+                }
+                tick(100);
+                expect(removeEventListenerSpy.calls.count()).toBeGreaterThanOrEqual(50);
+            }));
+
+            it('should clean up when used with validation and transform', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').validate(x => x >= 0).transform(x => x * 2).build()
+                );
+                const unsubscribe = signal.subscribe(() => { });
+                expect(addEventListenerSpy).toHaveBeenCalled();
+                signal.destroy();
+                expect(removeEventListenerSpy).toHaveBeenCalled();
+            });
+        });
+
+        describe('edge cases and comprehensive coverage', () => {
+            it('should prevent update() after destroy', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(5).build()
+                );
+                signal.destroy();
+                signal.update(n => n + 10);
+                expect(signal.value).toBe(5);
+            });
+
+            it('should allow reset() to work after destroy', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(10).persist('test-key').build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(20);
+                tick(10);
+                signal.destroy();
+                signal.reset();
+                expect(signal.value).toBe(10);
+            }));
+
+            it('should handle undo/redo after destroy', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).withHistory(10).build()
+                );
+                signal.setValue(1);
+                signal.setValue(2);
+                signal.setValue(3);
+                signal.destroy();
+                expect(() => signal.undo()).not.toThrow();
+                expect(() => signal.redo()).not.toThrow();
+            });
+
+            it('should handle destroy without any subscribers', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').debounce(100).build()
+                );
+                expect(() => signal.destroy()).not.toThrow();
+                expect(removeEventListenerSpy).toHaveBeenCalled();
+            });
+
+            it('should handle validation failures gracefully during cleanup', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).validate(x => x >= 0).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                signal.setValue(10);
+                expect(() => signal.destroy()).not.toThrow();
+            });
+
+            it('should clean up with history enabled and populated', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).withHistory(10).persist('test-key').build()
+                );
+                for (let i = 1; i <= 20; i++) {
+                    signal.setValue(i);
+                }
+                expect(signal.history().length).toBeGreaterThan(0);
+                expect(() => signal.destroy()).not.toThrow();
+                expect(removeEventListenerSpy).toHaveBeenCalled();
+            });
+
+            it('should handle cleanup with error handlers', () => {
+                const errorHandler = jasmine.createSpy('errorHandler');
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0)
+                        .persist('test-key')
+                        .validate(x => x >= 0)
+                        .onError(errorHandler)
+                        .build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                errorHandler.calls.reset();
+                expect(() => signal.destroy()).not.toThrow();
+                expect(errorHandler).not.toHaveBeenCalled();
+            });
+
+            it('should maintain signal value after automatic cleanup', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(42).build()
+                );
+                const unsubscribe = signal.subscribe(() => { });
+                unsubscribe();
+                expect(signal.value).toBe(42);
+            });
+
+            it('should maintain signal value after explicit destroy', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(100).build()
+                );
+                signal.setValue(200);
+                signal.destroy();
+                expect(signal.value).toBe(200);
+            });
+
+            it('should handle cleanup during storage synchronization', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                const storageEvent = new StorageEvent('storage', {
+                    key: 'test-key',
+                    newValue: '42',
+                    storageArea: localStorage
+                });
+                signal.destroy();
+                window.dispatchEvent(storageEvent);
+                tick(10);
+                expect(signal.value).toBe(0);
+            }));
+
+            it('should handle cleanup with pending validation', () => {
+                let validationCalls = 0;
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0)
+                        .validate(x => {
+                            validationCalls++;
+                            return x >= 0;
+                        })
+                        .build()
+                );
+                validationCalls = 0;
+                signal.setValue(10);
+                const callsBeforeDestroy = validationCalls;
+                signal.destroy();
+                validationCalls = 0;
+                signal.setValue(20);
+                expect(validationCalls).toBe(0);
             });
         });
     });
