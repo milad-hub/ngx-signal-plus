@@ -1,13 +1,12 @@
 import { Signal, WritableSignal, computed, signal } from '@angular/core';
 import { BuilderOptions, ErrorHandler, SignalPlus, Transform, Validator } from '../models/signal-plus.model';
-import { SignalOperator } from '../operators/signal-operators';
-import { 
-    isBrowser, 
-    safeLocalStorageGet, 
-    safeLocalStorageSet, 
-    safeSetTimeout, 
-    safeClearTimeout, 
-    safeAddEventListener 
+import {
+    isBrowser,
+    safeAddEventListener,
+    safeClearTimeout,
+    safeLocalStorageGet,
+    safeLocalStorageSet,
+    safeSetTimeout
 } from '../utils/platform';
 
 /**
@@ -81,13 +80,13 @@ export class SignalBuilder<T> {
      */
     withHistory(sizeOrPersist?: number | boolean): SignalBuilder<T> {
         this.options.enableHistory = true;
-        
+
         if (typeof sizeOrPersist === 'number') {
             this.options.historySize = sizeOrPersist;
         } else if (typeof sizeOrPersist === 'boolean') {
             this.options.persistHistory = sizeOrPersist;
         }
-        
+
         return this;
     }
 
@@ -159,10 +158,10 @@ export class SignalBuilder<T> {
         if (!this.options.transforms) {
             this.options.transforms = [];
         }
-        
+
         // Store the transform function
         this.options.transforms.push(fn);
-        
+
         // Update the main transform function to apply all transforms in sequence
         this.options.transform = (value: T) => {
             // Apply each transform in sequence
@@ -170,7 +169,7 @@ export class SignalBuilder<T> {
                 return transform(result);
             }, value);
         };
-        
+
         return this;
     }
 
@@ -275,7 +274,7 @@ export class SignalBuilder<T> {
 
         // Store cleanup callback for storage listener
         let storageListenerCleanup: (() => void) | undefined;
-        
+
         if (this.options.storageKey && isBrowser()) {
             storageListenerCleanup = safeAddEventListener('storage', handleStorageEvent);
         }
@@ -310,15 +309,12 @@ export class SignalBuilder<T> {
             return () => {
                 subscribers.delete(subId);
                 if (subscribers.size === 0) {
-                    // Only mark as cleaned up for subscriber notifications
-                    isCleanedUp = true;
-                    
                     // Cleanup storage event listener
                     if (storageListenerCleanup) {
                         storageListenerCleanup();
                         storageListenerCleanup = undefined;
                     }
-                    
+
                     // Clear any pending debounce timeout
                     if (debounceTimeout !== null) {
                         safeClearTimeout(debounceTimeout);
@@ -382,7 +378,7 @@ export class SignalBuilder<T> {
                         redoStack = [];
                         const currentHistory: T[] = history();
                         const newHistory = [...currentHistory, structuredClone(transformedValue)];
-                        
+
                         // Enforce history size limit if specified
                         if (this.options.historySize && newHistory.length > this.options.historySize) {
                             history.set(newHistory.slice(-this.options.historySize));
@@ -431,6 +427,11 @@ export class SignalBuilder<T> {
         writable.set(initialValue);
 
         const processValue: (value: T) => void = (value: T) => {
+            // Prevent setValue after destroy
+            if (isCleanedUp) {
+                return;
+            }
+
             // Clear existing debounce timeout
             if (debounceTimeout !== null) {
                 safeClearTimeout(debounceTimeout);
@@ -489,13 +490,13 @@ export class SignalBuilder<T> {
                 try {
                     // Reset to initial untransformed value and apply transform
                     const resetValue: T = this.options.defaultValue ?? this.options.initialValue;
-                    
+
                     // Clear history and redo stack
                     redoStack = [];
                     if (this.options.enableHistory) {
                         history.set([]);
                     }
-                    
+
                     // Process the reset value through normal update flow, but skip validation
                     try {
                         // Apply transform first
@@ -669,6 +670,28 @@ export class SignalBuilder<T> {
                 });
 
                 return result;
+            },
+            destroy: () => {
+                // Mark as cleaned up
+                isCleanedUp = true;
+
+                // Clear all subscribers
+                subscribers.clear();
+
+                // Cleanup storage event listener
+                if (storageListenerCleanup) {
+                    storageListenerCleanup();
+                    storageListenerCleanup = undefined;
+                }
+
+                // Clear any pending debounce timeout
+                if (debounceTimeout !== null) {
+                    safeClearTimeout(debounceTimeout);
+                    debounceTimeout = null;
+                }
+
+                // Clear pending value
+                pendingValue = null;
             }
         };
 
