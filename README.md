@@ -193,6 +193,36 @@ storage.save({ theme: 'dark' });
 const settings = storage.load();
 ```
 
+### Cleanup and Memory Management
+
+**ngx-signal-plus** provides automatic and manual cleanup to prevent memory leaks:
+
+```typescript
+import { sp } from 'ngx-signal-plus';
+
+// Automatic cleanup when all subscribers unsubscribe
+const signal = sp(0).persist('counter').debounce(300).build();
+const unsubscribe = signal.subscribe(value => console.log(value));
+
+// When you're done with the signal
+unsubscribe(); // Automatically cleans up when last subscriber unsubscribes
+
+// Manual cleanup with destroy()
+const signal2 = sp(0).persist('data').withHistory(10).build();
+signal2.setValue(42);
+
+// Explicitly destroy and clean up all resources
+signal2.destroy(); // Removes event listeners, clears timers, frees memory
+```
+
+**What gets cleaned up:**
+- ✅ Storage event listeners (for `localStorage` synchronization)
+- ✅ Debounce/throttle timers
+- ✅ All subscribers
+- ✅ Pending operations
+
+**SSR-Safe:** All cleanup operations work safely in server-side rendering environments.
+
 ## Available Features
 
 | Category | Features |
