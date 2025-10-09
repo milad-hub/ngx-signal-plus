@@ -222,8 +222,6 @@ describe('SignalBuilder', () => {
                 .build();
             spyOn(localStorage, 'setItem').and.throwError('Storage error');
             signal.setValue(5);
-            // With SSR safety checks, hasLocalStorage() fails first, so error handler may not be called
-            // The important thing is that the value is still set correctly
             expect(signal.value).toEqual(5);
         });
 
@@ -232,7 +230,6 @@ describe('SignalBuilder', () => {
                 value: number;
                 metadata: { valid: boolean };
             }
-
             const errorSpy: jasmine.Spy = spyOn(console, 'warn');
             const complexBuilder: SignalBuilder<ComplexType> = new SignalBuilder<ComplexType>({
                 value: 0,
@@ -331,8 +328,6 @@ describe('SignalBuilder', () => {
             unsubscribe();
             tick(100);
             expect(subscriber).not.toHaveBeenCalled();
-            // With new cleanup behavior, debounce timer is cleared when all subscribers unsubscribe
-            // So the value doesn't update. This is correct - prevents memory leaks
             expect(signal.value).toBe(0);
         }));
 
@@ -437,8 +432,6 @@ describe('SignalBuilder', () => {
             spyOn(localStorage, 'setItem').and.throwError('QuotaExceededError');
             signal.setValue(1);
             expect(signal.value).toBe(1);
-            // With SSR safety, hasLocalStorage() may fail first, so error handler may not be called
-            // The important thing is that the value is still set and the signal still works
             expect(signal.isValid()).toBe(true);
         });
 
@@ -493,7 +486,6 @@ describe('SignalBuilder', () => {
                 value: number;
                 self?: CircularObj;
             }
-
             const circular: CircularObj = { value: 1 };
             circular.self = circular;
             const signal: SignalPlus<CircularObj> = new SignalBuilder<CircularObj>(circular).build();
@@ -507,7 +499,6 @@ describe('SignalBuilder', () => {
                 value: number;
                 self?: CircularObj;
             }
-
             const signal: SignalPlus<CircularObj> = new SignalBuilder<CircularObj>({ value: 1 }).build();
             const circular: CircularObj = { value: 2 };
             circular.self = circular;
@@ -604,8 +595,6 @@ describe('SignalBuilder', () => {
                 .build();
             spyOn(localStorage, 'setItem').and.throwError('Storage error');
             signal.setValue(1);
-            // With SSR safety, hasLocalStorage() may fail first, so error handler may not be called
-            // The important thing is that the value is still set correctly
             expect(signal.value).toBe(1);
             expect(signal.isValid()).toBe(true);
         });
@@ -651,7 +640,6 @@ describe('SignalBuilder', () => {
                 value: number;
                 metadata: { valid: boolean };
             }
-
             let shouldFail: boolean = true;
             const signal: SignalPlus<ComplexType> = new SignalBuilder<ComplexType>({
                 value: 0,
@@ -1113,7 +1101,6 @@ describe('SignalBuilder', () => {
             signal.setValue(2);
             subscription = signal.subscribe(v => values.push(v));
             signal.setValue(3);
-            // After resubscribe, both current value (6) and setValue(3) result (8) are pushed
             expect(values).toEqual([0, 4, 6, 8]);
             subscription();
         });
@@ -1156,7 +1143,6 @@ describe('SignalBuilder', () => {
             spyOn(localStorage, 'setItem').and.throwError('Storage error');
             signal.setValue(1);
             tick();
-            // With SSR safety, hasLocalStorage() may fail first, so just verify it doesn't crash
             expect(signal.value).toBe(1);
         }));
     });
@@ -1264,8 +1250,6 @@ describe('SignalBuilder', () => {
             signal.setValue('new value');
             tick();
             expect(signal.value).toBe('new value');
-            // With SSR safety, hasLocalStorage() may fail first, so error handler may not be called
-            // The important thing is that the signal still works and the value is set
         }));
     });
 
@@ -1867,6 +1851,313 @@ describe('SignalBuilder', () => {
                 signal.setValue(20);
                 expect(validationCalls).toBe(0);
             });
+        });
+    });
+
+    describe('race condition prevention', () => {
+        beforeEach(() => {
+            TestBed.configureTestingModule({
+                providers: [
+                    { provide: PLATFORM_ID, useValue: 'browser' }
+                ]
+            });
+        });
+
+        describe('debounce with reset', () => {
+            it('should prevent debounced value from applying after reset', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(300).withHistory().build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(10);
+                expect(signal.value).toBe(0);
+                tick(150);
+                signal.reset();
+                expect(signal.value).toBe(0);
+                expect(signal.history()).toEqual([0]);
+                tick(300);
+                expect(signal.value).toBe(0);
+                expect(signal.history()).toEqual([0]);
+                expect(subscriber).not.toHaveBeenCalledWith(10);
+            }));
+
+            it('should handle multiple setValue calls followed by reset', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(200).build()
+                );
+
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(1);
+                tick(50);
+                signal.setValue(2);
+                tick(50);
+                signal.setValue(3);
+                tick(50);
+                signal.reset();
+                expect(signal.value).toBe(0);
+                tick(500);
+                expect(signal.value).toBe(0);
+            }));
+
+            it('should allow new setValue after reset clears debounce', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(200).build()
+                );
+                signal.setValue(10);
+                tick(100);
+                signal.reset();
+                signal.setValue(5);
+                tick(200);
+                expect(signal.value).toBe(5);
+            }));
+        });
+
+        describe('debounce with undo', () => {
+            it('should prevent debounced value from applying after undo', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(300).withHistory().build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(1);
+                tick(300);
+                signal.setValue(2);
+                tick(300);
+                expect(signal.value).toBe(2);
+                expect(signal.history()).toEqual([0, 1, 2]);
+                subscriber.calls.reset();
+                signal.setValue(5);
+                expect(signal.value).toBe(2);
+                tick(150);
+                signal.undo();
+                expect(signal.value).toBe(1);
+                expect(signal.history()).toEqual([0, 1]);
+                tick(300);
+                expect(signal.value).toBe(1);
+                expect(signal.history()).toEqual([0, 1]);
+                expect(subscriber).not.toHaveBeenCalledWith(5);
+            }));
+
+            it('should handle multiple undo operations with pending debounce', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(200).withHistory().build()
+                );
+                signal.setValue(1);
+                tick(200);
+                signal.setValue(2);
+                tick(200);
+                signal.setValue(3);
+                tick(200);
+                expect(signal.history()).toEqual([0, 1, 2, 3]);
+                signal.setValue(10);
+                tick(100);
+                signal.undo();
+                expect(signal.value).toBe(2);
+                signal.undo();
+                expect(signal.value).toBe(1);
+                tick(300);
+                expect(signal.value).toBe(1);
+            }));
+        });
+
+        describe('debounce with redo', () => {
+            it('should prevent debounced value from applying after redo', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(300).withHistory().build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(1);
+                tick(300);
+                signal.setValue(2);
+                tick(300);
+                signal.setValue(3);
+                tick(300);
+                signal.undo();
+                expect(signal.value).toBe(2);
+                subscriber.calls.reset();
+                signal.setValue(10);
+                expect(signal.value).toBe(2);
+                tick(150);
+                signal.redo();
+                expect(signal.value).toBe(3);
+                tick(300);
+                expect(signal.value).toBe(3);
+                expect(subscriber).not.toHaveBeenCalledWith(10);
+            }));
+
+            it('should handle redo with multiple pending debounces', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(200).withHistory().build()
+                );
+                signal.setValue(1);
+                tick(200);
+                signal.setValue(2);
+                tick(200);
+                signal.setValue(3);
+                tick(200);
+                signal.undo();
+                signal.undo();
+                expect(signal.value).toBe(1);
+                signal.setValue(10);
+                tick(100);
+                signal.redo();
+                expect(signal.value).toBe(2);
+                tick(300);
+                expect(signal.value).toBe(2);
+            }));
+        });
+
+        describe('complex race conditions', () => {
+            it('should handle rapid sequential operations', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(200).withHistory().build()
+                );
+                signal.setValue(1);
+                tick(200);
+                signal.setValue(2);
+                tick(200);
+                signal.setValue(10);
+                tick(100);
+                signal.reset();
+                tick(50);
+                signal.setValue(5);
+                tick(200);
+                expect(signal.value).toBe(5);
+                expect(signal.history()).toEqual([0, 5]);
+            }));
+
+            it('should prevent race condition with setValue → undo → setValue', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(300).withHistory().build()
+                );
+                signal.setValue(1);
+                tick(300);
+                signal.setValue(2);
+                tick(300);
+                signal.setValue(3);
+                tick(300);
+                expect(signal.history()).toEqual([0, 1, 2, 3]);
+                signal.setValue(10);
+                tick(100);
+                signal.undo();
+                expect(signal.value).toBe(2);
+                signal.setValue(5);
+                tick(300);
+                expect(signal.value).toBe(5);
+                expect(signal.history()).toEqual([0, 1, 2, 5]);
+            }));
+
+            it('should handle interleaved debounce, reset, and undo operations', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(100).debounce(200).withHistory().build()
+                );
+                signal.setValue(1);
+                tick(200);
+                signal.setValue(2);
+                tick(200);
+                signal.setValue(10);
+                tick(50);
+                signal.undo();
+                expect(signal.value).toBe(1);
+                signal.setValue(20);
+                tick(50);
+                signal.reset()
+                expect(signal.value).toBe(100);
+                tick(300);
+                expect(signal.value).toBe(100);
+                expect(signal.history()).toEqual([100]);
+            }));
+
+            it('should maintain state consistency across race conditions', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(150).withHistory().build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue(1);
+                tick(150);
+                signal.setValue(2);
+                tick(150);
+                signal.setValue(3);
+                tick(150);
+                subscriber.calls.reset();
+                signal.setValue(10);
+                tick(50);
+                signal.undo();
+                expect(signal.value).toBe(2);
+                signal.setValue(20);
+                tick(50);
+                signal.redo();
+                expect(signal.value).toBe(3);
+                signal.setValue(30);
+                tick(50);
+                signal.reset();
+                expect(signal.value).toBe(0);
+                tick(300);
+                expect(signal.value).toBe(0);
+                expect(subscriber).not.toHaveBeenCalledWith(10);
+                expect(subscriber).not.toHaveBeenCalledWith(20);
+                expect(subscriber).not.toHaveBeenCalledWith(30);
+            }));
+        });
+
+        describe('edge cases', () => {
+            it('should handle reset with no pending debounce', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(5).debounce(200).build()
+                );
+                signal.reset();
+                expect(signal.value).toBe(5);
+                tick(200);
+                expect(signal.value).toBe(5);
+            }));
+
+            it('should handle undo with no pending debounce', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(200).withHistory().build()
+                );
+                signal.setValue(1);
+                tick(200);
+                signal.setValue(2);
+                tick(200);
+                signal.undo();
+                expect(signal.value).toBe(1);
+                tick(200);
+                expect(signal.value).toBe(1);
+            }));
+
+            it('should handle redo with no pending debounce', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(200).withHistory().build()
+                );
+                signal.setValue(1);
+                tick(200);
+                signal.setValue(2);
+                tick(200);
+                signal.undo();
+                signal.redo();
+                expect(signal.value).toBe(2);
+                tick(200);
+                expect(signal.value).toBe(2);
+            }));
+
+            it('should handle zero-delay debounce with immediate operations', fakeAsync(() => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(0).withHistory().build()
+                );
+                signal.setValue(1);
+                signal.reset();
+                tick(1);
+                expect(signal.value).toBe(0);
+            }));
         });
     });
 });
