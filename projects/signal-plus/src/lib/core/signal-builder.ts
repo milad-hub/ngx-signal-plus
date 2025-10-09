@@ -488,6 +488,13 @@ export class SignalBuilder<T> {
             },
             reset: () => {
                 try {
+                    // Clear any pending debounce timeout to prevent race conditions
+                    if (debounceTimeout !== null) {
+                        safeClearTimeout(debounceTimeout);
+                        debounceTimeout = null;
+                        pendingValue = null;
+                    }
+                    
                     // Reset to initial untransformed value and apply transform
                     const resetValue: T = this.options.defaultValue ?? this.options.initialValue;
 
@@ -594,6 +601,13 @@ export class SignalBuilder<T> {
             undo: () => {
                 if (!this.options.enableHistory || history().length <= 1) return;
 
+                // Clear any pending debounce timeout to prevent race conditions
+                if (debounceTimeout !== null) {
+                    safeClearTimeout(debounceTimeout);
+                    debounceTimeout = null;
+                    pendingValue = null;
+                }
+
                 // Get current value
                 const currentValue: T = writable();
 
@@ -613,6 +627,13 @@ export class SignalBuilder<T> {
             },
             redo: () => {
                 if (!this.options.enableHistory || redoStack.length === 0) return;
+
+                // Clear any pending debounce timeout to prevent race conditions
+                if (debounceTimeout !== null) {
+                    safeClearTimeout(debounceTimeout);
+                    debounceTimeout = null;
+                    pendingValue = null;
+                }
 
                 // Get the value to redo
                 const valueToRedo: NonNullable<T> = redoStack.pop()!;
