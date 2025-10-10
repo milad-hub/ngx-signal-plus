@@ -713,6 +713,64 @@ export class SignalBuilder<T> {
 
                 // Clear pending value
                 pendingValue = null;
+            },
+            _clearPendingOperations: () => {
+                // Clear any pending debounce timeout without destroying the signal
+                if (debounceTimeout !== null) {
+                    safeClearTimeout(debounceTimeout);
+                    debounceTimeout = null;
+                }
+
+                // Clear pending value
+                pendingValue = null;
+            },
+            _setValueImmediate: (value: T) => {
+                // First clear any pending operations
+                if (debounceTimeout !== null) {
+                    safeClearTimeout(debounceTimeout);
+                    debounceTimeout = null;
+                }
+                pendingValue = null;
+
+                // Apply transformations
+                let transformedValue: T = value;
+                if (this.options.transform) {
+                    transformedValue = this.options.transform(value);
+                }
+
+                // Set the value immediately without going through processValue
+                // This bypasses debounce, validation, and subscribers
+                writable.set(transformedValue);
+
+                // Update history manually if enabled
+                if (this.options.enableHistory) {
+                    const currentHistory: readonly T[] = history();
+                    const newHistory: T[] = [...currentHistory];
+                    const maxSize: number = this.options.historySize ?? Infinity;
+                    
+                    if (newHistory.length >= maxSize) {
+                        newHistory.shift();
+                    }
+                    newHistory.push(transformedValue);
+                    history.set(newHistory);
+                    redoStack.length = 0; // Clear redo stack
+                }
+
+                // Update persistence if enabled
+                if (this.options.storageKey) {
+                    const storageValue: string = JSON.stringify(transformedValue);
+                    safeLocalStorageSet(this.options.storageKey, storageValue);
+                }
+
+                // Notify subscribers immediately
+                subscribers.forEach(callback => callback(transformedValue));
+            },
+            _setHistoryImmediate: (historyArray: T[]) => {
+                // Directly set the history without any side effects
+                // This is used primarily for transaction rollback
+                if (this.options.enableHistory) {
+                    history.set([...historyArray]);
+                }
             }
         };
 

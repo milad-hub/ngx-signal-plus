@@ -16,18 +16,6 @@ describe('Transactions and Batching', () => {
     return { originalSetValue };
   }
 
-  function captureValues(...signals: SignalPlus<any>[]): Map<SignalPlus<any>, any> {
-    const captured = new Map<SignalPlus<any>, any>();
-    signals.forEach(s => captured.set(s, s.value));
-    return captured;
-  }
-
-  function restoreValues(captured: Map<SignalPlus<any>, any>): void {
-    captured.forEach((value, signal) => {
-      signal.setValue(value);
-    });
-  }
-
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [SignalPlusService]
@@ -513,6 +501,345 @@ describe('Transactions and Batching', () => {
         testSignal1.setValue(84);
       });
       expect(testSignal1.value).toBe(84);
+    });
+  });
+
+  describe('Transaction rollback improvements', () => {
+    describe('debounce handling', () => {
+      it('should clear pending debounced updates during rollback', (done) => {
+        const debouncedSignal = signalPlusService.create(0).debounce(200).build();
+        _patchAllSignalsInTest(debouncedSignal);
+        const originalValue = debouncedSignal.value;
+        const subscriber = jasmine.createSpy('subscriber');
+        debouncedSignal.subscribe(subscriber);
+        subscriber.calls.reset();
+        try {
+          spTransaction(() => {
+            debouncedSignal.setValue(10);
+            debouncedSignal.setValue(20);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        setTimeout(() => {
+          expect(debouncedSignal.value).toBe(originalValue);
+          expect(subscriber).not.toHaveBeenCalledWith(10);
+          expect(subscriber).not.toHaveBeenCalledWith(20);
+          done();
+        }, 300);
+      });
+
+      it('should allow new debounced updates after rollback', (done) => {
+        const debouncedSignal = signalPlusService.create(0).debounce(100).build();
+        _patchAllSignalsInTest(debouncedSignal);
+        try {
+          spTransaction(() => {
+            debouncedSignal.setValue(10);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(debouncedSignal.value).toBe(0);
+        const subscriber = jasmine.createSpy('subscriber');
+        debouncedSignal.subscribe(subscriber);
+        subscriber.calls.reset();
+        debouncedSignal.setValue(5);
+        setTimeout(() => {
+          expect(debouncedSignal.value).toBe(5);
+          expect(subscriber).toHaveBeenCalledWith(5);
+          done();
+        }, 150);
+      });
+
+      it('should handle multiple debounced signals in one transaction', (done) => {
+        const signal1 = signalPlusService.create(0).debounce(100).build();
+        const signal2 = signalPlusService.create(100).debounce(100).build();
+        _patchAllSignalsInTest(signal1);
+        _patchAllSignalsInTest(signal2);
+        const sub1 = jasmine.createSpy('sub1');
+        const sub2 = jasmine.createSpy('sub2');
+        signal1.subscribe(sub1);
+        signal2.subscribe(sub2);
+        sub1.calls.reset();
+        sub2.calls.reset();
+        try {
+          spTransaction(() => {
+            signal1.setValue(10);
+            signal2.setValue(200);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        setTimeout(() => {
+          expect(signal1.value).toBe(0);
+          expect(signal2.value).toBe(100);
+          expect(sub1).not.toHaveBeenCalledWith(10);
+          expect(sub2).not.toHaveBeenCalledWith(200);
+          done();
+        }, 150);
+      });
+    });
+
+    describe('history handling', () => {
+      it('should restore history state on rollback', () => {
+        const historySignal = signalPlusService.create(0).withHistory().build();
+        _patchAllSignalsInTest(historySignal);
+        historySignal.setValue(1);
+        historySignal.setValue(2);
+        historySignal.setValue(3);
+        const originalHistory = [...historySignal.history()];
+        const originalValue = historySignal.value;
+        try {
+          spTransaction(() => {
+            historySignal.setValue(10);
+            historySignal.setValue(20);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(historySignal.value).toBe(originalValue);
+        expect(historySignal.history()).toEqual(originalHistory);
+      });
+
+      it('should maintain history consistency after rollback', () => {
+        const historySignal = signalPlusService.create(0).withHistory().build();
+        _patchAllSignalsInTest(historySignal);
+        historySignal.setValue(1);
+        historySignal.setValue(2);
+        try {
+          spTransaction(() => {
+            historySignal.setValue(10);
+            historySignal.setValue(20);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(historySignal.history()).toEqual([0, 1, 2]);
+        historySignal.undo();
+        expect(historySignal.value).toBe(1);
+        historySignal.redo();
+        expect(historySignal.value).toBe(2);
+      });
+
+      it('should handle history with size limit during rollback', () => {
+        const historySignal = signalPlusService.create(0).withHistory(3).build();
+        _patchAllSignalsInTest(historySignal);
+        historySignal.setValue(1);
+        historySignal.setValue(2);
+        const originalHistory = [...historySignal.history()];
+        try {
+          spTransaction(() => {
+            historySignal.setValue(10);
+            historySignal.setValue(20);
+            historySignal.setValue(30);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(historySignal.history()).toEqual(originalHistory);
+      });
+    });
+
+    describe('subscriber notification', () => {
+      it('should notify subscribers during rollback', () => {
+        const signal = signalPlusService.create(0).build();
+        _patchAllSignalsInTest(signal);
+        const subscriber = jasmine.createSpy('subscriber');
+        signal.subscribe(subscriber);
+        subscriber.calls.reset();
+        try {
+          spTransaction(() => {
+            signal.setValue(10);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(subscriber).toHaveBeenCalledWith(0);
+        expect(signal.value).toBe(0);
+      });
+
+      it('should notify all subscribers on rollback', () => {
+        const signal = signalPlusService.create(0).build();
+        _patchAllSignalsInTest(signal);
+        const sub1 = jasmine.createSpy('sub1');
+        const sub2 = jasmine.createSpy('sub2');
+        const sub3 = jasmine.createSpy('sub3');
+        signal.subscribe(sub1);
+        signal.subscribe(sub2);
+        signal.subscribe(sub3);
+        sub1.calls.reset();
+        sub2.calls.reset();
+        sub3.calls.reset();
+        try {
+          spTransaction(() => {
+            signal.setValue(10);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(sub1).toHaveBeenCalledWith(0);
+        expect(sub2).toHaveBeenCalledWith(0);
+        expect(sub3).toHaveBeenCalledWith(0);
+      });
+    });
+
+    describe('complex scenarios', () => {
+      it('should handle rollback with debounce + history + persistence', (done) => {
+        const complexSignal = signalPlusService.create(0)
+          .debounce(100)
+          .withHistory()
+          .persist('test-rollback-key')
+          .build();
+        _patchAllSignalsInTest(complexSignal);
+        complexSignal.setValue(1);
+        setTimeout(() => {
+          complexSignal.setValue(2);
+          setTimeout(() => {
+            const originalValue = complexSignal.value;
+            const originalHistory = [...complexSignal.history()];
+            const subscriber = jasmine.createSpy('subscriber');
+            complexSignal.subscribe(subscriber);
+            subscriber.calls.reset();
+            try {
+              spTransaction(() => {
+                complexSignal.setValue(10);
+                complexSignal.setValue(20);
+                throw new Error('Rollback test');
+              });
+            } catch (e) { }
+            setTimeout(() => {
+              expect(complexSignal.value).toBe(originalValue);
+              expect(complexSignal.history()).toEqual(originalHistory);
+              expect(subscriber).not.toHaveBeenCalledWith(10);
+              expect(subscriber).not.toHaveBeenCalledWith(20);
+              done();
+            }, 150);
+          }, 150);
+        }, 150);
+      });
+
+      it('should handle multiple signals with different features in rollback', (done) => {
+        const debouncedSignal = signalPlusService.create(0).debounce(100).build();
+        const historySignal = signalPlusService.create(10).withHistory().build();
+        const validatedSignal = signalPlusService.create(20).validate(x => x >= 0).build();
+        _patchAllSignalsInTest(debouncedSignal);
+        _patchAllSignalsInTest(historySignal);
+        _patchAllSignalsInTest(validatedSignal);
+        historySignal.setValue(11);
+        historySignal.setValue(12);
+        const originalHistoryState = [...historySignal.history()];
+        const sub1 = jasmine.createSpy('sub1');
+        const sub2 = jasmine.createSpy('sub2');
+        const sub3 = jasmine.createSpy('sub3');
+        debouncedSignal.subscribe(sub1);
+        historySignal.subscribe(sub2);
+        validatedSignal.subscribe(sub3);
+        sub1.calls.reset();
+        sub2.calls.reset();
+        sub3.calls.reset();
+        try {
+          spTransaction(() => {
+            debouncedSignal.setValue(100);
+            historySignal.setValue(200);
+            validatedSignal.setValue(300);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        setTimeout(() => {
+          expect(debouncedSignal.value).toBe(0);
+          expect(historySignal.value).toBe(12);
+          expect(validatedSignal.value).toBe(20);
+          expect(historySignal.history()).toEqual(originalHistoryState);
+          expect(sub1).toHaveBeenCalledWith(0);
+          expect(sub2).toHaveBeenCalledWith(12);
+          expect(sub3).toHaveBeenCalledWith(20);
+          expect(sub2).toHaveBeenCalledWith(200);
+          expect(sub3).toHaveBeenCalledWith(300);
+          done();
+        }, 150);
+      });
+
+      it('should handle consecutive transactions with rollback', (done) => {
+        const signal = signalPlusService.create(0).debounce(100).withHistory().build();
+        _patchAllSignalsInTest(signal);
+        const subscriber = jasmine.createSpy('subscriber');
+        signal.subscribe(subscriber);
+        subscriber.calls.reset();
+        spTransaction(() => {
+          signal.setValue(1);
+        });
+        setTimeout(() => {
+          expect(signal.value).toBe(1);
+          try {
+            spTransaction(() => {
+              signal.setValue(10);
+              throw new Error('Rollback test');
+            });
+          } catch (e) { }
+          expect(signal.value).toBe(1);
+          expect(signal.history()).toContain(1);
+          spTransaction(() => {
+            signal.setValue(2);
+          });
+          setTimeout(() => {
+            expect(signal.value).toBe(2);
+            done();
+          }, 150);
+        }, 150);
+      });
+    });
+
+    describe('edge cases', () => {
+      it('should handle rollback when signal has no subscribers', () => {
+        const signal = signalPlusService.create(0).build();
+        _patchAllSignalsInTest(signal);
+        try {
+          spTransaction(() => {
+            signal.setValue(10);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(signal.value).toBe(0);
+      });
+
+      it('should handle rollback with validation failures', () => {
+        const signal = signalPlusService.create(5).validate(x => x >= 0).build();
+        _patchAllSignalsInTest(signal);
+        try {
+          spTransaction(() => {
+            signal.setValue(10);
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(signal.value).toBe(5);
+        expect(signal.isValid()).toBe(true);
+      });
+
+      it('should handle empty transactions', () => {
+        const signal = signalPlusService.create(0).build();
+        _patchAllSignalsInTest(signal);
+        try {
+          spTransaction(() => {
+            throw new Error('Rollback test');
+          });
+        } catch (e) { }
+        expect(signal.value).toBe(0);
+      });
+
+      it('should handle rollback errors gracefully', () => {
+        const signal = signalPlusService.create(0).build();
+        _patchAllSignalsInTest(signal);
+        const consoleErrorSpy = spyOn(console, 'error');
+        if (signal._setValueImmediate) {
+          const original = signal._setValueImmediate.bind(signal);
+          spyOn(signal as any, '_setValueImmediate').and.callFake(() => {
+            throw new Error('Rollback error');
+          });
+        }
+        let caughtError: Error | null = null;
+        try {
+          spTransaction(() => {
+            signal.setValue(10);
+            throw new Error('Transaction error');
+          });
+        } catch (e) {
+          caughtError = e as Error;
+        }
+        expect(caughtError?.message).toBe('Transaction error');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Error during transaction rollback:', jasmine.any(Error));
+      });
     });
   });
 });

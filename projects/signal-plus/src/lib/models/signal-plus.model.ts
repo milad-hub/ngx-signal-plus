@@ -338,6 +338,29 @@ export interface SignalPlus<T> {
    * ```
    */
   destroy(): void;
+
+  /**
+   * @internal
+   * Clears any pending debounce operations without destroying the signal
+   * Used internally by transaction rollback mechanism
+   */
+  _clearPendingOperations?(): void;
+
+  /**
+   * @internal
+   * Sets value immediately bypassing debounce, validation, and normal flow
+   * Used internally by transaction rollback to restore state quickly
+   * @param value - The value to set
+   */
+  _setValueImmediate?(value: T): void;
+
+  /**
+   * @internal
+   * Directly sets the history array without side effects
+   * Used internally by transaction rollback to restore history state
+   * @param historyArray - The history array to set
+   */
+  _setHistoryImmediate?(historyArray: T[]): void;
 }
 
 /**
