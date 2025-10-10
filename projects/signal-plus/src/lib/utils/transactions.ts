@@ -32,9 +32,10 @@ const state = {
   transaction: {
     active: false,
     originalValues: new Map<SignalPlus<any>, any>(),
+    originalHistories: new Map<SignalPlus<any>, any[]>(),
     patchedSignals: new Map<SignalPlus<any>, (value: any) => void>(),
     modifiedSignals: []
-  } as TransactionContext,
+  } as TransactionContext & { originalHistories: Map<SignalPlus<any>, any[]> },
   
   batch: {
     active: false,
@@ -65,6 +66,14 @@ function patchSignal<T>(signal: SignalPlus<T>): void {
       // Store original value if first time seeing this signal
       if (!txState.originalValues.has(signal)) {
         txState.originalValues.set(signal, signal.value);
+        
+        // Also store history state if signal has history
+        if (signal.history && typeof signal.history === 'function') {
+          const currentHistory = signal.history();
+          if (currentHistory && Array.isArray(currentHistory)) {
+            txState.originalHistories.set(signal, [...currentHistory]);
+          }
+        }
         
         // Add to the modified signals list to maintain order of modification
         if (!txState.modifiedSignals.includes(signal)) {
@@ -103,18 +112,42 @@ function rollbackChanges(): void {
   txState.active = false;
   
   try {
-    // Restore original values using the original setValue methods
+    // First, clear any pending debounced operations on all modified signals
+    for (const [signal] of txState.originalValues.entries()) {
+      try {
+        // Clear pending debounce operations if the method exists
+        if (signal._clearPendingOperations) {
+          signal._clearPendingOperations();
+        }
+      } catch (error) {
+        console.error('Error clearing pending operations during rollback:', error);
+        // Continue with other signals even if one fails
+      }
+    }
+    
+    // Restore original values using internal methods for fast rollback
     for (const [signal, originalValue] of txState.originalValues.entries()) {
       try {
-        // Get the original method
-        const originalSetValue = txState.patchedSignals.get(signal);
-        
-        if (originalSetValue) {
-          // Apply the original value using the original method
-          originalSetValue.call(signal, originalValue);
+        // Use _setValueImmediate if available for fast rollback without debounce/validation
+        if (signal._setValueImmediate) {
+          signal._setValueImmediate(originalValue);
         } else {
-          // Fallback if original method not found (shouldn't happen)
-          signal.setValue(originalValue);
+          // Fallback to original setValue method
+          const originalSetValue = txState.patchedSignals.get(signal);
+          
+          if (originalSetValue) {
+            // Apply the original value using the original method
+            originalSetValue.call(signal, originalValue);
+          } else {
+            // Last resort fallback (shouldn't happen)
+            signal.setValue(originalValue);
+          }
+        }
+        
+        // Restore history state if it was captured
+        const originalHistory = txState.originalHistories.get(signal);
+        if (originalHistory && signal._setHistoryImmediate) {
+          signal._setHistoryImmediate(originalHistory);
         }
       } catch (error) {
         console.error('Error during transaction rollback:', error);
@@ -124,8 +157,9 @@ function rollbackChanges(): void {
   } finally {
     // Restore transaction mode
     txState.active = wasActive;
-    // Clear captured original values
+    // Clear captured original values and histories
     txState.originalValues.clear();
+    txState.originalHistories.clear();
   }
 }
 
@@ -268,6 +302,7 @@ export function _resetTransactionState(): void {
   // Reset transaction state
   txState.active = false;
   txState.originalValues.clear();
+  txState.originalHistories.clear();
   txState.modifiedSignals = [];
   restoreOriginalMethods();
   
