@@ -201,6 +201,18 @@ export class SignalBuilder<T> {
         let isProcessingDebounce = false;
         let isProcessingStorage = false;
 
+        /**
+         * Helper function to enforce history size limit
+         * @param histArray The history array to enforce size on
+         * @returns The history array with size limit applied
+         */
+        const enforceHistorySize = (histArray: T[]): T[] => {
+            if (this.options.historySize && histArray.length > this.options.historySize) {
+                return histArray.slice(-this.options.historySize);
+            }
+            return histArray;
+        };
+
         // Initialize history with initial value
         if (this.options.enableHistory) {
             history.set([structuredClone(initialValue)]);
@@ -228,7 +240,7 @@ export class SignalBuilder<T> {
                         initialValue = parsedValue;
 
                         if (this.options.enableHistory && parsedHistory) {
-                            history.set(parsedHistory.map(v => structuredClone(v)));
+                            history.set(enforceHistorySize(parsedHistory.map(v => structuredClone(v))));
                         } else if (this.options.enableHistory) {
                             history.set([structuredClone(parsedValue)]);
                         }
@@ -261,7 +273,7 @@ export class SignalBuilder<T> {
                         previousValue = parsedValue;
 
                         if (this.options.enableHistory && parsedHistory) {
-                            history.set(parsedHistory.map(v => structuredClone(v)));
+                            history.set(enforceHistorySize(parsedHistory.map(v => structuredClone(v))));
                         }
 
                         notifySubscribers(parsedValue);
@@ -379,12 +391,8 @@ export class SignalBuilder<T> {
                         const currentHistory: T[] = history();
                         const newHistory = [...currentHistory, structuredClone(transformedValue)];
 
-                        // Enforce history size limit if specified
-                        if (this.options.historySize && newHistory.length > this.options.historySize) {
-                            history.set(newHistory.slice(-this.options.historySize));
-                        } else {
-                            history.set(newHistory);
-                        }
+                        // Enforce history size limit using helper function
+                        history.set(enforceHistorySize(newHistory));
                     }
 
                     // Handle storage
@@ -494,7 +502,7 @@ export class SignalBuilder<T> {
                         debounceTimeout = null;
                         pendingValue = null;
                     }
-                    
+
                     // Reset to initial untransformed value and apply transform
                     const resetValue: T = this.options.defaultValue ?? this.options.initialValue;
 
@@ -745,14 +753,8 @@ export class SignalBuilder<T> {
                 // Update history manually if enabled
                 if (this.options.enableHistory) {
                     const currentHistory: readonly T[] = history();
-                    const newHistory: T[] = [...currentHistory];
-                    const maxSize: number = this.options.historySize ?? Infinity;
-                    
-                    if (newHistory.length >= maxSize) {
-                        newHistory.shift();
-                    }
-                    newHistory.push(transformedValue);
-                    history.set(newHistory);
+                    const newHistory: T[] = [...currentHistory, structuredClone(transformedValue)];
+                    history.set(enforceHistorySize(newHistory));
                     redoStack.length = 0; // Clear redo stack
                 }
 
@@ -769,7 +771,7 @@ export class SignalBuilder<T> {
                 // Directly set the history without any side effects
                 // This is used primarily for transaction rollback
                 if (this.options.enableHistory) {
-                    history.set([...historyArray]);
+                    history.set(enforceHistorySize([...historyArray]));
                 }
             }
         };
