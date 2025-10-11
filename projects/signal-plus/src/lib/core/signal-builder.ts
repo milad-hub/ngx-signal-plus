@@ -127,10 +127,34 @@ export class SignalBuilder<T> {
      * Transforms signal value to a different type
      * @param fn Transform function from T to R
      * @returns New builder instance with type R
+     * 
+     * @remarks
+     * This method creates a new builder with the transformed type.
+     * Only type-agnostic options are copied (distinctUntilChanged, enableHistory,
+     * storageKey, debounceTime, etc.). Type-specific options like validators
+     * and transforms are NOT copied since they are incompatible with type R.
+     * 
+     * @example
+     * ```typescript
+     * const numberSignal = new SignalBuilder(42)
+     *   .debounce(300)
+     *   .distinct();
+     * 
+     * const stringSignal = numberSignal.map(n => n.toString());
+     * // stringSignal is SignalBuilder<string> with debounce and distinct preserved
+     * ```
      */
     map<R>(fn: (value: T) => R): SignalBuilder<R> {
-        const newBuilder = new SignalBuilder<R>(fn(this.options.initialValue));
-        Object.assign(newBuilder.options, this.options);
+        const mappedValue = fn(this.options.initialValue);
+        const newBuilder = new SignalBuilder<R>(mappedValue);
+        newBuilder.options.distinctUntilChanged = this.options.distinctUntilChanged;
+        newBuilder.options.enableHistory = this.options.enableHistory;
+        newBuilder.options.historySize = this.options.historySize;
+        newBuilder.options.persistHistory = this.options.persistHistory;
+        newBuilder.options.storageKey = this.options.storageKey;
+        newBuilder.options.debounceTime = this.options.debounceTime;
+        newBuilder.options.autoCleanup = this.options.autoCleanup;
+
         return newBuilder;
     }
 
