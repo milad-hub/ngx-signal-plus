@@ -1382,6 +1382,203 @@ describe('SignalBuilder', () => {
             });
         });
 
+        describe('history size enforcement consistency', () => {
+            it('should enforce history size on initial load from localStorage', () => {
+                const historySize = 3;
+                const key = 'test-history-size-init';
+                const largeHistory = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+                localStorage.setItem(key, JSON.stringify({
+                    value: 9,
+                    history: largeHistory
+                }));
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory(historySize)
+                    .persist(key)
+                    .build();
+                const history: number[] = signal.history();
+                expect(history.length).toBe(historySize);
+                expect(history).toEqual([7, 8, 9]);
+                localStorage.removeItem(key);
+            });
+
+            it('should enforce history size on cross-tab sync', fakeAsync(() => {
+                const historySize = 3;
+                const key = 'test-history-size-sync';
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0)
+                        .withHistory(historySize)
+                        .persist(key)
+                        .build()
+                );
+                const largeHistory = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+                const storageEvent = new StorageEvent('storage', {
+                    key: key,
+                    newValue: JSON.stringify({
+                        value: 9,
+                        history: largeHistory
+                    }),
+                    storageArea: localStorage
+                });
+                window.dispatchEvent(storageEvent);
+                tick();
+                const history: number[] = signal.history();
+                expect(history.length).toBe(historySize);
+                expect(history).toEqual([7, 8, 9]);
+                localStorage.removeItem(key);
+            }));
+
+            it('should enforce history size on transaction rollback', () => {
+                const historySize = 3;
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory(historySize)
+                    .build();
+                signal.setValue(1);
+                signal.setValue(2);
+                expect(signal.history()).toEqual([0, 1, 2]);
+                const largeHistory = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+                if (signal._setHistoryImmediate) {
+                    signal._setHistoryImmediate(largeHistory);
+                }
+                const history: number[] = signal.history();
+                expect(history.length).toBe(historySize);
+                expect(history).toEqual([7, 8, 9]);
+            });
+
+            it('should enforce history size with _setValueImmediate', () => {
+                const historySize = 3;
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory(historySize)
+                    .build();
+                if (signal._setValueImmediate) {
+                    for (let i = 1; i <= 10; i++) {
+                        signal._setValueImmediate(i);
+                    }
+                }
+                const history: number[] = signal.history();
+                expect(history.length).toBe(historySize);
+                expect(history).toEqual([8, 9, 10]);
+            });
+
+            it('should maintain history size limit after multiple operations', () => {
+                const historySize = 5;
+                const key = 'test-history-size-mixed';
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0)
+                        .withHistory(historySize)
+                        .persist(key)
+                        .build()
+                );
+                signal.setValue(1);
+                signal.setValue(2);
+                expect(signal.history().length).toBeLessThanOrEqual(historySize);
+                const storageEvent = new StorageEvent('storage', {
+                    key: key,
+                    newValue: JSON.stringify({
+                        value: 10,
+                        history: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                    }),
+                    storageArea: localStorage
+                });
+                window.dispatchEvent(storageEvent);
+                const history: number[] = signal.history();
+                expect(history.length).toBe(historySize);
+                localStorage.removeItem(key);
+            });
+
+            it('should handle edge case: history exactly at size limit', () => {
+                const historySize = 5;
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory(historySize)
+                    .build();
+                for (let i = 1; i <= 4; i++) {
+                    signal.setValue(i);
+                }
+                const history: number[] = signal.history();
+                expect(history.length).toBe(historySize);
+                expect(history).toEqual([0, 1, 2, 3, 4]);
+                signal.setValue(5);
+                expect(signal.history().length).toBe(historySize);
+                expect(signal.history()).toEqual([1, 2, 3, 4, 5]);
+            });
+
+            it('should handle edge case: history smaller than size limit', () => {
+                const historySize = 10;
+                const signal: SignalPlus<number> = new SignalBuilder(0)
+                    .withHistory(historySize)
+                    .build();
+                signal.setValue(1);
+                signal.setValue(2);
+                const history: number[] = signal.history();
+                expect(history.length).toBeLessThan(historySize);
+                expect(history).toEqual([0, 1, 2]);
+            });
+
+            it('should enforce history size with complex data types', () => {
+                interface TestData {
+                    id: number;
+                    name: string;
+                }
+                const historySize = 3;
+                const key = 'test-history-complex';
+                const largeHistory: TestData[] = [];
+                for (let i = 0; i < 10; i++) {
+                    largeHistory.push({ id: i, name: `Item ${i}` });
+                }
+                localStorage.setItem(key, JSON.stringify({
+                    value: { id: 9, name: 'Item 9' },
+                    history: largeHistory
+                }));
+                const signal: SignalPlus<TestData> = new SignalBuilder<TestData>({ id: 0, name: 'Item 0' })
+                    .withHistory(historySize)
+                    .persist(key)
+                    .build();
+                const history: TestData[] = signal.history();
+                expect(history.length).toBe(historySize);
+                expect(history).toEqual([
+                    { id: 7, name: 'Item 7' },
+                    { id: 8, name: 'Item 8' },
+                    { id: 9, name: 'Item 9' }
+                ]);
+                localStorage.removeItem(key);
+            });
+
+            it('should consistently enforce size across all history modification paths', () => {
+                const historySize = 4;
+                const key = 'test-history-all-paths';
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0)
+                        .withHistory(historySize)
+                        .persist(key)
+                        .build()
+                );
+                signal.setValue(1);
+                signal.setValue(2);
+                expect(signal.history().length).toBeLessThanOrEqual(historySize);
+                localStorage.setItem(key, JSON.stringify({
+                    value: 10,
+                    history: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                }));
+                const signal2: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0)
+                        .withHistory(historySize)
+                        .persist(key)
+                        .build()
+                );
+                expect(signal2.history().length).toBe(historySize);
+                if (signal._setValueImmediate) {
+                    for (let i = 11; i <= 20; i++) {
+                        signal._setValueImmediate(i);
+                    }
+                }
+                expect(signal.history().length).toBe(historySize);
+                if (signal._setHistoryImmediate) {
+                    signal._setHistoryImmediate([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+                }
+                expect(signal.history().length).toBe(historySize);
+                localStorage.removeItem(key);
+            });
+        });
+
         describe('method chaining with proper types', () => {
             it('should allow chaining in any order with type safety', () => {
                 const signal1: SignalPlus<number> = new SignalBuilder(0)
