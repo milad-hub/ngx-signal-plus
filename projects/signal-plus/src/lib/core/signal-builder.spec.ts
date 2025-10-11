@@ -1633,6 +1633,231 @@ describe('SignalBuilder', () => {
                 expect(typeof signal.value).toBe('string');
             });
         });
+
+        describe('map() method type safety', () => {
+            it('should transform number to string', () => {
+                const numberBuilder = new SignalBuilder(42);
+                const stringBuilder = numberBuilder.map(n => n.toString());
+                const signal: SignalPlus<string> = stringBuilder.build();
+                expect(signal.value).toBe('42');
+                expect(typeof signal.value).toBe('string');
+            });
+
+            it('should preserve type-agnostic options: distinctUntilChanged', () => {
+                const numberBuilder = new SignalBuilder(10)
+                    .distinct();
+                const stringBuilder = numberBuilder.map(n => `Value: ${n}`);
+                const signal: SignalPlus<string> = stringBuilder.build();
+                signal.setValue('Value: 10');
+                expect(signal.value).toBe('Value: 10');
+                signal.setValue('Value: 20');
+                expect(signal.value).toBe('Value: 20');
+            });
+
+            it('should preserve type-agnostic options: enableHistory', () => {
+                const numberBuilder = new SignalBuilder(1)
+                    .withHistory(5);
+                const stringBuilder = numberBuilder.map(n => String(n));
+                const signal: SignalPlus<string> = stringBuilder.build();
+                signal.setValue('2');
+                signal.setValue('3');
+                const history = signal.history();
+                expect(history.length).toBe(3);
+                expect(history).toEqual(['1', '2', '3']);
+            });
+
+            it('should preserve type-agnostic options: historySize', () => {
+                const numberBuilder = new SignalBuilder(0)
+                    .withHistory(3);
+                const stringBuilder = numberBuilder.map(n => n.toString());
+                const signal: SignalPlus<string> = stringBuilder.build();
+                for (let i = 1; i <= 10; i++) {
+                    signal.setValue(i.toString());
+                }
+                const history = signal.history();
+                expect(history.length).toBe(3);
+                expect(history).toEqual(['8', '9', '10']);
+            });
+
+            it('should preserve type-agnostic options: debounceTime', fakeAsync(() => {
+                const numberBuilder = new SignalBuilder(0)
+                    .debounce(100);
+                const stringBuilder = numberBuilder.map(n => n.toString());
+                const signal: SignalPlus<string> = stringBuilder.build();
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.setValue('42');
+                expect(signal.value).toBe('0');
+                tick(100);
+                expect(signal.value).toBe('42');
+                expect(subscriber).toHaveBeenCalledWith('42');
+            }));
+
+            it('should preserve type-agnostic options: storageKey', () => {
+                const key = 'test-map-storage';
+                const numberBuilder = new SignalBuilder(100)
+                    .persist(key);
+                const stringBuilder = numberBuilder.map(n => n.toString());
+                const signal: SignalPlus<string> = stringBuilder.build();
+                signal.setValue('200');
+                const stored = localStorage.getItem(key);
+                expect(stored).toBeTruthy();
+                localStorage.removeItem(key);
+            });
+
+            it('should NOT copy validators (type-specific)', () => {
+                const numberBuilder = new SignalBuilder(10)
+                    .validate(n => n >= 0);
+                const stringBuilder = numberBuilder.map(n => n.toString());
+                const signal: SignalPlus<string> = stringBuilder.build();
+                signal.setValue('-999');
+                expect(signal.value).toBe('-999');
+                expect(signal.isValid()).toBe(true);
+            });
+
+            it('should NOT copy transform (type-specific)', () => {
+                const numberBuilder = new SignalBuilder(5.7)
+                    .transform(Math.round);
+                const stringBuilder = numberBuilder.map(n => n.toString());
+                const signal: SignalPlus<string> = stringBuilder.build();
+                signal.setValue('5.7');
+                expect(signal.value).toBe('5.7');
+                expect(signal.value).not.toBe('6');
+            });
+
+            it('should allow adding new validators after map', () => {
+                const numberBuilder = new SignalBuilder(42)
+                    .validate(n => n >= 0);
+                const stringBuilder = numberBuilder
+                    .map(n => n.toString())
+                    .validate(s => s.length > 0);
+                const signal: SignalPlus<string> = stringBuilder.build();
+                signal.setValue('test');
+                expect(signal.isValid()).toBe(true);
+                expect(signal.value).toBe('test');
+                try {
+                    signal.setValue('');
+                } catch (e) { }
+                expect(signal.value).toBe('test');
+            });
+
+            it('should work with complex object transformations', () => {
+                interface User {
+                    id: number;
+                    name: string;
+                }
+                interface UserDTO {
+                    userId: string;
+                    displayName: string;
+                }
+                const userBuilder = new SignalBuilder<User>({ id: 1, name: 'Alice' })
+                    .withHistory(5);
+                const dtoBuilder = userBuilder.map(user => ({
+                    userId: `USER_${user.id}`,
+                    displayName: user.name.toUpperCase()
+                }));
+                const signal: SignalPlus<UserDTO> = dtoBuilder.build();
+                expect(signal.value).toEqual({
+                    userId: 'USER_1',
+                    displayName: 'ALICE'
+                });
+                signal.setValue({ userId: 'USER_2', displayName: 'BOB' });
+                expect(signal.history().length).toBe(2);
+            });
+
+            it('should work with multiple chained maps', () => {
+                const numberSignal = new SignalBuilder(42)
+                    .distinct()
+                    .withHistory(3)
+                    .map(n => n * 2)
+                    .map(n => n.toString())
+                    .map(s => `Result: ${s}`)
+                    .build();
+                expect(numberSignal.value).toBe('Result: 84');
+                expect(typeof numberSignal.value).toBe('string');
+                numberSignal.setValue('Result: 100');
+                expect(numberSignal.history().length).toBe(2);
+            });
+
+            it('should preserve options across multiple maps', () => {
+                const signal = new SignalBuilder(10)
+                    .debounce(100)
+                    .distinct()
+                    .withHistory(5)
+                    .map(n => n * 2)
+                    .map(n => n.toString())
+                    .build();
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                expect(signal.value).toBe('20');
+            });
+
+            it('should handle map with error handling', () => {
+                const errorHandler = jasmine.createSpy('errorHandler');
+                const signal = new SignalBuilder(42)
+                    .onError(errorHandler)
+                    .map(n => {
+                        if (n < 0) throw new Error('Negative not allowed');
+                        return n.toString();
+                    })
+                    .build();
+                expect(signal.value).toBe('42');
+            });
+
+            it('should work with null and undefined transformations', () => {
+                const nullableBuilder = new SignalBuilder<number | null>(42);
+                const stringBuilder = nullableBuilder.map(n => n === null ? 'null' : n.toString());
+                const signal: SignalPlus<string> = stringBuilder.build();
+                expect(signal.value).toBe('42');
+                signal.setValue('null');
+                expect(signal.value).toBe('null');
+            });
+
+            it('should preserve persistHistory option', () => {
+                const key = 'test-persist-history';
+                const signal = new SignalBuilder(1)
+                    .withHistory(true)
+                    .persist(key)
+                    .map(n => n.toString())
+                    .build();
+                signal.setValue('2');
+                signal.setValue('3');
+                const stored = localStorage.getItem(key);
+                expect(stored).toBeTruthy();
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    expect(parsed.history).toBeDefined();
+                    expect(parsed.history.length).toBeGreaterThan(1);
+                }
+                localStorage.removeItem(key);
+            });
+
+            it('should not interfere with original builder', () => {
+                const numberBuilder = new SignalBuilder(10)
+                    .validate(n => n >= 0)
+                    .withHistory(5);
+                const stringBuilder = numberBuilder.map(n => n.toString());
+                const numberSignal: SignalPlus<number> = numberBuilder.build();
+                numberSignal.setValue(20);
+                expect(numberSignal.value).toBe(20);
+                expect(numberSignal.isValid()).toBe(true);
+                const stringSignal: SignalPlus<string> = stringBuilder.build();
+                stringSignal.setValue('30');
+                expect(stringSignal.value).toBe('30');
+            });
+
+            it('should handle array transformations', () => {
+                const arrayBuilder = new SignalBuilder([1, 2, 3])
+                    .withHistory(3);
+                const lengthBuilder = arrayBuilder.map(arr => arr.length);
+                const signal: SignalPlus<number> = lengthBuilder.build();
+                expect(signal.value).toBe(3);
+                signal.setValue(5);
+                expect(signal.value).toBe(5);
+                expect(signal.history()).toEqual([3, 5]);
+            });
+        });
     });
 
     describe('memory leak prevention', () => {
