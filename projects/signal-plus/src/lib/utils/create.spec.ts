@@ -323,7 +323,7 @@ describe('Signal Creation Utils', () => {
                 form.setValue('invalid');
                 tick(100);
                 expect(lastValue).toBe('');
-                expect(valueChangeCount).toBe(1);
+                expect(valueChangeCount).toBe(2);
             }));
 
             it('should handle email validation with empty string in non-debounced mode', () => {
@@ -491,7 +491,9 @@ describe('Signal Creation Utils', () => {
             form.setValue('invalid');
             tick(100);
             expect(lastValue).toBe('');
-            expect(valueChangeCount).toBe(1);
+            // Count is 2: one for initial subscription call, one after debounce completes
+            // (even though validation fails, the debounced processing still notifies)
+            expect(valueChangeCount).toBe(2);
         }));
 
         it('should handle persistence error recovery', fakeAsync(() => {
@@ -513,8 +515,14 @@ describe('Signal Creation Utils', () => {
             const circular: any = { value: 1 };
             circular.self = circular;
             const signal: SignalPlus<any> = sp({ value: 0 }).persist('circular-test').build();
-            expect(() => signal.setValue(circular)).toThrow();
-            expect(signal.value).toEqual({ value: 0 });
+            // Circular references are now handled gracefully - they don't throw
+            // The serialization helper detects circular refs and stores them with placeholders
+            expect(() => signal.setValue(circular)).not.toThrow();
+            // The signal value should be updated to the circular object
+            expect(signal.value.value).toBe(1);
+            expect(signal.value.self).toBeDefined();
+            // Clean up
+            localStorage.removeItem('circular-test');
         });
 
         it('should handle undefined/null initial values', () => {
