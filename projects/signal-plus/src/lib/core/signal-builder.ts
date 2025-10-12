@@ -237,6 +237,42 @@ export class SignalBuilder<T> {
             return histArray;
         };
 
+        const serializeWithCircularCheck = (data: any, fallbackData?: any): string => {
+            const safeStringify = (obj: any): string => {
+                const seen = new WeakSet();
+                return JSON.stringify(obj, (key, value) => {
+                    if (value !== null && typeof value === 'object') {
+                        if (seen.has(value)) {
+                            return '[Circular Reference]';
+                        }
+                        seen.add(value);
+                    }
+                    return value;
+                });
+            };
+
+            try {
+                return JSON.stringify(data);
+            } catch (error) {
+                if (error instanceof TypeError && error.message.includes('circular')) {
+                    return safeStringify(data);
+                }
+                
+                if (fallbackData !== undefined) {
+                    try {
+                        return JSON.stringify(fallbackData);
+                    } catch (fallbackError) {
+                        if (fallbackError instanceof TypeError && fallbackError.message.includes('circular')) {
+                            return safeStringify(fallbackData);
+                        }
+                        throw fallbackError;
+                    }
+                }
+                
+                throw error;
+            }
+        };
+
         // Initialize history with initial value
         if (this.options.enableHistory) {
             history.set([structuredClone(initialValue)]);
@@ -395,12 +431,19 @@ export class SignalBuilder<T> {
                 }
 
                 // Check if value is distinct
-                const currentValueStr: string = JSON.stringify(writable());
-                const newValueStr: string = JSON.stringify(transformedValue);
-                const hasChanged: boolean = currentValueStr !== newValueStr;
-
-                if (this.options.distinctUntilChanged && !hasChanged) {
-                    return;
+                let hasChanged: boolean = true;
+                if (this.options.distinctUntilChanged) {
+                    try {
+                        const currentValueStr: string = JSON.stringify(writable());
+                        const newValueStr: string = JSON.stringify(transformedValue);
+                        hasChanged = currentValueStr !== newValueStr;
+                        
+                        if (!hasChanged) {
+                            return;
+                        }
+                    } catch (error) {
+                        hasChanged = true;
+                    }
                 }
 
                 // Only update if value has changed
@@ -427,16 +470,9 @@ export class SignalBuilder<T> {
                             const dataToStore: T | { value: T; history: T[] } = shouldStoreHistory
                                 ? { value: transformedValue, history: history() }
                                 : transformedValue;
-                            try {
-                                safeLocalStorageSet(this.options.storageKey, JSON.stringify(dataToStore));
-                            } catch (error) {
-                                if (error instanceof TypeError && error.message.includes('circular')) {
-                                    // Handle circular references by storing only the value
-                                    safeLocalStorageSet(this.options.storageKey, JSON.stringify(transformedValue));
-                                } else {
-                                    throw error;
-                                }
-                            }
+                            
+                            const serialized = serializeWithCircularCheck(dataToStore, transformedValue);
+                            safeLocalStorageSet(this.options.storageKey, serialized);
                         } catch (error) {
                             this.handleError(error as Error);
                         } finally {
@@ -561,16 +597,9 @@ export class SignalBuilder<T> {
                                 const dataToStore: T | { value: T; history: T[] } = shouldStoreHistory
                                     ? { value: transformedValue, history: [transformedValue] }
                                     : transformedValue;
-                                try {
-                                    safeLocalStorageSet(this.options.storageKey, JSON.stringify(dataToStore));
-                                } catch (error) {
-                                    if (error instanceof TypeError && error.message.includes('circular')) {
-                                        // Handle circular references by storing only the value
-                                        safeLocalStorageSet(this.options.storageKey, JSON.stringify(transformedValue));
-                                    } else {
-                                        throw error;
-                                    }
-                                }
+                                
+                                const serialized = serializeWithCircularCheck(dataToStore, transformedValue);
+                                safeLocalStorageSet(this.options.storageKey, serialized);
                             } catch (error) {
                                 this.handleError(error as Error);
                             } finally {
@@ -621,13 +650,23 @@ export class SignalBuilder<T> {
                     return false;
                 }
             }),
-            isDirty: computed(() => JSON.stringify(writable()) !== JSON.stringify(initialValue)),
+            isDirty: computed(() => {
+                try {
+                    return JSON.stringify(writable()) !== JSON.stringify(initialValue);
+                } catch (error) {
+                    return writable() !== initialValue;
+                }
+            }),
             hasChanged: computed(() => {
-                const currentValue: string = JSON.stringify(writable());
-                const prevValue: string = JSON.stringify(previousValue);
-                return this.options.distinctUntilChanged ?
-                    currentValue !== prevValue && currentValue !== JSON.stringify(writable()) :
-                    currentValue !== prevValue;
+                try {
+                    const currentValue: string = JSON.stringify(writable());
+                    const prevValue: string = JSON.stringify(previousValue);
+                    return this.options.distinctUntilChanged ?
+                        currentValue !== prevValue && currentValue !== JSON.stringify(writable()) :
+                        currentValue !== prevValue;
+                } catch (error) {
+                    return writable() !== previousValue;
+                }
             }),
             history: computed(() => this.options.enableHistory ? history() : []),
             undo: () => {

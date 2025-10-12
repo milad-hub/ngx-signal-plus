@@ -438,8 +438,9 @@ describe('SignalPlusService', () => {
         it('should handle circular references', () => {
             const circular: any = { value: 1 };
             circular.self = circular;
-            const signal: SignalPlus<{ simple: number }> = service.create({ simple: 1 }).build();
-            expect(() => signal.setValue(circular)).toThrow();
+            const signal: SignalPlus<any> = service.create({ simple: 1 }).build();
+            expect(() => signal.setValue(circular)).not.toThrow();
+            expect(signal.value.value).toBe(1);
         });
     });
 }); 

@@ -508,6 +508,363 @@ describe('SignalBuilder', () => {
         });
     });
 
+    describe('circular reference detection with persistence', () => {
+        let consoleWarnSpy: jasmine.Spy;
+        let consoleErrorSpy: jasmine.Spy;
+        beforeEach(() => {
+            consoleWarnSpy = spyOn(console, 'warn');
+            consoleErrorSpy = spyOn(console, 'error');
+        });
+
+        it('should detect and handle circular references during storage', fakeAsync(() => {
+            interface CircularData {
+                id: number;
+                name: string;
+                parent?: CircularData;
+            }
+            const key = 'test-circular-storage';
+            const signal: SignalPlus<CircularData> = new SignalBuilder<CircularData>({
+                id: 1,
+                name: 'root'
+            })
+                .persist(key)
+                .build();
+            const circularData: CircularData = {
+                id: 2,
+                name: 'child'
+            };
+            circularData.parent = circularData;
+            signal.setValue(circularData);
+            tick();
+            expect(signal.value.id).toBe(2);
+            expect(signal.value.name).toBe('child');
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                expect(parsed.id).toBe(2);
+                expect(parsed.name).toBe('child');
+                expect(parsed.parent).toBe('[Circular Reference]');
+            }
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle deeply nested circular references', fakeAsync(() => {
+            interface NestedData {
+                level: number;
+                child?: NestedData;
+                parent?: NestedData;
+            }
+            const key = 'test-nested-circular';
+            const signal: SignalPlus<NestedData> = new SignalBuilder<NestedData>({
+                level: 0
+            })
+                .persist(key)
+                .build();
+            const level1: NestedData = { level: 1 };
+            const level2: NestedData = { level: 2 };
+            const level3: NestedData = { level: 3 };
+            level1.child = level2;
+            level2.child = level3;
+            level3.parent = level1;
+            signal.setValue(level1);
+            tick();
+            expect(signal.value.level).toBe(1);
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                expect(parsed.level).toBe(1);
+                expect(parsed.child.level).toBe(2);
+                expect(parsed.child.child.level).toBe(3);
+                expect(parsed.child.child.parent).toBe('[Circular Reference]');
+            }
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle circular references in arrays', fakeAsync(() => {
+            interface ArrayWithCircular {
+                items: any[];
+                name: string;
+            }
+            const key = 'test-array-circular';
+            const signal: SignalPlus<ArrayWithCircular> = new SignalBuilder<ArrayWithCircular>({
+                items: [],
+                name: 'test'
+            })
+                .persist(key)
+                .build();
+            const data: ArrayWithCircular = {
+                items: [],
+                name: 'circular-array'
+            };
+            data.items.push(data);
+
+            signal.setValue(data);
+            tick();
+            expect(signal.value.name).toBe('circular-array');
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                expect(parsed.name).toBe('circular-array');
+                expect(parsed.items[0]).toBe('[Circular Reference]');
+            }
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle circular references with history enabled', fakeAsync(() => {
+            interface CircularWithHistory {
+                id: number;
+                ref?: CircularWithHistory;
+            }
+            const key = 'test-circular-history';
+            const signal: SignalPlus<CircularWithHistory> = new SignalBuilder<CircularWithHistory>({
+                id: 0
+            })
+                .persist(key)
+                .withHistory(5)
+                .build();
+            const data: CircularWithHistory = { id: 1 };
+            data.ref = data;
+            signal.setValue(data);
+            tick();
+            expect(signal.value.id).toBe(1);
+            expect(signal.history().length).toBe(2);
+            localStorage.removeItem(key);
+        }));
+
+        it('should use fallback when history contains circular references', fakeAsync(() => {
+            interface DataWithCircular {
+                value: number;
+                circular?: DataWithCircular;
+            }
+            const key = 'test-fallback-circular';
+            const signal: SignalPlus<DataWithCircular> = new SignalBuilder<DataWithCircular>({
+                value: 0
+            })
+                .persist(key)
+                .withHistory(true)
+                .build();
+            const data: DataWithCircular = { value: 1 };
+            data.circular = data;
+            signal.setValue(data);
+            tick();
+            expect(signal.value.value).toBe(1);
+            expect(signal.value.circular).toBe(signal.value);
+            expect(signal.history().length).toBe(2);
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            localStorage.removeItem(key);
+        }));
+
+        it('should successfully serialize non-circular data without warnings', fakeAsync(() => {
+            interface CleanData {
+                id: number;
+                nested: {
+                    value: string;
+                    items: number[];
+                };
+            }
+            const key = 'test-clean-data';
+            const signal: SignalPlus<CleanData> = new SignalBuilder<CleanData>({
+                id: 0,
+                nested: { value: 'initial', items: [] }
+            })
+                .persist(key)
+                .build();
+            const cleanData: CleanData = {
+                id: 1,
+                nested: {
+                    value: 'updated',
+                    items: [1, 2, 3]
+                }
+            };
+            signal.setValue(cleanData);
+            tick();
+            expect(consoleWarnSpy).not.toHaveBeenCalled();
+            expect(signal.value.id).toBe(1);
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                expect(parsed).toEqual(cleanData);
+            }
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle multiple circular references in complex structures', fakeAsync(() => {
+            interface ComplexCircular {
+                id: number;
+                links: ComplexCircular[];
+                parent?: ComplexCircular;
+            }
+            const key = 'test-complex-circular';
+            const signal: SignalPlus<ComplexCircular> = new SignalBuilder<ComplexCircular>({
+                id: 0,
+                links: []
+            })
+                .persist(key)
+                .build();
+            const root: ComplexCircular = { id: 1, links: [] };
+            const child1: ComplexCircular = { id: 2, links: [], parent: root };
+            const child2: ComplexCircular = { id: 3, links: [], parent: root };
+            root.links.push(child1, child2);
+            child1.links.push(root);
+            child2.links.push(root);
+            signal.setValue(root);
+            tick();
+            expect(signal.value.id).toBe(1);
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle circular references during reset', fakeAsync(() => {
+            interface CircularReset {
+                value: number;
+                self?: CircularReset;
+            }
+            const key = 'test-circular-reset';
+            const initial: CircularReset = { value: 0 };
+            initial.self = initial;
+            const signal: SignalPlus<CircularReset> = new SignalBuilder<CircularReset>(initial)
+                .persist(key)
+                .build();
+            signal.setValue({ value: 1 });
+            tick();
+            signal.reset();
+            tick();
+            expect(signal.value.value).toBe(0);
+            localStorage.removeItem(key);
+        }));
+
+        it('should provide clear error messages for serialization failures', fakeAsync(() => {
+            const key = 'test-serialization-error';
+            const signal: SignalPlus<any> = new SignalBuilder<any>({ value: 1 })
+                .persist(key)
+                .build();
+            const circular: any = { id: 1 };
+            circular.self = circular;
+            signal.setValue(circular);
+            tick();
+            expect(signal.value.id).toBe(1);
+            expect(signal.value.self).toBe(signal.value);
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                expect(parsed.id).toBe(1);
+                expect(parsed.self).toBe('[Circular Reference]');
+            }
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle edge case: object with circular reference at root', fakeAsync(() => {
+            const key = 'test-root-circular';
+            const signal: SignalPlus<any> = new SignalBuilder<any>({ data: null })
+                .persist(key)
+                .build();
+            const circular: any = {};
+            circular.data = circular;
+            signal.setValue(circular);
+            tick();
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                expect(parsed.data).toBe('[Circular Reference]');
+            }
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle mixed circular and non-circular properties', fakeAsync(() => {
+            interface MixedData {
+                id: number;
+                name: string;
+                circular?: MixedData;
+                clean: {
+                    value: string;
+                };
+            }
+            const key = 'test-mixed-circular';
+            const signal: SignalPlus<MixedData> = new SignalBuilder<MixedData>({
+                id: 0,
+                name: 'initial',
+                clean: { value: 'clean' }
+            })
+                .persist(key)
+                .build();
+            const mixed: MixedData = {
+                id: 1,
+                name: 'mixed',
+                clean: { value: 'cleanData' }
+            };
+            mixed.circular = mixed;
+            signal.setValue(mixed);
+            tick();
+            expect(signal.value.id).toBe(1);
+            const stored = localStorage.getItem(key);
+            expect(stored).toBeTruthy();
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                expect(parsed.id).toBe(1);
+                expect(parsed.name).toBe('mixed');
+                expect(parsed.clean.value).toBe('cleanData');
+                expect(parsed.circular).toBe('[Circular Reference]');
+            }
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle circular references with transformation', fakeAsync(() => {
+            interface TransformCircular {
+                value: number;
+                ref?: TransformCircular;
+            }
+            const key = 'test-transform-circular';
+            const signal: SignalPlus<TransformCircular> = new SignalBuilder<TransformCircular>({
+                value: 0
+            })
+                .persist(key)
+                .transform(data => ({ ...data, value: data.value * 2 }))
+                .build();
+            const circular: TransformCircular = { value: 5 };
+            circular.ref = circular;
+            signal.setValue(circular);
+            tick();
+            expect(signal.value.value).toBe(10);
+            localStorage.removeItem(key);
+        }));
+
+        it('should handle large objects with circular references', fakeAsync(() => {
+            interface LargeCircular {
+                id: number;
+                data: { [key: string]: any };
+                parent?: LargeCircular;
+            }
+            const key = 'test-large-circular';
+            const signal: SignalPlus<LargeCircular> = new SignalBuilder<LargeCircular>({
+                id: 0,
+                data: {}
+            })
+                .persist(key)
+                .build();
+            const large: LargeCircular = {
+                id: 1,
+                data: {}
+            };
+            for (let i = 0; i < 100; i++) {
+                large.data[`key${i}`] = `value${i}`;
+            }
+            large.parent = large;
+            signal.setValue(large);
+            tick();
+            expect(signal.value.id).toBe(1);
+            expect(Object.keys(signal.value.data).length).toBe(100);
+            localStorage.removeItem(key);
+        }));
+    });
+
     describe('performance boundaries', () => {
         it('should handle rapid updates efficiently while maintaining state', fakeAsync(() => {
             const signal: SignalPlus<number> = builder
@@ -787,12 +1144,9 @@ describe('SignalBuilder', () => {
                 .build();
             const circular: any = { value: 2 };
             circular.self = circular;
-            try {
-                signal.setValue(circular);
-            } catch (e) {
-            }
+            signal.setValue(circular);
             expect(() => signal.isDirty()).not.toThrow();
-            expect(errorHandler).toHaveBeenCalled();
+            expect(typeof signal.isDirty()).toBe('boolean');
         });
     });
 
@@ -821,7 +1175,7 @@ describe('SignalBuilder', () => {
             for (let i: number = 0; i < 1000; i++) {
                 signal.setValue(i);
             }
-            expect(signal.history().length).toBe(1000);
+            expect(signal.history().length).toBe(1001);
             expect(signal.value).toBe(999);
             signal.reset();
             expect(signal.history().length).toBe(1);
