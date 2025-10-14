@@ -707,7 +707,7 @@ export class SignalBuilder<T> {
                 }
 
                 // Get the value to redo
-                const valueToRedo: NonNullable<T> = redoStack.pop()!;
+                const valueToRedo: T = redoStack.pop() as T;
 
                 // Add it to history
                 const currentHistory: T[] = history();

@@ -109,9 +109,9 @@ export class HistoryManager<T> {
   undo(): T | undefined {
     if (this.history.past.length === 0) return undefined;
 
-    const previous: NonNullable<T> = this.history.past.pop()!;
+    const previous: T | undefined = this.history.past.pop();
     this.history.future.unshift(this.history.present);
-    this.history.present = previous;
+    this.history.present = previous as T;
     return previous;
   }
 
@@ -134,9 +134,9 @@ export class HistoryManager<T> {
   redo(): T | undefined {
     if (this.history.future.length === 0) return undefined;
 
-    const next: NonNullable<T> = this.history.future.shift()!;
+    const next: T | undefined = this.history.future.shift();
     this.history.past.push(this.history.present);
-    this.history.present = next;
+    this.history.present = next as T;
     return next;
   }
 

@@ -220,6 +220,93 @@ describe('HistoryManager', () => {
         });
     });
 
+    describe('strict null checks compliance', () => {
+        it('should handle undo when past is empty without non-null assertion', () => {
+            const emptyManager = new HistoryManager<number>(0);
+            const result: number | undefined = emptyManager.undo();
+            expect(result).toBeUndefined();
+            expect(emptyManager.current).toBe(0);
+        });
+
+        it('should handle redo when future is empty without non-null assertion', () => {
+            const emptyManager = new HistoryManager<number>(0);
+            const result: number | undefined = emptyManager.redo();
+            expect(result).toBeUndefined();
+            expect(emptyManager.current).toBe(0);
+        });
+
+        it('should handle multiple consecutive undo operations safely', () => {
+            manager.push(1);
+            manager.push(2);
+            const first: number | undefined = manager.undo();
+            expect(first).toBe(1);
+            const second: number | undefined = manager.undo();
+            expect(second).toBe(0);
+            const third: number | undefined = manager.undo();
+            expect(third).toBeUndefined();
+            expect(manager.current).toBe(0);
+        });
+
+        it('should handle multiple consecutive redo operations safely', () => {
+            manager.push(1);
+            manager.push(2);
+            manager.undo();
+            manager.undo();
+            const first: number | undefined = manager.redo();
+            expect(first).toBe(1);
+            const second: number | undefined = manager.redo();
+            expect(second).toBe(2);
+            const third: number | undefined = manager.redo();
+            expect(third).toBeUndefined();
+            expect(manager.current).toBe(2);
+        });
+
+        it('should handle undefined values in history correctly', () => {
+            const undefinedManager = new HistoryManager<number | undefined>(0);
+            undefinedManager.push(undefined);
+            undefinedManager.push(1);
+            const result1: number | undefined = undefinedManager.undo();
+            expect(result1).toBeUndefined();
+            expect(undefinedManager.current).toBeUndefined();
+            const result2: number | undefined = undefinedManager.undo();
+            expect(result2).toBe(0);
+            expect(undefinedManager.current).toBe(0);
+        });
+
+        it('should handle alternating undo/redo at boundaries', () => {
+            manager.push(1);
+            manager.undo();
+            expect(manager.current).toBe(0);
+            const undoResult: number | undefined = manager.undo();
+            expect(undoResult).toBeUndefined();
+            expect(manager.current).toBe(0);
+            manager.redo();
+            expect(manager.current).toBe(1);
+            const redoResult: number | undefined = manager.redo();
+            expect(redoResult).toBeUndefined();
+            expect(manager.current).toBe(1);
+        });
+
+        it('should properly type-check undo return value', () => {
+            manager.push(1);
+            const undoValue: number | undefined = manager.undo();
+            if (undoValue !== undefined) {
+                const numberValue: number = undoValue;
+                expect(typeof numberValue).toBe('number');
+            }
+        });
+
+        it('should properly type-check redo return value', () => {
+            manager.push(1);
+            manager.undo();
+            const redoValue: number | undefined = manager.redo();
+            if (redoValue !== undefined) {
+                const numberValue: number = redoValue;
+                expect(typeof numberValue).toBe('number');
+            }
+        });
+    });
+
     describe('type safety', () => {
         it('should maintain type safety with different data types', () => {
             const arrayManager = new HistoryManager<number[]>([]);
