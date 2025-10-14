@@ -2936,4 +2936,117 @@ describe('SignalBuilder', () => {
             }));
         });
     });
+
+    describe('strict null checks compliance', () => {
+        it('should handle redo when redoStack is empty without non-null assertion', () => {
+            const signal: SignalPlus<number> = new SignalBuilder(0).withHistory().build();
+            signal.setValue(1);
+            signal.redo();
+            expect(signal.value).toBe(1);
+        });
+
+        it('should handle multiple consecutive redo calls safely', () => {
+            const signal: SignalPlus<number> = new SignalBuilder(0).withHistory().build();
+            signal.setValue(1);
+            signal.setValue(2);
+            signal.undo();
+            signal.undo();
+            signal.redo();
+            expect(signal.value).toBe(1);
+            signal.redo();
+            expect(signal.value).toBe(2);
+            signal.redo();
+            expect(signal.value).toBe(2);
+        });
+
+        it('should handle undo and redo with undefined values correctly', () => {
+            const signal: SignalPlus<number | undefined> = new SignalBuilder<number | undefined>(0).withHistory().build();
+            signal.setValue(undefined);
+            signal.setValue(1);
+            signal.undo();
+            expect(signal.value).toBeUndefined();
+            signal.undo();
+            expect(signal.value).toBe(0);
+            signal.redo();
+            expect(signal.value).toBeUndefined();
+            signal.redo();
+            expect(signal.value).toBe(1);
+        });
+
+        it('should handle alternating undo/redo at redo boundary', () => {
+            const signal: SignalPlus<number> = new SignalBuilder(0).withHistory().build();
+            signal.setValue(1);
+            signal.undo();
+            signal.redo();
+            expect(signal.value).toBe(1);
+            signal.redo();
+            expect(signal.value).toBe(1);
+        });
+
+        it('should handle redo after setValue clears redo stack', () => {
+            const signal: SignalPlus<number> = new SignalBuilder(0).withHistory().build();
+            signal.setValue(1);
+            signal.setValue(2);
+            signal.undo();
+            expect(signal.value).toBe(1);
+            signal.setValue(3);
+            expect(signal.value).toBe(3);
+            signal.redo();
+            expect(signal.value).toBe(3);
+        });
+
+        it('should handle redo with complex object values', () => {
+            interface TestData {
+                id: number;
+                name?: string;
+            }
+            const signal: SignalPlus<TestData> = new SignalBuilder<TestData>({ id: 0 }).withHistory().build();
+            signal.setValue({ id: 1, name: 'test' });
+            signal.setValue({ id: 2 });
+            signal.undo();
+            expect(signal.value).toEqual({ id: 1, name: 'test' });
+            signal.redo();
+            expect(signal.value).toEqual({ id: 2 });
+            signal.redo();
+            expect(signal.value).toEqual({ id: 2 });
+        });
+
+        it('should handle redo with null values in history', () => {
+            const signal: SignalPlus<number | null> = new SignalBuilder<number | null>(0).withHistory().build();
+            signal.setValue(null);
+            signal.setValue(1);
+            signal.undo();
+            expect(signal.value).toBeNull();
+            signal.undo();
+            expect(signal.value).toBe(0);
+            signal.redo();
+            expect(signal.value).toBeNull();
+            signal.redo();
+            expect(signal.value).toBe(1);
+        });
+
+        it('should handle redo without throwing after destroy', () => {
+            const signal: SignalPlus<number> = new SignalBuilder(0).withHistory().build();
+            signal.setValue(1);
+            signal.undo();
+            signal.destroy();
+            expect(() => signal.redo()).not.toThrow();
+        });
+
+        it('should handle rapid undo/redo operations at boundaries', () => {
+            const signal: SignalPlus<number> = new SignalBuilder(0).withHistory().build();
+            signal.setValue(1);
+            signal.setValue(2);
+            signal.undo();
+            signal.redo();
+            signal.redo();
+            signal.undo();
+            signal.undo();
+            signal.undo();
+            signal.redo();
+            signal.redo();
+            signal.redo();
+            expect(signal.value).toBe(2);
+        });
+    });
 });
