@@ -3049,4 +3049,172 @@ describe('SignalBuilder', () => {
             expect(signal.value).toBe(2);
         });
     });
+
+    describe('Subscription Lifecycle Documentation', () => {
+        beforeEach(() => {
+            TestBed.configureTestingModule({
+                providers: [
+                    { provide: PLATFORM_ID, useValue: 'browser' }
+                ]
+            });
+        });
+
+        it('should automatically cleanup when last subscriber unsubscribes', fakeAsync(() => {
+            const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(0).persist('auto-cleanup').debounce(100).build()
+            );
+            const values1: number[] = [];
+            const unsubscribe1 = signal.subscribe(v => values1.push(v));
+            expect(values1).toEqual([0]);
+            signal.setValue(1);
+            tick(100);
+            expect(values1).toEqual([0, 1]);
+            const values2: number[] = [];
+            const unsubscribe2 = signal.subscribe(v => values2.push(v));
+            expect(values2).toEqual([1]);
+            signal.setValue(2);
+            tick(100);
+            expect(values1).toEqual([0, 1, 2]);
+            expect(values2).toEqual([1, 2]);
+            unsubscribe1();
+            signal.setValue(3);
+            tick(100);
+            expect(values2).toEqual([1, 2, 3]);
+            unsubscribe2();
+            signal.setValue(4);
+            tick(100);
+            expect(values1).toEqual([0, 1, 2]);
+            expect(values2).toEqual([1, 2, 3]);
+        }));
+
+        it('should allow re-subscription after automatic cleanup', fakeAsync(() => {
+            const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(0).persist('re-subscribe').build()
+            );
+            const values1: number[] = [];
+            const unsubscribe1 = signal.subscribe(v => values1.push(v));
+            expect(values1).toEqual([0]);
+            signal.setValue(10);
+            expect(values1).toEqual([0, 10]);
+            unsubscribe1();
+            const values2: number[] = [];
+            const unsubscribe2 = signal.subscribe(v => values2.push(v));
+            expect(values2).toEqual([10]);
+            signal.setValue(20);
+            expect(values2).toEqual([10, 20]);
+            expect(values1).toEqual([0, 10]);
+            unsubscribe2();
+        }));
+
+        it('should document that subscribe returns cleanup function', () => {
+            const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(0).build()
+            );
+            const unsubscribe = signal.subscribe(() => { });
+            expect(typeof unsubscribe).toBe('function');
+            expect(() => {
+                unsubscribe();
+                unsubscribe();
+                unsubscribe();
+            }).not.toThrow();
+        });
+
+        it('should cleanup all resources on last unsubscribe: storage, timers, subscribers', fakeAsync(() => {
+            const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(0)
+                    .persist('all-resources')
+                    .debounce(200)
+                    .withHistory(5)
+                    .build()
+            );
+            const values: number[] = [];
+            const unsubscribe = signal.subscribe(v => values.push(v));
+            signal.setValue(1);
+            signal.setValue(2);
+            signal.setValue(3);
+            tick(200);
+            expect(values.length).toBeGreaterThan(0);
+            unsubscribe();
+            const initialLength = values.length;
+            signal.setValue(99);
+            tick(300);
+            expect(values.length).toBe(initialLength);
+        }));
+
+        it('should handle subscription with no subscribers scenario gracefully', () => {
+            const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(42).build()
+            );
+            expect(signal.value).toBe(42);
+            signal.setValue(100);
+            expect(signal.value).toBe(100);
+            const values: number[] = [];
+            const unsubscribe = signal.subscribe(v => values.push(v));
+            expect(values).toEqual([100]);
+            signal.setValue(200);
+            expect(values).toEqual([100, 200]);
+            unsubscribe();
+        });
+
+        it('should demonstrate difference between automatic cleanup and destroy()', fakeAsync(() => {
+            const signal1: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(0).persist('auto').build()
+            );
+            const unsubscribe1 = signal1.subscribe(() => { });
+            unsubscribe1();
+            const values1: number[] = [];
+            signal1.subscribe(v => values1.push(v));
+            expect(values1).toEqual([0]);
+            signal1.setValue(10);
+            expect(values1).toEqual([0, 10]);
+            const signal2: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(0).persist('manual').build()
+            );
+            signal2.subscribe(() => { });
+            signal2.destroy();
+            signal2.setValue(20);
+            expect(signal2.value).toBe(0);
+        }));
+
+        it('should document subscription cleanup behavior in component lifecycle', fakeAsync(() => {
+            const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(0).persist('component-signal').build()
+            );
+            const values: number[] = [];
+            const unsubscribe = signal.subscribe(v => values.push(v));
+            expect(values).toEqual([0]);
+            signal.setValue(1);
+            signal.setValue(2);
+            expect(values).toEqual([0, 1, 2]);
+            unsubscribe();
+            signal.setValue(3);
+            expect(signal.value).toBe(3);
+            expect(values).toEqual([0, 1, 2]);
+        }));
+
+        it('should clear pending debounced value on automatic cleanup', fakeAsync(() => {
+            const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                new SignalBuilder(0).debounce(100).build()
+            );
+
+            const values: number[] = [];
+            const unsubscribe = signal.subscribe(v => values.push(v));
+            expect(values).toEqual([0]);
+
+            signal.setValue(99);
+            expect(values).toEqual([0]);
+
+            unsubscribe();
+            tick(100);
+            expect(values).toEqual([0]);
+
+            const values2: number[] = [];
+            signal.subscribe(v => values2.push(v));
+            expect(values2).toEqual([0]);
+            
+            signal.setValue(10);
+            tick(100);
+            expect(values2).toEqual([0, 10]);
+        }));
+    });
 });

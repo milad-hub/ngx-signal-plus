@@ -392,6 +392,9 @@ export class SignalBuilder<T> {
                         safeClearTimeout(debounceTimeout);
                         debounceTimeout = null;
                     }
+
+                    // Clear pending value
+                    pendingValue = null;
                 }
             };
         };
