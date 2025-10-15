@@ -292,8 +292,33 @@ export interface SignalPlus<T> {
 
   /**
    * Subscribes to value changes
+   * 
    * @param callback - Function called with new value on changes
    * @returns Cleanup function to unsubscribe
+   * 
+   * @remarks
+   * **Automatic Cleanup:** When the last subscriber unsubscribes, the signal automatically:
+   * - Removes storage event listeners (for `localStorage` synchronization)
+   * - Clears debounce/throttle timers
+   * - Cleans up pending operations
+   * 
+   * **Re-subscription:** After automatic cleanup, you can subscribe again and the signal
+   * will reinitialize its resources as needed.
+   * 
+   * **Manual Cleanup:** For explicit cleanup regardless of subscriber count, use `destroy()`.
+   * 
+   * @example
+   * ```typescript
+   * // Basic subscription
+   * const signal = sp(0).persist('counter').build();
+   * const unsubscribe = signal.subscribe(value => console.log(value));
+   * 
+   * // Clean up when done
+   * unsubscribe(); // Automatically cleans up if this was the last subscriber
+   * 
+   * // Can re-subscribe later
+   * signal.subscribe(value => console.log('New:', value));
+   * ```
    */
   subscribe(callback: (value: T) => void): () => void;
 
