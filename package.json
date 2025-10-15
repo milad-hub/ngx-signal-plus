@@ -11,8 +11,11 @@
     "build:lib:watch": "ng build signal-plus --watch",
     "pack:lib": "cd dist/signal-plus && npm pack",
     "publish:lib": "cd dist/signal-plus && npm publish",
+    "publish:lib:github": "cd dist/signal-plus && npm publish --registry=https://npm.pkg.github.com",
+    "publish:lib:dual": "npm run publish:lib && npm run publish:lib:github",
     "prepare:lib": "npm run build:lib && npm run test:lib",
     "release:lib": "npm run prepare:lib && npm run publish:lib",
+    "release:lib:dual": "npm run prepare:lib && npm run publish:lib:dual",
     "test:lib": "ng test signal-plus --browsers=ChromeHeadless --watch=false",
     "test:lib:coverage": "ng test signal-plus --browsers=ChromeHeadless --watch=false --code-coverage",
     "lint:lib": "ng lint signal-plus"
