@@ -48,8 +48,8 @@
  * ```
  */
 export function isBrowser(): boolean {
-  return typeof window !== 'undefined' && 
-         typeof window.document !== 'undefined';
+  return typeof window !== 'undefined' &&
+    typeof window.document !== 'undefined';
 }
 
 /**
@@ -125,11 +125,30 @@ export function safeLocalStorageGet(key: string): string | null {
  * This is a convenience wrapper that handles SSR gracefully.
  * Returns false when localStorage is not available instead of throwing.
  * 
+ * **Error Handling:**
+ * - Returns `false` for any error (QuotaExceededError, SecurityError, etc.)
+ * - Silently handles failures without throwing
+ * - Safe to call in SSR and browser environments
+ * 
+ * **Common Failure Scenarios:**
+ * - Storage quota exceeded (browser limit reached)
+ * - Private/incognito mode with disabled storage
+ * - SecurityError in cross-origin contexts
+ * - SSR environment (no localStorage)
+ * 
  * @example
  * ```typescript
  * const success = safeLocalStorageSet('theme', 'dark');
  * if (!success) {
  *   console.warn('Could not persist theme');
+ * }
+ * ```
+ * 
+ * @example Handling Quota Exceeded
+ * ```typescript
+ * const success = safeLocalStorageSet('large-data', JSON.stringify(data));
+ * if (!success) {
+ *   // Fallback: use memory storage or clear old data
  * }
  * ```
  */
@@ -141,7 +160,11 @@ export function safeLocalStorageSet(key: string, value: string): boolean {
   try {
     localStorage.setItem(key, value);
     return true;
-  } catch {
+  } catch (error) {
+    // Silently handle all localStorage errors:
+    // - QuotaExceededError: Storage limit reached
+    // - SecurityError: Access denied
+    // - Other errors: Invalid state, etc.
     return false;
   }
 }
@@ -241,11 +264,11 @@ export function safeAddEventListener<K extends keyof WindowEventMap>(
   handler: (this: Window, ev: WindowEventMap[K]) => any
 ): () => void {
   if (!isBrowser()) {
-    return () => {}; // No-op cleanup function
+    return () => { }; // No-op cleanup function
   }
 
   window.addEventListener(event, handler);
-  
+
   return () => {
     window.removeEventListener(event, handler);
   };
