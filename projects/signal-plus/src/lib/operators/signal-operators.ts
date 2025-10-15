@@ -387,7 +387,7 @@ export function map<T, R>(fn: (value: T) => R): SignalOperator<T, R> {
     try {
       return fn(signal());
     } catch (error) {
-      console.warn('Error in signal map operator:', error);
+      console.error('Error in signal map operator:', error);
       return fn(signal()) as R;
     }
   });

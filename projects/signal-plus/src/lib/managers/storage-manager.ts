@@ -117,10 +117,10 @@ export class StorageManager {
             const storageKey: string = this.PREFIX + key;
             const success = safeLocalStorageSet(storageKey, JSON.stringify(value));
             if (!success) {
-                console.warn('Failed to save to localStorage');
+                console.error('Failed to save to localStorage');
             }
         } catch (error) {
-            console.warn(`Failed to save to localStorage: ${error}`);
+            console.error(`Failed to save to localStorage: ${error}`);
         }
     }
 
@@ -157,7 +157,7 @@ export class StorageManager {
             const item: string | null = safeLocalStorageGet(storageKey);
             return item ? JSON.parse(item) : undefined;
         } catch (error) {
-            console.warn(`Failed to load from localStorage: ${error}`);
+            console.error(`Failed to load from localStorage: ${error}`);
             return undefined;
         }
     }
@@ -188,7 +188,7 @@ export class StorageManager {
             const storageKey: string = this.PREFIX + key;
             safeLocalStorageRemove(storageKey);
         } catch (error) {
-            console.warn(`Failed to remove from localStorage: ${error}`);
+            console.error(`Failed to remove from localStorage: ${error}`);
         }
     }
 
