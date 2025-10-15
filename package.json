@@ -11,7 +11,7 @@
     "build:lib:watch": "ng build signal-plus --watch",
     "pack:lib": "cd dist/signal-plus && npm pack",
     "publish:lib": "cd dist/signal-plus && npm publish",
-    "publish:lib:github": "cd dist/signal-plus && npm publish --registry=https://npm.pkg.github.com",
+    "publish:lib:github": "node tmp/publish-github.js",
     "publish:lib:dual": "npm run publish:lib && npm run publish:lib:github",
     "prepare:lib": "npm run build:lib && npm run test:lib",
     "release:lib": "npm run prepare:lib && npm run publish:lib",
@@ -30,7 +30,6 @@
     "@angular/platform-browser": "^20.3.3",
     "@angular/platform-browser-dynamic": "^20.3.3",
     "@angular/router": "^20.3.3",
-    "ngx-signal-plus": "^1.0.0-beta.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
