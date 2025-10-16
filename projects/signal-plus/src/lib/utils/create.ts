@@ -26,15 +26,53 @@
  * ```
  */
 
-import { computed } from '@angular/core';
 import { SignalBuilder } from '../core/signal-builder';
 import { FormNumberOptions, FormTextOptions } from '../models/form.model';
 
 /**
- * Core signal creation functions with simplified presets
+ * Creates a new SignalBuilder for configuring enhanced signals
+ * 
+ * @typeParam T - The type of value to be stored in the signal
+ * @param initialValue - The initial value for the signal. Cannot be undefined.
+ * @returns A SignalBuilder instance for fluent configuration
+ * @throws {Error} If initialValue is undefined
+ * 
+ * @remarks
+ * This is the primary entry point for creating enhanced signals with the builder pattern.
+ * It provides a fluent API for configuring validation, persistence, history, and more.
+ * 
+ * The builder must be finalized with `.build()` to create the actual signal.
+ * 
+ * @example Basic Usage
+ * ```typescript
+ * const counter = sp(0).build();
+ * counter.setValue(5);
+ * ```
+ * 
+ * @example With Validation
+ * ```typescript
+ * const age = sp(0)
+ *   .validate(n => n >= 0)
+ *   .validate(n => n <= 150)
+ *   .build();
+ * ```
+ * 
+ * @example With Persistence and History
+ * ```typescript
+ * const username = sp('')
+ *   .persist('username')
+ *   .withHistory(10)
+ *   .debounce(300)
+ *   .build();
+ * ```
+ * 
+ * @example With Transformation
+ * ```typescript
+ * const rounded = sp(0)
+ *   .transform(Math.round)
+ *   .build();
+ * ```
  */
-
-// Simple creation function
 export function sp<T>(initialValue: T): SignalBuilder<T> {
     if (initialValue === undefined) {
         throw new Error('Initial value cannot be undefined');
@@ -42,7 +80,44 @@ export function sp<T>(initialValue: T): SignalBuilder<T> {
     return new SignalBuilder<T>(initialValue);
 }
 
-// Simplified counter preset
+/**
+ * Creates a counter signal with automatic validation and history
+ * 
+ * @param initial - The initial counter value. Defaults to 0.
+ * @param options - Optional configuration for min/max bounds
+ * @param options.min - Minimum allowed value (inclusive)
+ * @param options.max - Maximum allowed value (inclusive)
+ * @returns A SignalPlus instance configured as a counter
+ * 
+ * @remarks
+ * The counter signal automatically:
+ * - Validates against min/max bounds if provided
+ * - Tracks history for undo/redo operations
+ * - Rejects invalid values that exceed bounds
+ * 
+ * @example Basic Counter
+ * ```typescript
+ * const counter = spCounter();
+ * counter.setValue(5);
+ * counter.update(n => n + 1); // 6
+ * ```
+ * 
+ * @example Counter with Bounds
+ * ```typescript
+ * const percentage = spCounter(0, { min: 0, max: 100 });
+ * percentage.setValue(150); // Validation fails
+ * percentage.setValue(50);  // Success
+ * ```
+ * 
+ * @example With History
+ * ```typescript
+ * const counter = spCounter(10);
+ * counter.setValue(20);
+ * counter.setValue(30);
+ * counter.undo(); // Back to 20
+ * counter.redo(); // Forward to 30
+ * ```
+ */
 export const spCounter = (initial = 0, options?: Partial<{ max: number, min: number }>) =>
     sp(initial)
         .validate(n => options?.min === undefined || n >= options.min)
@@ -50,7 +125,51 @@ export const spCounter = (initial = 0, options?: Partial<{ max: number, min: num
         .withHistory()
         .build();
 
-// Simplified form presets
+/**
+ * Collection of form input signal presets with built-in validation
+ * 
+ * @remarks
+ * Provides ready-to-use form input signals for common scenarios:
+ * - `text`: Plain text inputs with length validation
+ * - `email`: Email inputs with format validation
+ * - `number`: Numeric inputs with range validation
+ * - `password`: Password inputs with strength requirements
+ * - `url`: URL inputs with format validation
+ * - `tel`: Phone number inputs with format validation
+ * - `date`: Date inputs with validation
+ * - `checkbox`: Boolean inputs
+ * - `select`: Selection inputs with allowed values
+ * 
+ * All form signals support:
+ * - Automatic validation
+ * - Debouncing for performance
+ * - Optional persistence
+ * - Type-safe values
+ * 
+ * @example Text Input
+ * ```typescript
+ * const username = spForm.text('', {
+ *   minLength: 3,
+ *   maxLength: 20,
+ *   debounce: 300
+ * });
+ * ```
+ * 
+ * @example Email Input
+ * ```typescript
+ * const email = spForm.email('', { debounce: 500 });
+ * console.log(email.isValid()); // false until valid email entered
+ * ```
+ * 
+ * @example Number Input
+ * ```typescript
+ * const age = spForm.number(0, {
+ *   min: 0,
+ *   max: 150,
+ *   debounce: 200
+ * });
+ * ```
+ */
 export const spForm = {
     text: (initial = '', options?: Partial<FormTextOptions>) => {
         const signal = sp(initial);
@@ -159,7 +278,54 @@ export const spForm = {
     }
 };
 
-// Simplified toggle preset
+/**
+ * Creates a boolean toggle signal with history and optional persistence
+ * 
+ * @param initial - The initial boolean value. Defaults to false.
+ * @param key - Optional storage key for persistence in localStorage
+ * @returns A SignalPlus instance configured for toggle operations
+ * 
+ * @remarks
+ * The toggle signal automatically:
+ * - Tracks history for undo/redo operations
+ * - Persists state in localStorage if key is provided
+ * - Provides a convenient boolean state management
+ * 
+ * Perfect for:
+ * - UI toggles (dark mode, sidebar, etc.)
+ * - Feature flags
+ * - Boolean preferences
+ * - Checkbox state
+ * 
+ * @example Basic Toggle
+ * ```typescript
+ * const darkMode = spToggle(false);
+ * darkMode.setValue(true);
+ * console.log(darkMode.value); // true
+ * ```
+ * 
+ * @example Toggle with Persistence
+ * ```typescript
+ * const sidebarOpen = spToggle(false, 'sidebar-state');
+ * sidebarOpen.setValue(true);
+ * // State persists across page reloads
+ * ```
+ * 
+ * @example With History
+ * ```typescript
+ * const feature = spToggle(false);
+ * feature.setValue(true);
+ * feature.setValue(false);
+ * feature.undo(); // Back to true
+ * feature.redo(); // Forward to false
+ * ```
+ * 
+ * @example Update Pattern
+ * ```typescript
+ * const visible = spToggle(false);
+ * visible.update(current => !current); // Toggle value
+ * ```
+ */
 export const spToggle = (initial = false, key?: string) => {
     const signal = sp(initial)
         .withHistory(false);  // Enable history tracking but don't persist it

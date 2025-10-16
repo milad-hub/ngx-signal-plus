@@ -34,8 +34,27 @@
 
 ### Requirements
 
-- Angular >= 16.0.0 (fully compatible with Angular 19)
+- Angular >= 16.0.0 (fully compatible with Angular 20)
 - TypeScript >= 5.0.0
+
+### Server-Side Rendering (SSR) Support
+
+ngx-signal-plus is fully compatible with Angular Universal and server-side rendering:
+
+- All browser-specific APIs (`localStorage`, `window`, etc.) are safely handled
+- Signals work seamlessly in both SSR and browser environments
+- No configuration needed - SSR support is automatic
+- State automatically persists once the app hydrates in the browser
+
+```typescript
+// This works in both SSR and browser
+const userPrefs = sp({ theme: 'dark' })
+  .persist('user-preferences')
+  .build();
+
+// In SSR: works in-memory, localStorage calls are safely skipped
+// In browser: full persistence with localStorage
+```
 
 ## Installation
 
@@ -171,7 +190,14 @@ interface SignalPlus<T> {
   redo(): boolean;               // Redo previously undone change, returns success
   canUndo(): boolean;            // Check if undo is available
   canRedo(): boolean;            // Check if redo is available
+  history(): T[];                // Get the history array
   resetHistory(): void;          // Clear history stack
+  
+  // Subscription
+  subscribe(callback: (value: T) => void): () => void; // Subscribe to changes
+  
+  // Cleanup
+  destroy(): void;               // Manually cleanup all resources
   
   // State management
   reset(): void;                 // Reset to initial value
@@ -189,7 +215,7 @@ import { signal } from '@angular/core';
 // Create an enhanced signal with multiple features
 const enhanced = enhance(signal(0))
   .persist('counter') // Persist to storage
-  .validate(n => n >= 0, 'Must be positive') // Add validation
+  .validate(n => n >= 0) // Add validation
   .transform(Math.round) // Transform values
   .withHistory(5) // Enable undo/redo with history size
   .debounce(300) // Add debounce
@@ -208,9 +234,9 @@ console.log(enhanced.isValid()); // Check validation
 The SignalBuilder provides a fluent API with the following methods:
 
 - `.persist(key: string)`: Persists the signal to localStorage using the provided key
-- `.validate(fn: Validator<T>, message?: string)`: Adds a validation function
+- `.validate(fn: Validator<T>)`: Adds a validation function
 - `.transform(fn: Transform<T>)`: Adds a transformation to be applied to values
-- `.withHistory(size?: number)`: Enables undo/redo with optional history size
+- `.withHistory(size?: number | boolean)`: Enables undo/redo with optional history size or persistence
 - `.debounce(ms: number)`: Adds debouncing to signal updates
 - `.throttle(ms: number)`: Adds throttling to signal updates
 - `.distinctUntilChanged()`: Prevents duplicate updates
@@ -380,13 +406,27 @@ Transactions ensure that a group of signal updates either all succeed together o
 #### Basic Usage
 
 ```typescript
-import { spTransaction } from 'ngx-signal-plus';
+import { spTransaction, sp } from 'ngx-signal-plus';
+
+const balance = sp(100).build();
+const cart = sp<string[]>([]).build();
 
 // All changes succeed or all are rolled back
-spTransaction(() => {
-  userProfile.setValue({...});
-  userPreferences.setValue({...});
-});
+try {
+  spTransaction(() => {
+    balance.setValue(balance.value() - 50);
+    cart.update(items => [...items, 'premium-item']);
+    
+    if (balance.value() < 0) {
+      throw new Error('Insufficient funds');
+    }
+    // Success - changes are committed
+  });
+} catch (error) {
+  // Error - all changes automatically rolled back
+  console.log(balance.value()); // 100 (original value)
+  console.log(cart.value());    // [] (original value)
+}
 ```
 
 #### Error Handling
@@ -421,12 +461,18 @@ Batching groups multiple signal updates without providing rollback capabilities.
 #### Basic Usage
 
 ```typescript
-import { spBatch } from 'ngx-signal-plus';
+import { spBatch, sp } from 'ngx-signal-plus';
 
-// All operations happen as a batch
+const signal1 = sp(0).build();
+const signal2 = sp(0).build();
+const signal3 = sp(0).build();
+
+// All operations happen as a batch for better performance
 spBatch(() => {
-  counter1.setValue(counter1.value + 1);
-  counter2.setValue(counter2.value + 1);
+  signal1.setValue(1);
+  signal2.setValue(2);
+  signal3.setValue(3);
+  // All changes applied together efficiently
 });
 ```
 
@@ -573,40 +619,41 @@ Returns:
 Built-in managers for handling common state management patterns:
 
 ```typescript
-import { 
-  spHistoryManager,
-  spStorageManager 
-} from 'ngx-signal-plus';
+import { spStorageManager, sp } from 'ngx-signal-plus';
 
-// History management with undo/redo
-const history = new spHistoryManager(0, { maxSize: 10 });
-history.push(1);
-history.push(2);
-history.undo(); // Returns to 1
-history.redo(); // Returns to 2
-console.log(history.canUndo()); // true
-console.log(history.canRedo()); // false
-
-// Storage management with type safety
+// Storage management (static class, no instantiation needed)
 interface UserPreferences {
   theme: 'light' | 'dark';
   fontSize: number;
 }
 
-const storage = new spStorageManager<UserPreferences>('user-prefs');
-
 // Save with type checking
-storage.save({
+spStorageManager.save('user-prefs', {
   theme: 'dark',
   fontSize: 16
 });
 
 // Load with automatic type inference
-const prefs = storage.load();
+const prefs = spStorageManager.load<UserPreferences>('user-prefs');
 console.log(prefs?.theme); // 'dark'
 
 // Remove from storage
-storage.remove();
+spStorageManager.remove('user-prefs');
+
+// History management through signals
+const counter = sp(0)
+  .withHistory(10)  // Keep last 10 values
+  .build();
+
+counter.setValue(1);
+counter.setValue(2);
+
+// Navigate history
+counter.undo(); // Back to 1
+counter.redo(); // Back to 2
+
+// Check history
+console.log(counter.history()); // Array of past values
 ```
 
 ### History Manager API
@@ -659,26 +706,26 @@ import { sp } from 'ngx-signal-plus';
 
 // String validation
 const text = sp('')
-  .validate(spValidators.string.required, 'Value is required')
-  .validate(spValidators.string.minLength(3), 'Minimum length is 3')
-  .validate(spValidators.string.maxLength(50), 'Maximum length is 50')
-  .validate(spValidators.string.email, 'Must be a valid email format')
-  .validate(spValidators.string.pattern(/^[A-Z]/), 'Must start with uppercase letter')
+  .validate(spValidators.string.required)
+  .validate(spValidators.string.minLength(3))
+  .validate(spValidators.string.maxLength(50))
+  .validate(spValidators.string.email)
+  .validate(spValidators.string.pattern(/^[A-Z]/))
   .build();
 
 // Number validation
 const number = sp(0)
-  .validate(spValidators.number.min(0), 'Must be positive')
-  .validate(spValidators.number.max(100), 'Must be less than 100')
-  .validate(spValidators.number.integer, 'Must be an integer')
-  .validate(spValidators.number.between(18, 65), 'Must be between 18 and 65')
+  .validate(spValidators.number.min(0))
+  .validate(spValidators.number.max(100))
+  .validate(spValidators.number.integer)
+  .validate(spValidators.number.between(18, 65))
   .build();
 
 // Array validation
 const array = sp([])
-  .validate(spValidators.array.minLength(1), 'At least one item required')
-  .validate(spValidators.array.maxLength(10), 'Maximum of 10 items allowed')
-  .validate(spValidators.array.unique(), 'Items must be unique')
+  .validate(spValidators.array.minLength(1))
+  .validate(spValidators.array.maxLength(10))
+  .validate(spValidators.array.unique())
   .build();
 
 // Custom validation
@@ -834,7 +881,10 @@ type SignalPlus<T> = {
   redo(): boolean;
   canUndo(): boolean;
   canRedo(): boolean;
+  history(): T[];
   resetHistory(): void;
+  subscribe(callback: (value: T) => void): () => void;
+  destroy(): void;
   reset(): void;
 };
 
@@ -847,6 +897,79 @@ type Transform<T> = (value: T) => T;
 // Error handler function type
 type ErrorHandler = (error: Error) => void;
 ```
+
+## Cleanup and Memory Management
+
+ngx-signal-plus provides automatic and manual cleanup to prevent memory leaks:
+
+### Automatic Cleanup
+
+When the last subscriber unsubscribes, the signal automatically cleans up:
+- Storage event listeners (for `localStorage` synchronization)
+- Debounce/throttle timers
+- All subscribers
+- Pending operations
+
+```typescript
+import { sp } from 'ngx-signal-plus';
+
+const signal = sp(0).persist('counter').debounce(100).build();
+
+// Subscribe
+const unsubscribe = signal.subscribe(value => console.log(value));
+
+// When done, unsubscribe
+unsubscribe(); // Automatically cleans up if this was the last subscriber
+
+// Can re-subscribe later - signal reinitializes resources
+signal.subscribe(value => console.log('New:', value));
+```
+
+### Manual Cleanup
+
+For explicit cleanup regardless of subscriber count:
+
+```typescript
+const signal = sp(0).persist('data').build();
+signal.subscribe(value => console.log(value));
+
+// Later, explicitly destroy the signal
+signal.destroy(); // Cleans up all resources immediately
+```
+
+### Component Lifecycle
+
+Use cleanup in Angular components:
+
+```typescript
+import { Component, OnDestroy } from '@angular/core';
+import { sp } from 'ngx-signal-plus';
+
+@Component({
+  selector: 'app-example',
+  template: `<div>{{ counter.value() }}</div>`
+})
+export class ExampleComponent implements OnDestroy {
+  counter = sp(0).persist('counter').build();
+  private unsubscribe: (() => void) | null = null;
+
+  ngOnInit() {
+    this.unsubscribe = this.counter.subscribe(
+      value => console.log('Counter changed:', value)
+    );
+  }
+
+  ngOnDestroy() {
+    // Option 1: Unsubscribe (automatic cleanup if last subscriber)
+    this.unsubscribe?.();
+    
+    // Option 2: Explicit cleanup
+    // this.counter.destroy();
+  }
+}
+```
+
+**SSR-Safe:** All cleanup operations work safely in server-side rendering environments.
 
 ## Best Practices
 
@@ -1196,10 +1319,10 @@ export const SUBMIT_TOKEN = new InjectionToken<SubmitFn>('submit.function');
          <div class="warning">High value!</div>
        }
        
-       <div>History:</div>
-       @if (counter.canUndo()) {
-         <button (click)="counter.undo()">Undo</button>
-       }
+      <div>History:</div>
+      @if (counter.history().length > 0) {
+        <button (click)="counter.undo()">Undo</button>
+      }
      `
    })
    export class YourComponent {

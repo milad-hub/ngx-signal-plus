@@ -42,7 +42,7 @@ import { signal, computed } from '@angular/core';
     <button (click)="increment()">Increment</button>
     <button (click)="decrement()">Decrement</button>
     
-    @if (counter.canUndo()) {
+    @if (counter.history().length > 0) {
       <button (click)="counter.undo()">Undo</button>
     }
   `,
@@ -104,7 +104,7 @@ import { signal } from '@angular/core';
 
 const enhanced = enhance(signal(0))
   .persist('counter')
-  .validate(n => n >= 0, 'Must be positive')
+  .validate(n => n >= 0)
   .transform(Math.round)
   .withHistory(5)
   .debounce(300)
@@ -154,10 +154,10 @@ const isFormValid = computed(() =>
 ```typescript
 import { spValidators, spPresets } from 'ngx-signal-plus';
 
-// Use validators
+// Use built-in validators
 const email = sp('')
-  .validate(spValidators.string.required, 'Email is required')
-  .validate(spValidators.string.email, 'Must be a valid email')
+  .validate(spValidators.string.required)
+  .validate(spValidators.string.email)
   .build();
 
 // Use presets for common patterns
@@ -179,18 +179,31 @@ const darkMode = spPresets.toggle({
 ### State Management
 
 ```typescript
-import { spHistoryManager, spStorageManager } from 'ngx-signal-plus';
+import { spStorageManager, sp } from 'ngx-signal-plus';
 
-// History management
-const history = new spHistoryManager(0, { maxSize: 10 });
-history.push(1);
-history.undo();
-history.redo();
+// Storage management (saves to localStorage with namespace prefix)
+spStorageManager.save('app-settings', { theme: 'dark', language: 'en' });
+const settings = spStorageManager.load<{theme: string, language: string}>('app-settings');
 
-// Storage management
-const storage = new spStorageManager<{theme: string}>('app-settings');
-storage.save({ theme: 'dark' });
-const settings = storage.load();
+// Remove when no longer needed
+spStorageManager.remove('app-settings');
+
+// History management through signals
+const counter = sp(0)
+  .withHistory(10)  // Keep last 10 values
+  .build();
+
+counter.setValue(1);
+counter.setValue(2);
+counter.setValue(3);
+
+// Navigate history
+counter.undo(); // Back to 2
+counter.undo(); // Back to 1
+counter.redo(); // Forward to 2
+
+// Check history
+console.log(counter.history()); // Array of past values
 ```
 
 ### Cleanup and Memory Management
@@ -222,6 +235,61 @@ signal2.destroy(); // Removes event listeners, clears timers, frees memory
 - ✅ Pending operations
 
 **SSR-Safe:** All cleanup operations work safely in server-side rendering environments.
+
+### Transactions and Batching
+
+Group multiple updates together with automatic rollback on errors:
+
+```typescript
+import { spTransaction, spBatch } from 'ngx-signal-plus';
+
+const balance = sp(100).build();
+const cart = sp<string[]>([]).build();
+
+// Transaction with automatic rollback
+try {
+  spTransaction(() => {
+    balance.setValue(balance.value() - 50);
+    cart.update(items => [...items, 'premium-item']);
+    
+    if (balance.value() < 0) {
+      throw new Error('Insufficient funds');
+    }
+    // Success - changes are committed
+  });
+} catch (error) {
+  // Error - all changes automatically rolled back
+  console.log(balance.value()); // 100 (original value)
+  console.log(cart.value());    // [] (original value)
+}
+
+// Batch updates for performance (no rollback)
+spBatch(() => {
+  signal1.setValue(1);
+  signal2.setValue(2);
+  signal3.setValue(3);
+  // All changes applied together efficiently
+});
+```
+
+### Server-Side Rendering
+
+The library works seamlessly with Angular Universal:
+
+```typescript
+// This code works in both SSR and browser
+const userPrefs = sp({ theme: 'dark' })
+  .persist('user-preferences')
+  .build();
+
+// In SSR: works in-memory, localStorage calls are safely skipped
+// In browser: full persistence with localStorage
+```
+
+What happens during SSR:
+- Signals work normally with in-memory state
+- localStorage operations are safely skipped (no errors)
+- State automatically persists once the app runs in the browser
 
 ## Available Features
 
