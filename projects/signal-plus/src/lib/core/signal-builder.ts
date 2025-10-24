@@ -214,6 +214,15 @@ export class SignalBuilder<T> {
         // Get transform function
         const transform: Transform<T> = this.options.transform || ((value: T) => value);
 
+        // Helper to conditionally clone only complex objects
+        const conditionalClone = (value: T): T => {
+            const type = typeof value;
+            if (type === 'string' || type === 'number' || type === 'boolean' || value === null || value === undefined) {
+                return value;
+            }
+            return structuredClone(value);
+        };
+
         // Create signal with initial value (untransformed)
         const writable: WritableSignal<T> = signal<T>(structuredClone(this.options.initialValue));
         let previousValue: T = structuredClone(this.options.initialValue);
@@ -275,7 +284,7 @@ export class SignalBuilder<T> {
 
         // Initialize history with initial value
         if (this.options.enableHistory) {
-            history.set([structuredClone(initialValue)]);
+            history.set([conditionalClone(initialValue)]);
         }
 
         // Load initial value from storage if available
@@ -300,9 +309,9 @@ export class SignalBuilder<T> {
                         initialValue = parsedValue;
 
                         if (this.options.enableHistory && parsedHistory) {
-                            history.set(enforceHistorySize(parsedHistory.map(v => structuredClone(v))));
+                            history.set(enforceHistorySize(parsedHistory.map(v => conditionalClone(v))));
                         } else if (this.options.enableHistory) {
-                            history.set([structuredClone(parsedValue)]);
+                            history.set([conditionalClone(parsedValue)]);
                         }
                     } catch (error) {
                         this.handleError(error as Error);
@@ -333,7 +342,7 @@ export class SignalBuilder<T> {
                         previousValue = parsedValue;
 
                         if (this.options.enableHistory && parsedHistory) {
-                            history.set(enforceHistorySize(parsedHistory.map(v => structuredClone(v))));
+                            history.set(enforceHistorySize(parsedHistory.map(v => conditionalClone(v))));
                         }
 
                         notifySubscribers(parsedValue);
@@ -451,7 +460,7 @@ export class SignalBuilder<T> {
 
                 // Only update if value has changed
                 if (hasChanged) {
-                    previousValue = structuredClone(writable());
+                    previousValue = conditionalClone(writable());
                     writable.set(transformedValue);
 
                     // Update history if enabled and value has changed
@@ -459,7 +468,7 @@ export class SignalBuilder<T> {
                         // Clear redo stack when new value is set
                         redoStack = [];
                         const currentHistory: T[] = history();
-                        const newHistory = [...currentHistory, structuredClone(transformedValue)];
+                        const newHistory = [...currentHistory, conditionalClone(transformedValue)];
 
                         // Enforce history size limit using helper function
                         history.set(enforceHistorySize(newHistory));
@@ -584,12 +593,12 @@ export class SignalBuilder<T> {
                         }
 
                         // Update signal state
-                        previousValue = structuredClone(writable());
+                        previousValue = conditionalClone(writable());
                         writable.set(transformedValue);
 
                         // Update history
                         if (this.options.enableHistory) {
-                            history.set([structuredClone(transformedValue)]);
+                            history.set([conditionalClone(transformedValue)]);
                         }
 
                         // Handle storage
@@ -686,7 +695,7 @@ export class SignalBuilder<T> {
                 const currentValue: T = writable();
 
                 // Move current value to redo stack
-                redoStack.push(structuredClone(currentValue));
+                redoStack.push(conditionalClone(currentValue));
 
                 // Get the previous value from history
                 const currentHistory: T[] = history();
@@ -694,7 +703,7 @@ export class SignalBuilder<T> {
 
                 // Update history and current value
                 history.set(currentHistory.slice(0, -1));
-                writable.set(structuredClone(previousValue));
+                writable.set(conditionalClone(previousValue));
 
                 // Notify subscribers
                 notifySubscribers(previousValue);
@@ -714,10 +723,10 @@ export class SignalBuilder<T> {
 
                 // Add it to history
                 const currentHistory: T[] = history();
-                history.set([...currentHistory, structuredClone(valueToRedo)]);
+                history.set([...currentHistory, conditionalClone(valueToRedo)]);
 
                 // Set the value
-                writable.set(structuredClone(valueToRedo));
+                writable.set(conditionalClone(valueToRedo));
 
                 // Notify subscribers
                 notifySubscribers(valueToRedo);
@@ -819,7 +828,7 @@ export class SignalBuilder<T> {
                 // Update history manually if enabled
                 if (this.options.enableHistory) {
                     const currentHistory: readonly T[] = history();
-                    const newHistory: T[] = [...currentHistory, structuredClone(transformedValue)];
+                    const newHistory: T[] = [...currentHistory, conditionalClone(transformedValue)];
                     history.set(enforceHistorySize(newHistory));
                     redoStack.length = 0; // Clear redo stack
                 }
