@@ -303,6 +303,91 @@ What happens during SSR:
 | **State Management** | `spHistoryManager`, `spStorageManager` |
 | **Components** | `spSignalPlusComponent`, `spSignalPlusService`, `spSignalBuilder` |
 
+## Bundle Size Optimization
+
+The library is built with tree-shaking and optimization in mind. You only pay for what you use.
+
+### Modern Package Exports
+
+The package provides **modular exports** for selective importing:
+
+```typescript
+// Import only what you need - tree-shaking removes unused code
+
+// Core signals only (~3KB gzipped)
+import { sp, spCounter, spToggle } from 'ngx-signal-plus/core';
+
+// Operators only (~2KB gzipped)
+import { spMap, spFilter, spDebounceTime } from 'ngx-signal-plus/operators';
+
+// Utilities only (~2KB gzipped)
+import { enhance, spValidators, spPresets } from 'ngx-signal-plus/utils';
+
+// State managers (~1KB gzipped)
+import { spHistoryManager, spStorageManager } from 'ngx-signal-plus';
+
+// Everything (~8KB gzipped)
+import { sp, spMap, spFilter, enhance, spValidators } from 'ngx-signal-plus';
+```
+
+### Tree-Shaking Configuration
+
+The package is optimized for tree-shaking:
+
+- ✅ **`sideEffects: false`** in package.json - marks the library as side-effect free
+- ✅ **Modular exports** - separate entry points for each feature category
+- ✅ **ES2022 modules** - modern JavaScript with full tree-shaking support
+- ✅ **FESM bundles** - Flat ESM bundles for better optimization
+- ✅ **Individual entry points** for granular control:
+  - `ngx-signal-plus/core` - Core signal creation
+  - `ngx-signal-plus/operators` - Signal operators
+  - `ngx-signal-plus/utils` - Utilities and validators
+  - `ngx-signal-plus/models` - TypeScript types
+
+### Best Practices for Minimal Bundle
+
+**1. Import only what you need:**
+```typescript
+// ✅ Good - imports only used features
+import { sp, spCounter } from 'ngx-signal-plus';
+
+// ❌ Avoid - imports everything even if unused
+import * as SignalPlus from 'ngx-signal-plus';
+```
+
+**2. Use named imports:**
+```typescript
+// ✅ Good - tree-shaking can remove unused exports
+import { sp, spMap } from 'ngx-signal-plus';
+
+// ❌ Less optimal - may import more than needed
+import SignalPlus from 'ngx-signal-plus';
+```
+
+**3. Import from specific entry points:**
+```typescript
+// ✅ Good - direct import from feature module
+import { spMap, spFilter } from 'ngx-signal-plus/operators';
+
+// ✅ Also good - barrel export handles tree-shaking
+import { spMap, spFilter } from 'ngx-signal-plus';
+```
+
+### Typical Bundle Sizes
+
+| Feature Set | Size (gzipped) | Savings vs Full |
+|-------------|---|---|
+| Just `sp()` | ~1.5 KB | -87% |
+| Core signals | ~3 KB | -62% |
+| + Operators | ~5 KB | -38% |
+| + All utilities | ~8 KB | 0% |
+
+### Performance Impact
+
+- **Tree-shaking enabled**: Webpack, Vite, Rollup automatically remove unused code
+- **No performance penalty**: Modern bundlers handle optimization automatically
+- **Zero runtime overhead**: Only loaded features are included
+
 ## Documentation
 
 For detailed documentation including all features, API reference, and examples, see our [API Documentation](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md).

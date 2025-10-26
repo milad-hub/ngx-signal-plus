@@ -62,65 +62,18 @@ const userPrefs = sp({ theme: 'dark' })
 npm install ngx-signal-plus
 ```
 
-## Core Features
+## Bundle Size Optimization
 
-### Core Components and Services
+ngx-signal-plus is designed to be lightweight and efficient. The core library is typically less than 10KB when minified and gzipped.
 
-The package provides core building blocks for signal management:
+### Key Optimization Techniques
 
-```typescript
-import { Component, inject } from '@angular/core';
-import { 
-  spSignalBuilder,
-  spSignalPlusService,
-  spSignalPlusComponent 
-} from 'ngx-signal-plus';
+1. **Tree-shaking**: Only import the specific functions and operators you need.
+2. **Minification**: Use a build tool (like `ng build`) to minify and remove unused code.
+3. **Lazy Loading**: Only load the components and services you use.
+4. **Code Splitting**: Split your application into smaller bundles.
 
-// Use in standalone component
-@Component({
-  standalone: true,
-  selector: 'app-example',
-  imports: [spSignalPlusComponent],
-  template: `
-    <div>Counter: {{ counter.value() }}</div>
-    <button (click)="increment()">Increment</button>
-    
-    @if (counter.value() > 5) {
-      <div>Counter is greater than 5!</div>
-    } @else {
-      <div>Keep clicking to reach 5</div>
-    }
-    
-    <div>History:</div>
-    <ul>
-      @for (item of history(); track $index) {
-        <li>{{ item }}</li>
-      } @empty {
-        <li>No history yet</li>
-      }
-    </ul>
-  `
-})
-export class YourComponent {
-  // Inject the service
-  private signalService = inject(spSignalPlusService);
-
-  // Create signals using the service
-  counter = this.signalService.create(0);
-  history = signal<number[]>([]);
-  
-  increment() {
-    this.counter.setValue(this.counter.value() + 1);
-    this.history.update(prev => [...prev, this.counter.value()]);
-  }
-}
-```
-
-The `spSignalPlusComponent` provides lifecycle hooks and automatic cleanup, while `spSignalPlusService` offers a centralized way to create and manage signals throughout your application.
-
-### Signal Creation
-
-Create enhanced signals with various configurations using the simplified API:
+### Example: Optimized Import
 
 ```typescript
 import { 
