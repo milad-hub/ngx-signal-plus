@@ -481,7 +481,7 @@ export function asyncSignal<T>() {
     error: computed(() => error()),
     loading: computed(() => loading()),
 
-    async execute(promise: Promise<T>) {
+    async execute(promise: Promise<T>): Promise<void> {
       try {
         loading.set(true);
         error.set(null);
