@@ -28,6 +28,7 @@
 
 import { SignalBuilder } from '../core/signal-builder';
 import { FormNumberOptions, FormTextOptions } from '../models/form.model';
+import { safeLocalStorageSet } from './platform';
 
 /**
  * Creates a new SignalBuilder for configuring enhanced signals
@@ -333,23 +334,16 @@ export const spToggle = (initial = false, key?: string) => {
     // Enable persistence if key is provided
     if (key) {
         signal.persist(key);
-        // Store initial value
-        try {
-            localStorage.setItem(key, JSON.stringify({ value: initial }));
-        } catch (error) {
-            // Ignore storage errors
-        }
+        // Store initial value using SSR-safe wrapper
+        safeLocalStorageSet(key, JSON.stringify({ value: initial }));
 
         // Override updateValue to store in correct format
         const instance = signal.build();
         const originalSetValue = instance.setValue;
         instance.setValue = (value: boolean) => {
             originalSetValue(value);
-            try {
-                localStorage.setItem(key, JSON.stringify({ value }));
-            } catch (error) {
-                // Ignore storage errors
-            }
+            // Use SSR-safe wrapper for storage
+            safeLocalStorageSet(key, JSON.stringify({ value }));
         };
         return instance;
     }
