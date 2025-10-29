@@ -104,6 +104,11 @@ export function combineLatest<T>(signals: Signal<T>[]): Signal<T[]> {
  * ```
  */
 export function merge<T>(...signals: Signal<T>[]): Signal<T> {
+  // Handle empty array case
+  if (signals.length === 0) {
+    return signal<T>(undefined as T);
+  }
+
   const output: WritableSignal<T> = signal<T>(signals[0]());
 
   if (typeof window !== 'undefined') {
