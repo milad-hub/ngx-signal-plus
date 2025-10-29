@@ -208,6 +208,13 @@ describe('Signal Operators', () => {
         expect(merged()).toBe(1);
       });
     });
+
+    it('should handle empty array gracefully', () => {
+      runTest(() => {
+        const merged: Signal<number> = merge();
+        expect(merged()).toBeUndefined();
+      });
+    });
   });
 
   describe('combineLatest', () => {
