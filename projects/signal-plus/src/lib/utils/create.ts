@@ -28,6 +28,7 @@
 
 import { SignalBuilder } from '../core/signal-builder';
 import { FormNumberOptions, FormTextOptions } from '../models/form.model';
+import { SignalPlus } from '../models/signal-plus.model';
 import { safeLocalStorageSet } from './platform';
 
 /**
@@ -349,4 +350,35 @@ export const spToggle = (initial = false, key?: string) => {
     }
 
     return signal.build();
-}; 
+};
+
+/**
+ * Creates a simple toggle signal with validation
+ * 
+ * @typeParam T - The type of value (should be boolean)
+ * @param initial - The initial value (must be boolean for spToggle)
+ * @param key - Optional storage key for persistence
+ * @returns A SignalPlus instance configured for toggle operations
+ * @throws {TypeError} If initial value is not a boolean
+ * 
+ * @remarks
+ * This is a convenience wrapper for spToggle that validates the input type.
+ * It ensures type safety by throwing an error if a non-boolean value is provided.
+ * 
+ * @example Valid Usage
+ * ```typescript
+ * const darkMode = createSimple(true, 'dark-mode');
+ * darkMode.setValue(false);
+ * ```
+ * 
+ * @example Invalid Usage (throws error)
+ * ```typescript
+ * const invalid = createSimple('not a boolean'); // ❌ Throws TypeError
+ * ```
+ */
+export function createSimple<T>(initial: T, key?: string): SignalPlus<boolean> {
+    if (typeof initial !== 'boolean') {
+        throw new TypeError(`createSimple: initial value must be boolean, got ${typeof initial}`);
+    }
+    return spToggle(initial, key);
+} 

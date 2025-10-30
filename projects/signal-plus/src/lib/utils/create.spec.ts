@@ -1,6 +1,6 @@
 import { fakeAsync, tick } from '@angular/core/testing';
 import { SignalPlus } from '../models';
-import { sp, spCounter, spForm, spToggle } from './create';
+import { sp, spCounter, spForm, spToggle, createSimple } from './create';
 
 describe('Signal Creation Utils', () => {
     let originalLocalStorage: Storage;
@@ -193,6 +193,77 @@ describe('Signal Creation Utils', () => {
             const storedValue = JSON.parse(localStorage.getItem(key) || '0');
             expect(storedValue).toBe(2);
         }));
+    });
+
+    describe('createSimple', () => {
+        it('should create toggle signal with boolean value', () => {
+            const toggle: SignalPlus<boolean> = createSimple(true);
+            expect(toggle.value).toBe(true);
+            toggle.setValue(false);
+            expect(toggle.value).toBe(false);
+        });
+
+        it('should create toggle signal with boolean false', () => {
+            const toggle: SignalPlus<boolean> = createSimple(false);
+            expect(toggle.value).toBe(false);
+            toggle.setValue(true);
+            expect(toggle.value).toBe(true);
+        });
+
+        it('should support persistence with key', fakeAsync(() => {
+            const toggle: SignalPlus<boolean> = createSimple(false, 'test-create-simple');
+            expect(toggle.value).toBe(false);
+            toggle.setValue(true);
+            tick();
+            const storedData: SignalPlus<boolean> = JSON.parse(localStorage.getItem('test-create-simple') || '{"value":false}');
+            expect(storedData.value).toBe(true);
+            expect(toggle.value).toBe(true);
+        }));
+
+        it('should throw TypeError for non-boolean string', () => {
+            expect(() => createSimple('not a boolean' as any)).toThrowError(TypeError);
+            expect(() => createSimple('not a boolean' as any)).toThrowError(/createSimple: initial value must be boolean, got string/);
+        });
+
+        it('should throw TypeError for non-boolean number', () => {
+            expect(() => createSimple(0 as any)).toThrowError(TypeError);
+            expect(() => createSimple(0 as any)).toThrowError(/createSimple: initial value must be boolean, got number/);
+        });
+
+        it('should throw TypeError for null', () => {
+            expect(() => createSimple(null as any)).toThrowError(TypeError);
+            expect(() => createSimple(null as any)).toThrowError(/createSimple: initial value must be boolean, got object/);
+        });
+
+        it('should throw TypeError for undefined', () => {
+            expect(() => createSimple(undefined as any)).toThrowError(TypeError);
+            expect(() => createSimple(undefined as any)).toThrowError(/createSimple: initial value must be boolean, got undefined/);
+        });
+
+        it('should throw TypeError for array', () => {
+            expect(() => createSimple([] as any)).toThrowError(TypeError);
+            expect(() => createSimple([] as any)).toThrowError(/createSimple: initial value must be boolean, got object/);
+        });
+
+        it('should throw TypeError for object', () => {
+            expect(() => createSimple({} as any)).toThrowError(TypeError);
+            expect(() => createSimple({} as any)).toThrowError(/createSimple: initial value must be boolean, got object/);
+        });
+
+        it('should work without persistence key', () => {
+            const toggle: SignalPlus<boolean> = createSimple(true);
+            toggle.setValue(false);
+            expect(toggle.value).toBe(false);
+            expect(localStorage.getItem('test-create-simple')).toBeNull();
+        });
+
+        it('should support history like spToggle', () => {
+            const toggle: SignalPlus<boolean> = createSimple(false);
+            toggle.setValue(true);
+            toggle.setValue(false);
+            toggle.undo();
+            expect(toggle.value).toBe(true);
+        });
     });
 
     describe('spForm', () => {
