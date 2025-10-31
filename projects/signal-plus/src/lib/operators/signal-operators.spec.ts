@@ -276,6 +276,37 @@ describe('Signal Operators', () => {
         expect(delayed()).toBe(1);
       });
     }));
+
+    it('should cancel previous timeout on rapid changes', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number> = signal(0);
+        const delayed: Signal<unknown> = delay(100)(source);
+        source.set(1);
+        tick(50);
+        source.set(2);
+        tick(50);
+        source.set(3);
+        expect(delayed()).toBe(0);
+        tick(100);
+        expect(delayed()).toBe(3);
+      });
+    }));
+
+    it('should handle multiple delayed emissions', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number> = signal(0);
+        const delayed: Signal<unknown> = delay(100)(source);
+        source.set(1);
+        tick(100);
+        expect(delayed()).toBe(1);
+        source.set(2);
+        tick(100);
+        expect(delayed()).toBe(2);
+        source.set(3);
+        tick(100);
+        expect(delayed()).toBe(3);
+      });
+    }));
   });
 
   describe('Edge Cases', () => {
