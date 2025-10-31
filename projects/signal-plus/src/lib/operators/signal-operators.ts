@@ -144,11 +144,21 @@ export function merge<T>(...signals: Signal<T>[]): Signal<T> {
 export function delay<T>(time: number): SignalOperator<T, T> {
   return (input: Signal<T>) => {
     const output: WritableSignal<T> = signal<T>(input());
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
         const value: T = input();
-        setTimeout(() => output.set(value), time);
+        
+        // Clear previous timeout to prevent memory leak
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+        
+        timeoutId = setTimeout(() => {
+          output.set(value);
+          timeoutId = null;
+        }, time);
       });
     });
 
