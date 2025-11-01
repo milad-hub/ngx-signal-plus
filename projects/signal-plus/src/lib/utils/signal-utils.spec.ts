@@ -444,6 +444,42 @@ describe('Signal Utils', () => {
       tick(100);
       expect(signal.value()).toBe('test');
     }));
+
+    it('should cancel pending timeout when cancel() is called', fakeAsync(() => {
+      const signal = debouncedSignal('initial', 100);
+      signal.set('test1');
+      expect(signal.value()).toBe('initial');
+      signal.cancel();
+      tick(100);
+      expect(signal.value()).toBe('initial');
+    }));
+
+    it('should reset timeout to null after cancel', fakeAsync(() => {
+      const clearTimeoutSpy: jasmine.Spy = spyOn(window, 'clearTimeout').and.callThrough();
+      const signal = debouncedSignal('', 100);
+      signal.set('test1');
+      signal.cancel();
+      signal.cancel();
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    }));
+
+    it('should allow new updates after cancel', fakeAsync(() => {
+      const signal = debouncedSignal('initial', 100);
+      signal.set('test1');
+      signal.cancel();
+      signal.set('test2');
+      tick(100);
+      expect(signal.value()).toBe('test2');
+    }));
+
+    it('should properly type timeout variable', fakeAsync(() => {
+      const signal = debouncedSignal(0, 100);
+      signal.set(1);
+      expect(signal.value()).toBe(0);
+      tick(100);
+      expect(signal.value()).toBe(1);
+      signal.cancel();
+    }));
   });
 
   describe('throttledSignal - comprehensive', () => {
@@ -475,6 +511,37 @@ describe('Signal Utils', () => {
       jasmine.clock().mockDate(new Date(now + 100));
       signal.set(3);
       expect(signal.value()).toBe(3);
+    }));
+
+    it('should have cancel() method available', fakeAsync(() => {
+      const signal = throttledSignal(0, 100);
+      signal.set(1);
+      expect(signal.value()).toBe(1);
+      signal.cancel();
+      tick(100);
+      signal.set(2);
+      expect(signal.value()).toBe(2);
+    }));
+
+    it('should implement leading-only throttle (no trailing emission)', fakeAsync(() => {
+      const signal = throttledSignal(0, 100);
+      signal.set(1);
+      expect(signal.value()).toBe(1);
+      tick(50);
+      signal.set(2);
+      signal.set(3);
+      expect(signal.value()).toBe(1);
+      tick(50);
+      signal.set(4);
+      expect(signal.value()).toBe(4);
+    }));
+
+    it('should safely handle multiple cancel calls', fakeAsync(() => {
+      const signal = throttledSignal(0, 100);
+      signal.cancel();
+      signal.cancel();
+      signal.set(1);
+      expect(signal.value()).toBe(1);
     }));
   });
 

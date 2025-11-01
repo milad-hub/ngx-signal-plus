@@ -238,15 +238,24 @@ export function validatedSignal<T>(
  */
 export function debouncedSignal<T>(initialValue: T, delay: number) {
   const value: WritableSignal<T> = signal<T>(initialValue);
-  let timeout: ReturnType<typeof setTimeout>;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
 
   return {
     value: computed(() => value()),
     set: (newValue: T) => {
-      clearTimeout(timeout);
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
       timeout = setTimeout(() => {
         value.set(newValue);
+        timeout = null;
       }, delay);
+    },
+    cancel: () => {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
     }
   };
 }
@@ -261,10 +270,10 @@ export function debouncedSignal<T>(initialValue: T, delay: number) {
  * 
  * @remarks
  * Controls update frequency by:
- * - Limiting update rate
+ * - Limiting update rate (leading-only throttle)
  * - Maintaining latest value
  * - Managing update timing
- * - Cleaning up intervals
+ * - No trailing emission (last value during throttle window is dropped)
  * 
  * Use this when you need:
  * - Scroll handlers
@@ -295,6 +304,8 @@ export function debouncedSignal<T>(initialValue: T, delay: number) {
 export function throttledSignal<T>(initialValue: T, delay: number) {
   const value: WritableSignal<T> = signal<T>(initialValue);
   let lastRun: number = 0;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let pending: T | null = null;
 
   return {
     value: computed(() => value()),
@@ -303,6 +314,13 @@ export function throttledSignal<T>(initialValue: T, delay: number) {
       if (now - lastRun >= delay) {
         value.set(newValue);
         lastRun = now;
+      }
+    },
+    cancel: () => {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+        timeout = null;
+        pending = null;
       }
     }
   };

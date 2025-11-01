@@ -125,6 +125,40 @@ describe('Signal Operators', () => {
         expect(debounced()).toBe(3);
       });
     }));
+
+    it('should properly type timeoutId as ReturnType<typeof setTimeout> | null', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number> = signal(0);
+        const debounced: Signal<unknown> = debounceTime(100)(source);
+        source.set(1);
+        tick(100);
+        expect(debounced()).toBe(1);
+      });
+    }));
+
+    it('should reset timeoutId to null after firing', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number> = signal(0);
+        const debounced: Signal<unknown> = debounceTime(100)(source);
+        source.set(1);
+        tick(100);
+        expect(debounced()).toBe(1);
+        source.set(2);
+        tick(100);
+        expect(debounced()).toBe(2);
+      });
+    }));
+
+    it('should clear timeout when debouncing multiple values', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number> = signal(0);
+        const debounced: Signal<unknown> = debounceTime(100)(source);
+        source.set(1);
+        source.set(2);
+        tick(100);
+        expect(debounced()).toBe(2);
+      });
+    }));
   });
 
   describe('distinctUntilChanged', () => {
@@ -261,6 +295,52 @@ describe('Signal Operators', () => {
         tick(100);
         source.set(3);
         expect(throttled()).toBe(2);
+      });
+    }));
+
+    it('should implement leading-only throttle behavior', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number> = signal(0);
+        const throttled: Signal<unknown> = throttleTime(100)(source);
+        expect(throttled()).toBe(0);
+        source.set(1);
+        tick(1);
+        expect(throttled()).toBe(1);
+        tick(49);
+        source.set(2);
+        source.set(3);
+        tick(1);
+        expect(throttled()).toBe(1);
+        tick(50);
+        source.set(4);
+        tick(1);
+        expect(throttled()).toBe(4);
+      });
+    }));
+
+    it('should cleanup lastRun on DestroyRef.onDestroy', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number> = signal(0);
+        const throttled: Signal<unknown> = throttleTime(100)(source);
+        source.set(1);
+        tick(100);
+        source.set(2);
+        expect(throttled()).toBe(1);
+      });
+    }));
+
+    it('should not have trailing emission', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number> = signal(0);
+        const throttled: Signal<unknown> = throttleTime(100)(source);
+        source.set(1);
+        tick(1);
+        expect(throttled()).toBe(1);
+        tick(49);
+        source.set(2);
+        source.set(3);
+        tick(50);
+        expect(throttled()).toBe(1);
       });
     }));
   });

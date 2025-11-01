@@ -172,9 +172,10 @@ export function delay<T>(time: number): SignalOperator<T, T> {
  * @returns Operator that throttles emissions
  * 
  * @remarks
- * - Emits first value immediately
- * - Ignores values during throttle period
+ * - Emits first value immediately (leading-only throttle)
+ * - Ignores values during throttle period (no trailing emission)
  * - Resets timer on completion
+ * - Includes DestroyRef cleanup
  * 
  * @example
  * ```typescript
@@ -188,6 +189,7 @@ export function throttleTime<T>(time: number): SignalOperator<T, T> {
   return (input: Signal<T>) => {
     const output: WritableSignal<T> = signal<T>(input());
     let lastRun: number = 0;
+    const destroyRef: DestroyRef = inject(DestroyRef);
 
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
@@ -199,6 +201,11 @@ export function throttleTime<T>(time: number): SignalOperator<T, T> {
           lastRun = now;
         }
       });
+    });
+
+    // Cleanup on destroy (reset lastRun to prevent stale state)
+    destroyRef.onDestroy(() => {
+      lastRun = 0;
     });
 
     return output;
@@ -302,7 +309,7 @@ export function take<T>(count: number): SignalOperator<T> {
 export function debounceTime<T>(duration: number): SignalOperator<T> {
   return (source: Signal<T>) => {
     const output: WritableSignal<T> = signal<T>(source());
-    let timeoutId: any = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const injector: Injector = inject(Injector);
     const destroyRef: DestroyRef = inject(DestroyRef);
 
@@ -329,12 +336,14 @@ export function debounceTime<T>(duration: number): SignalOperator<T> {
             output.set(value);
             lastValue = value;
           });
+          timeoutId = null; // Reset after firing
         }, duration);
       });
 
       destroyRef.onDestroy(() => {
         if (timeoutId !== null) {
           clearTimeout(timeoutId);
+          timeoutId = null;
         }
       });
     });
