@@ -353,11 +353,13 @@ export function debounceTime<T>(duration: number): SignalOperator<T> {
 }
 
 /**
- * Filters out consecutive duplicate values
+ * Filters out consecutive duplicate values using deep comparison
  * @returns Operator that removes duplicates
  * 
  * @remarks
- * - Uses strict equality
+ * - Uses deep value comparison (JSON serialization)
+ * - Compares object/array contents, not just references
+ * - Falls back to string comparison for non-serializable values
  * - Maintains previous value
  * - Memory efficient
  * 
@@ -367,24 +369,41 @@ export function debounceTime<T>(duration: number): SignalOperator<T> {
  *   distinctUntilChanged(),
  *   filter(Boolean)
  * );
+ * 
+ * // Deep comparison for objects
+ * signal.set({ a: 1 }); // Emits
+ * signal.set({ a: 1 }); // Skipped (same value)
+ * signal.set({ a: 2 }); // Emits (different value)
  * ```
  */
 export function distinctUntilChanged<T>(): SignalOperator<T> {
   return (source: Signal<T>) => {
-    const distinct: WritableSignal<T> = signal<T>(source());
+    // Helper function for deep value comparison
+    const serializeValue = (value: T): string => {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        // Fallback for non-serializable values (functions, circular refs, etc.)
+        return String(value);
+      }
+    };
+    
     let lastValue: T = source();
+    let lastSerialized: string = serializeValue(lastValue);
 
-    runInInjectionContext(inject(Injector), () => {
-      effect(() => {
-        const value: T = source();
-        if (!Object.is(value, lastValue)) {
-          distinct.set(value);
-          lastValue = value;
-        }
-      });
+    // Use computed for synchronous updates
+    return computed(() => {
+      const value: T = source();
+      const serialized: string = serializeValue(value);
+      
+      // Compare serialized values for deep equality
+      if (serialized !== lastSerialized) {
+        lastValue = value;
+        lastSerialized = serialized;
+      }
+      
+      return lastValue;
     });
-
-    return distinct.asReadonly();
   };
 }
 
