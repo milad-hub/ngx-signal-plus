@@ -776,26 +776,64 @@ export class SignalBuilder<T> {
                 return result;
             },
             destroy: () => {
-                // Mark as cleaned up
-                isCleanedUp = true;
-
-                // Clear all subscribers
-                subscribers.clear();
-
-                // Cleanup storage event listener
-                if (storageListenerCleanup) {
-                    storageListenerCleanup();
-                    storageListenerCleanup = undefined;
+                const errors: Error[] = [];
+                
+                try {
+                    // Mark as cleaned up
+                    isCleanedUp = true;
+                } catch (error) {
+                    errors.push(new Error(`Failed to set cleanup flag: ${error}`));
                 }
 
-                // Clear any pending debounce timeout
-                if (debounceTimeout !== null) {
-                    safeClearTimeout(debounceTimeout);
-                    debounceTimeout = null;
+                try {
+                    // Clear all subscribers
+                    subscribers.clear();
+                } catch (error) {
+                    errors.push(new Error(`Failed to clear subscribers: ${error}`));
                 }
 
-                // Clear pending value
-                pendingValue = null;
+                try {
+                    // Cleanup storage event listener
+                    if (storageListenerCleanup) {
+                        storageListenerCleanup();
+                        storageListenerCleanup = undefined;
+                    }
+                } catch (error) {
+                    errors.push(new Error(`Failed to cleanup storage listener: ${error}`));
+                }
+
+                try {
+                    // Clear any pending debounce timeout
+                    if (debounceTimeout !== null) {
+                        safeClearTimeout(debounceTimeout);
+                        debounceTimeout = null;
+                    }
+                } catch (error) {
+                    errors.push(new Error(`Failed to clear debounce timeout: ${error}`));
+                }
+
+                try {
+                    // Clear pending value
+                    pendingValue = null;
+                } catch (error) {
+                    errors.push(new Error(`Failed to clear pending value: ${error}`));
+                }
+
+                // If any errors occurred during cleanup, log them (don't throw to ensure all cleanup steps run)
+                if (errors.length > 0) {
+                    console.error(`Signal cleanup encountered ${errors.length} error(s):`, errors);
+                    // Call custom error handlers if available
+                    if (this.options.errorHandlers && this.options.errorHandlers.length > 0) {
+                        const cleanupError = new Error(`Cleanup failed with ${errors.length} error(s): ${errors.map(e => e.message).join(', ')}`);
+                        this.options.errorHandlers.forEach(handler => {
+                            try {
+                                handler(cleanupError);
+                            } catch (handlerError) {
+                                console.error('Error handler itself failed during cleanup:', handlerError);
+                            }
+                        });
+                    }
+                }
             },
             _clearPendingOperations: () => {
                 // Clear any pending debounce timeout without destroying the signal

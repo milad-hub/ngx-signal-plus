@@ -169,20 +169,72 @@ describe('Signal Operators', () => {
         expect(distinct()).toBe(1);
         source.set(1);
         expect(distinct()).toBe(1);
-        source.set(1);
-        expect(distinct()).toBe(1);
+        source.set(2);
+        expect(distinct()).toBe(2);
       });
     });
 
-    it('should handle object references correctly', () => {
+    it('should use deep comparison for object values', () => {
       runTest(() => {
         const source: WritableSignal<{ id: number }> = signal({ id: 1 });
         const distinct: Signal<unknown> = distinctUntilChanged()(source);
         expect(distinct()).toEqual({ id: 1 });
         source.set({ id: 1 });
         expect(distinct()).toEqual({ id: 1 });
-        source.set({ id: 1 });
-        expect(distinct()).toEqual({ id: 1 });
+        source.set({ id: 2 });
+        expect(distinct()).toEqual({ id: 2 });
+      });
+    });
+
+    it('should use deep comparison for array values', () => {
+      runTest(() => {
+        const source: WritableSignal<number[]> = signal([1, 2, 3]);
+        const distinct: Signal<unknown> = distinctUntilChanged()(source);
+        expect(distinct()).toEqual([1, 2, 3]);
+        source.set([1, 2, 3]);
+        expect(distinct()).toEqual([1, 2, 3]);
+        source.set([1, 2, 4]);
+        expect(distinct()).toEqual([1, 2, 4]);
+      });
+    });
+
+    it('should use deep comparison for nested objects', () => {
+      runTest(() => {
+        const source: WritableSignal<{ user: { name: string } }> = signal({ user: { name: 'John' } });
+        const distinct: Signal<unknown> = distinctUntilChanged()(source);
+        expect(distinct()).toEqual({ user: { name: 'John' } });
+        source.set({ user: { name: 'John' } });
+        expect(distinct()).toEqual({ user: { name: 'John' } });
+        source.set({ user: { name: 'Jane' } });
+        expect(distinct()).toEqual({ user: { name: 'Jane' } });
+      });
+    });
+
+    it('should handle non-serializable values gracefully', () => {
+      runTest(() => {
+        const fn1 = () => 'test1';
+        const fn2 = () => 'test2';
+        const source: WritableSignal<() => string> = signal(fn1);
+        const distinct: Signal<unknown> = distinctUntilChanged()(source);
+        expect(typeof distinct()).toBe('function');
+        source.set(fn2);
+        expect(typeof distinct()).toBe('function');
+      });
+    });
+
+    it('should handle null and undefined correctly', () => {
+      runTest(() => {
+        const source: WritableSignal<any> = signal(null);
+        const distinct: Signal<unknown> = distinctUntilChanged()(source);
+        expect(distinct()).toBe(null);
+        source.set(null);
+        expect(distinct()).toBe(null);
+        source.set(undefined);
+        expect(distinct()).toBe(undefined);
+        source.set(undefined);
+        expect(distinct()).toBe(undefined);
+        source.set(null);
+        expect(distinct()).toBe(null);
       });
     });
   });
