@@ -117,9 +117,9 @@ describe('Signal Creation Utils', () => {
             expect(() => counter.setValue(11)).toThrow();
         });
 
-        it('should handle invalid option combinations', () => {
-            const counter: SignalPlus<number> = spCounter(0, { min: 10, max: 0 });
-            expect(() => counter.setValue(5)).toThrow();
+        it('should throw RangeError for invalid min > max combinations', () => {
+            expect(() => spCounter(0, { min: 10, max: 0 })).toThrowError(RangeError);
+            expect(() => spCounter(0, { min: 10, max: 0 })).toThrowError(/min \(10\) cannot be greater than max \(0\)/);
         });
     });
 
@@ -324,10 +324,14 @@ describe('Signal Creation Utils', () => {
                 expect(() => form.setValue('too long')).toThrow();
             });
 
-            it('should handle invalid length combinations', () => {
-                const form: SignalPlus<string> = spForm.text('', { minLength: 10, maxLength: 5 });
-                expect(() => form.setValue('short')).toThrow();
-                expect(() => form.setValue('too long value')).toThrow();
+            it('should throw RangeError for invalid minLength > maxLength combinations', () => {
+                expect(() => spForm.text('', { minLength: 10, maxLength: 5 })).toThrowError(RangeError);
+                expect(() => spForm.text('', { minLength: 10, maxLength: 5 })).toThrowError(/minLength \(10\) cannot be greater than maxLength \(5\)/);
+            });
+
+            it('should throw RangeError for negative debounce values', () => {
+                expect(() => spForm.text('', { debounce: -100 })).toThrowError(RangeError);
+                expect(() => spForm.text('', { debounce: -100 })).toThrowError(/debounce \(-100\) cannot be negative/);
             });
         });
 
@@ -406,6 +410,11 @@ describe('Signal Creation Utils', () => {
                 expect(form.value).toBe('test@example.com');
                 expect(form.isValid()).toBe(true);
             });
+
+            it('should throw RangeError for negative debounce values', () => {
+                expect(() => spForm.email('', { debounce: -200 })).toThrowError(RangeError);
+                expect(() => spForm.email('', { debounce: -200 })).toThrowError(/debounce \(-200\) cannot be negative/);
+            });
         });
 
         describe('number input', () => {
@@ -475,12 +484,14 @@ describe('Signal Creation Utils', () => {
                 expect(form.value).toBe(10);
             });
 
-            it('should handle invalid min/max combinations', () => {
-                const form: SignalPlus<number | null> = spForm.number({ min: 10, max: 0 });
-                try {
-                    form.setValue(5);
-                } catch (e) { }
-                expect(form.value).toBe(10);
+            it('should throw RangeError for invalid min > max combinations', () => {
+                expect(() => spForm.number({ min: 10, max: 0 })).toThrowError(RangeError);
+                expect(() => spForm.number({ min: 10, max: 0 })).toThrowError(/min \(10\) cannot be greater than max \(0\)/);
+            });
+
+            it('should throw RangeError for negative debounce values', () => {
+                expect(() => spForm.number({ debounce: -300 })).toThrowError(RangeError);
+                expect(() => spForm.number({ debounce: -300 })).toThrowError(/debounce \(-300\) cannot be negative/);
             });
 
             it('should handle transform edge cases', () => {
@@ -601,14 +612,14 @@ describe('Signal Creation Utils', () => {
             expect(() => sp(null as any)).not.toThrow();
         });
 
-        it('should handle invalid option combinations', () => {
-            const signal: SignalPlus<string> = spForm.text('', {
-                minLength: 10,
-                maxLength: 5,
-                debounce: -100
-            });
-            expect(signal.value).toBe('');
-            expect(() => signal.setValue('test')).toThrow();
+        it('should validate all option combinations at creation time', () => {
+            // These should all throw RangeError at creation time
+            expect(() => spForm.text('', { minLength: 10, maxLength: 5 })).toThrowError(RangeError);
+            expect(() => spForm.text('', { debounce: -100 })).toThrowError(RangeError);
+            expect(() => spForm.email('', { debounce: -200 })).toThrowError(RangeError);
+            expect(() => spForm.number({ min: 10, max: 0 })).toThrowError(RangeError);
+            expect(() => spForm.number({ debounce: -300 })).toThrowError(RangeError);
+            expect(() => spCounter(0, { min: 5, max: 2 })).toThrowError(RangeError);
         });
 
         it('should handle memory cleanup', () => {

@@ -120,12 +120,18 @@ export function sp<T>(initialValue: T): SignalBuilder<T> {
  * counter.redo(); // Forward to 30
  * ```
  */
-export const spCounter = (initial = 0, options?: Partial<{ max: number, min: number }>) =>
-    sp(initial)
+export const spCounter = (initial = 0, options?: Partial<{ max: number, min: number }>) => {
+    // Validate input options
+    if (options?.min !== undefined && options?.max !== undefined && options.min > options.max) {
+        throw new RangeError(`spCounter: min (${options.min}) cannot be greater than max (${options.max})`);
+    }
+
+    return sp(initial)
         .validate(n => options?.min === undefined || n >= options.min)
         .validate(n => options?.max === undefined || n <= options.max)
         .withHistory()
         .build();
+};
 
 /**
  * Collection of form input signal presets with built-in validation
@@ -174,6 +180,14 @@ export const spCounter = (initial = 0, options?: Partial<{ max: number, min: num
  */
 export const spForm = {
     text: (initial = '', options?: Partial<FormTextOptions>) => {
+        // Validate input options
+        if (options?.minLength !== undefined && options?.maxLength !== undefined && options.minLength > options.maxLength) {
+            throw new RangeError(`spForm.text: minLength (${options.minLength}) cannot be greater than maxLength (${options.maxLength})`);
+        }
+        if (options?.debounce !== undefined && options.debounce < 0) {
+            throw new RangeError(`spForm.text: debounce (${options.debounce}) cannot be negative`);
+        }
+
         const signal = sp(initial);
         signal.transform(v => v === undefined || v === null ? '' : String(v));
 
@@ -189,6 +203,11 @@ export const spForm = {
     },
 
     email: (initial = '', options?: Pick<FormTextOptions, 'debounce'>) => {
+        // Validate input options
+        if (options?.debounce !== undefined && options.debounce < 0) {
+            throw new RangeError(`spForm.email: debounce (${options.debounce}) cannot be negative`);
+        }
+
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         let lastValidValue = initial;
 
@@ -228,12 +247,18 @@ export const spForm = {
     },
 
     number: (options?: Partial<FormNumberOptions>) => {
-        // Handle invalid min/max combinations
+        // Validate input options
+        if (options?.min !== undefined && options?.max !== undefined && options.min > options.max) {
+            throw new RangeError(`spForm.number: min (${options.min}) cannot be greater than max (${options.max})`);
+        }
+        if (options?.debounce !== undefined && options.debounce < 0) {
+            throw new RangeError(`spForm.number: debounce (${options.debounce}) cannot be negative`);
+        }
+
         const effectiveMin = options?.min;
         const effectiveMax = options?.max;
         const init = options?.initial ?? 0;
 
-        // If min > max, use min as the constraint
         const getValidValue = (value: number): number => {
             if (effectiveMin !== undefined && value < effectiveMin) return effectiveMin;
             if (effectiveMax !== undefined && value > effectiveMax) return effectiveMax;
