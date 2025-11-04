@@ -897,14 +897,32 @@ export class SignalBuilder<T> {
      * @param error The error to handle
      */
     private handleError(error: Error): void {
-        if (this.options.errorHandlers) {
-            this.options.errorHandlers.forEach(handler => {
+        if (this.options.errorHandlers && this.options.errorHandlers.length > 0) {
+            const handlerFailures: Error[] = [];
+
+            this.options.errorHandlers.forEach((handler, index) => {
                 try {
                     handler(error);
-                } catch (e) {
-                    console.error('Error in error handler:', e);
+                } catch (handlerError) {
+                    // Collect handler failures for comprehensive reporting
+                    const handlerFailure = new Error(`Error handler #${index + 1} failed: ${handlerError instanceof Error ? handlerError.message : String(handlerError)}`);
+                    handlerFailure.cause = handlerError;
+                    handlerFailures.push(handlerFailure);
+
+                    // Log individual handler failure with context
+                    console.error(`Error handler #${index + 1} failed while processing error "${error.message}":`, handlerError);
                 }
             });
+
+            // If any handlers failed, provide comprehensive summary
+            if (handlerFailures.length > 0) {
+                console.error(`⚠️ ${handlerFailures.length} of ${this.options.errorHandlers.length} error handler(s) failed. Original error: "${error.message}"`);
+
+                // In development, re-throw the first handler failure to make it more visible
+                if (typeof process !== 'undefined' && process.env && process.env['NODE_ENV'] === 'development') {
+                    throw handlerFailures[0];
+                }
+            }
         }
     }
 } 
