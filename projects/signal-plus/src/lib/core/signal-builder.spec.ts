@@ -1627,7 +1627,90 @@ describe('SignalBuilder', () => {
             expect(secondHandler).toHaveBeenCalled();
             expect(secondHandler.calls.first().args[0].message).toBe('Validation error');
             expect(signal.value).toBe(0);
-            expect(consoleSpy).toHaveBeenCalledWith('Error in error handler:', jasmine.any(Error));
+            expect(consoleSpy).toHaveBeenCalledWith('Error handler #1 failed while processing error "Validation error":', jasmine.any(Error));
+            expect(consoleSpy).toHaveBeenCalledWith('⚠️ 1 of 2 error handler(s) failed. Original error: "Validation error"');
+        });
+
+        it('should provide detailed error reporting for handler failures', () => {
+            const consoleErrorSpy: jasmine.Spy = spyOn(console, 'error');
+            const failingHandler = jasmine.createSpy('failingHandler').and.throwError(new Error('Handler failed'));
+            const workingHandler = jasmine.createSpy('workingHandler');
+            const signal: SignalPlus<number> = new SignalBuilder<number>(0)
+                .onError(failingHandler)
+                .onError(workingHandler)
+                .validate(x => {
+                    throw new Error('Validation failed');
+                })
+                .build();
+
+            try {
+                signal.setValue(1);
+            } catch (e) { }
+            expect(failingHandler).toHaveBeenCalled();
+            expect(workingHandler).toHaveBeenCalled();
+            expect(consoleErrorSpy).toHaveBeenCalledWith('Error handler #1 failed while processing error "Validation failed":', jasmine.any(Error));
+            expect(consoleErrorSpy).toHaveBeenCalledWith('⚠️ 1 of 2 error handler(s) failed. Original error: "Validation failed"');
+        });
+
+        it('should handle multiple failing handlers with comprehensive reporting', () => {
+            const consoleErrorSpy: jasmine.Spy = spyOn(console, 'error');
+            const handler1 = jasmine.createSpy('handler1').and.throwError(new Error('Handler 1 failed'));
+            const handler2 = jasmine.createSpy('handler2').and.throwError(new Error('Handler 2 failed'));
+            const handler3 = jasmine.createSpy('handler3'); // Working handler
+            const signal: SignalPlus<number> = new SignalBuilder<number>(0)
+                .onError(handler1)
+                .onError(handler2)
+                .onError(handler3)
+                .validate(x => {
+                    throw new Error('Validation error');
+                })
+                .build();
+
+            try {
+                signal.setValue(1);
+            } catch (e) { }
+            expect(handler1).toHaveBeenCalled();
+            expect(handler2).toHaveBeenCalled();
+            expect(handler3).toHaveBeenCalled();
+            expect(consoleErrorSpy).toHaveBeenCalledWith('Error handler #1 failed while processing error "Validation error":', jasmine.any(Error));
+            expect(consoleErrorSpy).toHaveBeenCalledWith('Error handler #2 failed while processing error "Validation error":', jasmine.any(Error));
+            expect(consoleErrorSpy).toHaveBeenCalledWith('⚠️ 2 of 3 error handler(s) failed. Original error: "Validation error"');
+        });
+
+        it('should continue normally when all handlers work', () => {
+            const consoleErrorSpy: jasmine.Spy = spyOn(console, 'error');
+            const handler1 = jasmine.createSpy('handler1');
+            const handler2 = jasmine.createSpy('handler2');
+            const signal: SignalPlus<number> = new SignalBuilder<number>(0)
+                .onError(handler1)
+                .onError(handler2)
+                .validate(x => {
+                    throw new Error('Validation error');
+                })
+                .build();
+            try {
+                signal.setValue(1);
+            } catch (e) { }
+            expect(handler1).toHaveBeenCalled();
+            expect(handler2).toHaveBeenCalled();
+            expect(consoleErrorSpy).not.toHaveBeenCalled();
+        });
+
+        it('should handle non-Error objects thrown by handlers', () => {
+            const consoleErrorSpy: jasmine.Spy = spyOn(console, 'error');
+            const failingHandler = jasmine.createSpy('failingHandler').and.callFake(() => {
+                throw 'String error';
+            });
+            const signal: SignalPlus<number> = new SignalBuilder<number>(0)
+                .onError(failingHandler)
+                .validate(x => {
+                    throw new Error('Validation failed');
+                })
+                .build();
+            try {
+                signal.setValue(1);
+            } catch (e) { }
+            expect(consoleErrorSpy).toHaveBeenCalledWith('Error handler #1 failed while processing error "Validation failed":', 'String error');
         });
     });
 
