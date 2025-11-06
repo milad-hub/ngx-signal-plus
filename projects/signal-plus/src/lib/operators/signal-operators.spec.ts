@@ -78,7 +78,7 @@ describe('Signal Operators', () => {
         source.set(1);
         expect(nonNull()).toBe(1);
         source.set(null);
-        expect(nonNull()).toBe(1);
+        expect(nonNull()).toBe(null);
       });
     });
 
@@ -1137,6 +1137,163 @@ describe('Signal Operators', () => {
         expect(merged()).toBe(0);
         source.set(1);
         expect(merged()).toBe(0);
+      });
+    });
+  });
+
+  describe('null/undefined propagation consistency', () => {
+    it('should propagate null values through map operator', () => {
+      runTest(() => {
+        const source: WritableSignal<number | null> = signal<number | null>(1);
+        const mapped: Signal<string | null> = map((x: number | null) => x === null ? null : String(x))(source);
+        expect(mapped()).toBe('1');
+        source.set(null);
+        expect(mapped()).toBe(null);
+        source.set(5);
+        expect(mapped()).toBe('5');
+      });
+    });
+
+    it('should propagate undefined values through map operator', () => {
+      runTest(() => {
+        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
+        const mapped: Signal<string | undefined> = map((x: number | undefined) => x === undefined ? undefined : String(x))(source);
+        expect(mapped()).toBe('1');
+        source.set(undefined);
+        expect(mapped()).toBe(undefined);
+        source.set(5);
+        expect(mapped()).toBe('5');
+      });
+    });
+
+    it('should propagate null values through filter operator', () => {
+      runTest(() => {
+        const source: WritableSignal<number | null> = signal<number | null>(1);
+        const filtered: Signal<number | null> = filter((x: number | null) => x !== null && x > 0)(source);
+        expect(filtered()).toBe(1);
+        source.set(null);
+        expect(filtered()).toBe(null);
+        source.set(5);
+        expect(filtered()).toBe(5);
+        source.set(-1);
+        expect(filtered()).toBe(5);
+      });
+    });
+
+    it('should propagate undefined values through filter operator', () => {
+      runTest(() => {
+        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
+        const filtered: Signal<number | undefined> = filter((x: number | undefined) => x !== undefined && x > 0)(source);
+        expect(filtered()).toBe(1);
+        source.set(undefined);
+        expect(filtered()).toBe(undefined);
+        source.set(5);
+        expect(filtered()).toBe(5);
+      });
+    });
+
+    it('should propagate null values through combineLatest', () => {
+      runTest(() => {
+        const sig1: WritableSignal<number | null> = signal<number | null>(1);
+        const sig2: WritableSignal<number | null> = signal<number | null>(2);
+        const combined: Signal<(number | null)[]> = combineLatest([sig1, sig2]);
+        expect(combined()).toEqual([1, 2]);
+        sig1.set(null);
+        expect(combined()).toEqual([null, 2]);
+        sig2.set(null);
+        expect(combined()).toEqual([null, null]);
+      });
+    });
+
+    it('should propagate undefined values through combineLatest', () => {
+      runTest(() => {
+        const sig1: WritableSignal<number | undefined> = signal<number | undefined>(1);
+        const sig2: WritableSignal<number | undefined> = signal<number | undefined>(2);
+        const combined: Signal<(number | undefined)[]> = combineLatest([sig1, sig2]);
+        expect(combined()).toEqual([1, 2]);
+        sig1.set(undefined);
+        expect(combined()).toEqual([undefined, 2]);
+      });
+    });
+
+    it('should propagate null values through distinctUntilChanged', () => {
+      runTest(() => {
+        const source: WritableSignal<number | null> = signal<number | null>(1);
+        const distinct: Signal<number | null> = distinctUntilChanged()(source) as Signal<number | null>;
+        expect(distinct()).toBe(1);
+        source.set(1);
+        expect(distinct()).toBe(1);
+        source.set(null);
+        expect(distinct()).toBe(null);
+        source.set(null);
+        expect(distinct()).toBe(null);
+        source.set(2);
+        expect(distinct()).toBe(2);
+      });
+    });
+
+    it('should propagate undefined values through distinctUntilChanged', () => {
+      runTest(() => {
+        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
+        const distinct: Signal<number | undefined> = distinctUntilChanged()(source) as Signal<number | undefined>;
+        expect(distinct()).toBe(1);
+        source.set(undefined);
+        expect(distinct()).toBe(undefined);
+        source.set(undefined);
+        expect(distinct()).toBe(undefined);
+      });
+    });
+
+    it('should propagate null values through delay operator', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number | null> = signal<number | null>(1);
+        const delayed: Signal<number | null> = delay(100)(source) as Signal<number | null>;
+        expect(delayed()).toBe(1);
+        source.set(null);
+        expect(delayed()).toBe(1);
+        tick(100);
+        expect(delayed()).toBe(null);
+      });
+    }));
+
+    it('should propagate undefined values through delay operator', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
+        const delayed: Signal<number | undefined> = delay(100)(source) as Signal<number | undefined>;
+        expect(delayed()).toBe(1);
+        source.set(undefined);
+        tick(100);
+        expect(delayed()).toBe(undefined);
+      });
+    }));
+
+    it('should propagate null values through debounceTime operator', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number | null> = signal<number | null>(1);
+        const debounced: Signal<number | null> = debounceTime(100)(source) as Signal<number | null>;
+        expect(debounced()).toBe(1);
+        source.set(null);
+        expect(debounced()).toBe(1);
+        tick(100);
+        expect(debounced()).toBe(null);
+      });
+    }));
+
+    it('should propagate undefined values through debounceTime operator', fakeAsync(() => {
+      runTest(() => {
+        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
+        const debounced: Signal<number | undefined> = debounceTime(100)(source) as Signal<number | undefined>;
+        expect(debounced()).toBe(1);
+        source.set(undefined);
+        tick(100);
+        expect(debounced()).toBe(undefined);
+      });
+    }));
+
+    it('should handle empty merge consistently', () => {
+      runTest(() => {
+        const emptyMerge: Signal<never> = merge();
+        expect(emptyMerge()).toBeUndefined();
       });
     });
   });
