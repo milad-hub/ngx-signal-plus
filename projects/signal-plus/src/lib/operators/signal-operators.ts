@@ -104,18 +104,22 @@ export function combineLatest<T>(signals: Signal<T>[]): Signal<T[]> {
  * ```
  */
 export function merge<T>(...signals: Signal<T>[]): Signal<T> {
-  // Handle empty array case
   if (signals.length === 0) {
     return signal<T>(undefined as T);
   }
 
-  const output: WritableSignal<T> = signal<T>(signals[0]());
+  const lastChangedIndex = signal<number>(0);
+  const output = signal<T>(signals[0]());
 
   if (typeof window !== 'undefined') {
     const injector = inject(Injector);
     runInInjectionContext(injector, () => {
-      signals.forEach(s => {
-        effect(() => output.set(s()));
+      signals.forEach((s, index) => {
+        effect(() => {
+          const value: T = s();
+          lastChangedIndex.set(index);
+          output.set(value);
+        });
       });
     });
   }
@@ -471,6 +475,9 @@ export function filter<T>(predicateFn: (value: T) => boolean): SignalOperator<T>
     return computed(() => {
       try {
         const value: T = input();
+        if (value === null || value === undefined) {
+          return value;
+        }
         if (predicateFn(value)) {
           lastValidValue = value;
           return value;
