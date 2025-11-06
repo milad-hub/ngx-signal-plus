@@ -1,4 +1,4 @@
-import { Signal, WritableSignal, computed, signal } from '@angular/core';
+import { Signal, WritableSignal, computed, isDevMode, signal } from '@angular/core';
 import { BuilderOptions, ErrorHandler, SignalPlus, Transform, Validator } from '../models/signal-plus.model';
 import {
     isBrowser,
@@ -266,7 +266,7 @@ export class SignalBuilder<T> {
                 if (error instanceof TypeError && error.message.includes('circular')) {
                     return safeStringify(data);
                 }
-                
+
                 if (fallbackData !== undefined) {
                     try {
                         return JSON.stringify(fallbackData);
@@ -277,7 +277,7 @@ export class SignalBuilder<T> {
                         throw fallbackError;
                     }
                 }
-                
+
                 throw error;
             }
         };
@@ -449,7 +449,7 @@ export class SignalBuilder<T> {
                         const currentValueStr: string = JSON.stringify(writable());
                         const newValueStr: string = JSON.stringify(transformedValue);
                         hasChanged = currentValueStr !== newValueStr;
-                        
+
                         if (!hasChanged) {
                             return;
                         }
@@ -482,7 +482,7 @@ export class SignalBuilder<T> {
                             const dataToStore: T | { value: T; history: T[] } = shouldStoreHistory
                                 ? { value: transformedValue, history: history() }
                                 : transformedValue;
-                            
+
                             const serialized = serializeWithCircularCheck(dataToStore, transformedValue);
                             safeLocalStorageSet(this.options.storageKey, serialized);
                         } catch (error) {
@@ -609,7 +609,7 @@ export class SignalBuilder<T> {
                                 const dataToStore: T | { value: T; history: T[] } = shouldStoreHistory
                                     ? { value: transformedValue, history: [transformedValue] }
                                     : transformedValue;
-                                
+
                                 const serialized = serializeWithCircularCheck(dataToStore, transformedValue);
                                 safeLocalStorageSet(this.options.storageKey, serialized);
                             } catch (error) {
@@ -777,7 +777,7 @@ export class SignalBuilder<T> {
             },
             destroy: () => {
                 const errors: Error[] = [];
-                
+
                 try {
                     // Mark as cleaned up
                     isCleanedUp = true;
@@ -919,7 +919,7 @@ export class SignalBuilder<T> {
                 console.error(`⚠️ ${handlerFailures.length} of ${this.options.errorHandlers.length} error handler(s) failed. Original error: "${error.message}"`);
 
                 // In development, re-throw the first handler failure to make it more visible
-                if (typeof process !== 'undefined' && process.env && process.env['NODE_ENV'] === 'development') {
+                if (isDevMode()) {
                     throw handlerFailures[0];
                 }
             }

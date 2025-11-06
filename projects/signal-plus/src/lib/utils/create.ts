@@ -258,50 +258,59 @@ export const spForm = {
         const effectiveMin = options?.min;
         const effectiveMax = options?.max;
         const init = options?.initial ?? 0;
+        const isDebounced = options?.debounce !== undefined;
 
+        // Helper function to clamp value within min/max bounds
         const getValidValue = (value: number): number => {
             if (effectiveMin !== undefined && value < effectiveMin) return effectiveMin;
             if (effectiveMax !== undefined && value > effectiveMax) return effectiveMax;
             return value;
         };
 
-        if (options?.debounce !== undefined) {
-            // Debounced version starts with null
-            const signal = sp<number | null>(null);
+        // Create signal with appropriate initial value
+        const signal = isDebounced
+            ? sp<number | null>(null)
+            : sp<number>(getValidValue(init));
 
-            signal.transform(n => {
-                if (n === null || n === undefined) return n;
-                const num = typeof n === 'boolean' ? (n ? 1 : 0) : Number(n);
-                if (isNaN(num)) return init;
+        // Apply transform based on signal type
+        if (isDebounced) {
+            // Debounced version: handle null/undefined inputs
+            (signal as any).transform((input: number | boolean | null | undefined): number | null => {
+                if (input === null || input === undefined) return input as null;
+
+                const num = typeof input === 'boolean' ? (input ? 1 : 0) : Number(input);
+                if (isNaN(num)) return null;
+
                 const rounded = Math.round(num);
                 return getValidValue(rounded);
             });
-
-            signal.validate(n => {
-                if (n === null) return true;
-                const value = getValidValue(n);
-                return value === n;
-            });
-
-            return signal.debounce(options.debounce).build();
         } else {
-            // Non-debounced version starts with init
-            const signal = sp<number>(getValidValue(init));
+            // Non-debounced version: never return null
+            signal.transform((input: number | boolean | null | undefined): number => {
+                if (input === null || input === undefined) return getValidValue(init);
 
-            signal.transform(n => {
-                const num = typeof n === 'boolean' ? (n ? 1 : 0) : Number(n);
+                const num = typeof input === 'boolean' ? (input ? 1 : 0) : Number(input);
                 if (isNaN(num)) return getValidValue(init);
+
                 const rounded = Math.round(num);
                 return getValidValue(rounded);
             });
-
-            signal.validate(n => {
-                const value = getValidValue(n);
-                return value === n;
-            });
-
-            return signal.build();
         }
+
+        // Apply validation
+        signal.validate(value => {
+            // Allow null values in debounced mode
+            if (isDebounced && value === null) return true;
+
+            // For non-null values, ensure they match the clamped version
+            const clamped = getValidValue(value as number);
+            return clamped === value;
+        });
+
+        // Apply debounce if specified and build
+        return isDebounced
+            ? signal.debounce(options.debounce!).build()
+            : signal.build();
     }
 };
 
