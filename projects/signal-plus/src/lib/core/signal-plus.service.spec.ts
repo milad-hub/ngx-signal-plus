@@ -287,6 +287,7 @@ describe('SignalPlusService', () => {
             expect(signal.history()).toEqual([0, 3]);
             signal.setValue(4);
             tick(25);
+            localStorage.setItem('concurrent-test', JSON.stringify(5));
             window.dispatchEvent(
                 new StorageEvent('storage', {
                     key: 'concurrent-test',
@@ -294,7 +295,7 @@ describe('SignalPlusService', () => {
                 })
             );
             tick(25);
-            expect(signal.value).toBe(4);
+            expect(signal.value).toBe(5);
         }));
     });
 

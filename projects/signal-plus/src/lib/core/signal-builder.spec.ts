@@ -1103,6 +1103,7 @@ describe('SignalBuilder', () => {
             expect(signal.value).toBe(0);
             signal.setValue(1);
             tick(50);
+            localStorage.setItem(storageKey, JSON.stringify(2));
             window.dispatchEvent(
                 new StorageEvent('storage', {
                     key: storageKey,
@@ -1110,7 +1111,7 @@ describe('SignalBuilder', () => {
                 })
             );
             tick(50);
-            expect(signal.value).toBe(1);
+            expect(signal.value).toBe(2);
             localStorage.removeItem(storageKey);
         }));
     });
@@ -1386,6 +1387,75 @@ describe('SignalBuilder', () => {
             tick();
             expect(signal.value).toBe(3);
             expect(JSON.parse(localStorage.getItem(key)!)).toBe(3);
+        }));
+
+        it('should resolve race condition between debounced updates and storage events', fakeAsync(() => {
+            const key: string = 'race-test';
+            const signal: SignalPlus<number> = new SignalBuilder<number>(0)
+                .persist(key)
+                .debounce(100)
+                .build();
+            signal.setValue(1);
+            expect(signal.value).toBe(0);
+            tick(50);
+            localStorage.setItem(key, JSON.stringify(2));
+            window.dispatchEvent(new StorageEvent('storage', {
+                key,
+                newValue: JSON.stringify(2),
+                storageArea: localStorage
+            }));
+            tick();
+            expect(signal.value).toBe(2);
+            tick(50);
+            expect(signal.value).toBe(2);
+            expect(JSON.parse(localStorage.getItem(key)!)).toBe(2);
+        }));
+
+        it('should cancel debounce when storage event arrives mid-debounce', fakeAsync(() => {
+            const key: string = 'debounce-cancel-test';
+            const signal: SignalPlus<number> = new SignalBuilder<number>(0)
+                .persist(key)
+                .debounce(200)
+                .build();
+            const subscriber = jasmine.createSpy('subscriber');
+            signal.subscribe(subscriber);
+            subscriber.calls.reset();
+            signal.setValue(1);
+            tick(50);
+            localStorage.setItem(key, JSON.stringify(99));
+            window.dispatchEvent(new StorageEvent('storage', {
+                key,
+                newValue: JSON.stringify(99),
+                storageArea: localStorage
+            }));
+            tick();
+            expect(signal.value).toBe(99);
+            expect(subscriber).toHaveBeenCalledWith(99);
+            tick(150);
+            expect(signal.value).toBe(99);
+            expect(subscriber.calls.count()).toBe(1);
+        }));
+
+        it('should prioritize cross-tab sync over pending local debounces', fakeAsync(() => {
+            const key: string = 'priority-test';
+            const signal: SignalPlus<number> = new SignalBuilder<number>(0)
+                .persist(key)
+                .debounce(100)
+                .build();
+            signal.setValue(1);
+            signal.setValue(2);
+            signal.setValue(3);
+            tick(50);
+            localStorage.setItem(key, JSON.stringify(999));
+            window.dispatchEvent(new StorageEvent('storage', {
+                key,
+                newValue: JSON.stringify(999),
+                storageArea: localStorage
+            }));
+            tick();
+            expect(signal.value).toBe(999);
+            tick(50);
+            expect(signal.value).toBe(999);
         }));
     });
 
