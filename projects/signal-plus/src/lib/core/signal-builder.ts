@@ -232,6 +232,7 @@ export class SignalBuilder<T> {
         let redoStack: T[] = [];
         let pendingValue: T | null = null;
         let isProcessingDebounce = false;
+        let debounceCancelled = false;
         let isProcessingStorage = false;
 
         /**
@@ -337,16 +338,22 @@ export class SignalBuilder<T> {
                         parsedValue = parsedData;
                     }
 
-                    if (!isProcessingDebounce) {
-                        writable.set(parsedValue);
-                        previousValue = parsedValue;
-
-                        if (this.options.enableHistory && parsedHistory) {
-                            history.set(enforceHistorySize(parsedHistory.map(v => conditionalClone(v))));
-                        }
-
-                        notifySubscribers(parsedValue);
+                    if (isProcessingDebounce && debounceTimeout !== null) {
+                        debounceCancelled = true;
+                        safeClearTimeout(debounceTimeout);
+                        debounceTimeout = null;
+                        pendingValue = null;
+                        isProcessingDebounce = false;
                     }
+
+                    writable.set(parsedValue);
+                    previousValue = parsedValue;
+
+                    if (this.options.enableHistory && parsedHistory) {
+                        history.set(enforceHistorySize(parsedHistory.map(v => conditionalClone(v))));
+                    }
+
+                    notifySubscribers(parsedValue);
                 } catch (error) {
                     this.handleError(error as Error);
                 }
@@ -400,6 +407,7 @@ export class SignalBuilder<T> {
                     if (debounceTimeout !== null) {
                         safeClearTimeout(debounceTimeout);
                         debounceTimeout = null;
+                        debounceCancelled = true; // Mark as cancelled during cleanup
                     }
 
                     // Clear pending value
@@ -514,6 +522,7 @@ export class SignalBuilder<T> {
 
             // Clear existing debounce timeout
             if (debounceTimeout !== null) {
+                debounceCancelled = true;
                 safeClearTimeout(debounceTimeout);
                 debounceTimeout = null;
             }
@@ -522,9 +531,15 @@ export class SignalBuilder<T> {
                 // Handle debounce
                 if (this.options.debounceTime && this.options.debounceTime > 0) {
                     isProcessingDebounce = true;
+                    debounceCancelled = false;
                     pendingValue = value;
                     debounceTimeout = safeSetTimeout(() => {
                         try {
+                            if (debounceCancelled) {
+                                pendingValue = null;
+                                return;
+                            }
+
                             const finalValue = pendingValue;
                             pendingValue = null;
                             isProcessingDebounce = false;
