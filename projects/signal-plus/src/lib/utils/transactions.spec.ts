@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { SignalPlusService } from '../core/signal-plus.service';
 import { SignalPlus } from '../models/signal-plus.model';
-import { _patchAllSignalsInTest, _resetTransactionState, spBatch, spGetModifiedSignals, spIsInBatch, spIsInTransaction, spIsTransactionActive, spTransaction } from './transactions';
+import { _patchAllSignalsInTest, _resetTransactionState, spBatch, spGetModifiedSignals, spIsInBatch, spIsInTransaction, spIsTransactionActive, spTransaction, TransactionError } from './transactions';
 
 describe('Transactions and Batching', () => {
   let signalPlusService: SignalPlusService;
@@ -40,6 +40,176 @@ describe('Transactions and Batching', () => {
     _resetTransactionState();
   });
 
+  describe('TransactionError Enhanced Error Reporting', () => {
+    it('should create TransactionError with detailed metadata on transaction failure', () => {
+      let capturedError: TransactionError | null = null;
+
+      try {
+        spTransaction(() => {
+          testSignal1.setValue(42);
+          testSignal2.setValue('modified');
+          throw new Error('Test transaction failure');
+        });
+      } catch (error) {
+        capturedError = error as TransactionError;
+      }
+
+      expect(capturedError).toBeInstanceOf(TransactionError);
+      expect(capturedError?.name).toBe('TransactionError');
+      expect(capturedError?.message).toBe('Transaction failed: Test transaction failure');
+      expect(capturedError?.originalError.message).toBe('Test transaction failure');
+      expect(capturedError?.modifiedSignals).toHaveSize(2);
+      expect(capturedError?.originalValues.has(testSignal1)).toBe(true);
+      expect(capturedError?.originalValues.has(testSignal2)).toBe(true);
+      expect(capturedError?.attemptedValues.has(testSignal1)).toBe(true);
+      expect(capturedError?.attemptedValues.has(testSignal2)).toBe(true);
+      expect(capturedError?.transactionStartTime).toBeInstanceOf(Date);
+      expect(capturedError?.transactionEndTime).toBeInstanceOf(Date);
+      expect(typeof capturedError?.rollbackSuccessful).toBe('boolean');
+    });
+
+    it('should provide signal changes summary via getSignalChanges()', () => {
+      let capturedError: TransactionError | null = null;
+      try {
+        spTransaction(() => {
+          testSignal1.setValue(99);
+          testSignal2.setValue('new value');
+          throw new Error('Summary test error');
+        });
+      } catch (error) {
+        capturedError = error as TransactionError;
+      }
+      expect(capturedError).toBeDefined();
+      expect(capturedError!.modifiedSignals).toHaveSize(2);
+      expect(capturedError!.originalValues.size).toBeGreaterThan(0);
+      expect(capturedError!.attemptedValues.size).toBeGreaterThan(0);
+      const changes = capturedError!.getSignalChanges();
+      expect(changes).toHaveSize(2);
+      const signal1Change = changes.find(c => c.signal === testSignal1);
+      const signal2Change = changes.find(c => c.signal === testSignal2);
+      expect(signal1Change).toBeDefined();
+      expect(signal2Change).toBeDefined();
+      expect(signal1Change?.attemptedValue).toBe(99);
+      expect(signal2Change?.attemptedValue).toBe('new value');
+      expect(signal1Change?.originalValue).toBeDefined();
+      expect(signal2Change?.originalValue).toBeDefined();
+    });
+
+    it('should provide transaction summary via getSummary()', () => {
+      let capturedError: TransactionError | null = null;
+      try {
+        spTransaction(() => {
+          testSignal1.setValue(123);
+          throw new Error('Summary test');
+        });
+      } catch (error) {
+        capturedError = error as TransactionError;
+      }
+      expect(capturedError).toBeDefined();
+      const summary = capturedError!.getSummary();
+      expect(summary).toContain('Transaction failed after');
+      expect(summary).toContain('ms with 1 signal');
+      expect(summary).toContain('Rollback');
+    });
+
+    it('should handle non-Error objects thrown during transaction', () => {
+      let capturedError: TransactionError | null = null;
+      try {
+        spTransaction(() => {
+          testSignal1.setValue(456);
+          throw 'String error';
+        });
+      } catch (error) {
+        capturedError = error as TransactionError;
+      }
+      expect(capturedError).toBeInstanceOf(TransactionError);
+      expect(capturedError?.originalError.message).toBe('String error');
+      expect(capturedError?.message).toBe('Transaction failed: String error');
+    });
+
+    it('should preserve original error stack trace', () => {
+      let capturedError: TransactionError | null = null;
+      const originalError = new Error('Original error with stack');
+      try {
+        spTransaction(() => {
+          testSignal1.setValue(789);
+          throw originalError;
+        });
+      } catch (error) {
+        capturedError = error as TransactionError;
+      }
+      expect(capturedError?.stack).toBe(originalError.stack);
+    });
+
+    it('should report rollback success status accurately', () => {
+      let successError: TransactionError | null = null;
+      try {
+        spTransaction(() => {
+          testSignal1.setValue(111);
+          testSignal2.setValue('rollback test');
+          throw new Error('Test rollback');
+        });
+      } catch (error) {
+        successError = error as TransactionError;
+      }
+      expect(successError?.rollbackSuccessful).toBe(true);
+      expect(testSignal1.value).toBe(1);
+      expect(testSignal2.value).toBe('test');
+    });
+
+    it('should provide meaningful signal names when available', () => {
+      const signalWithName = signalPlusService.create(0).build();
+      (signalWithName as any).name = 'TestCounter';
+      let capturedError: TransactionError | null = null;
+      try {
+        spTransaction(() => {
+          _patchAllSignalsInTest(signalWithName);
+          signalWithName.setValue(42);
+          throw new Error('Name test');
+        });
+      } catch (error) {
+        capturedError = error as TransactionError;
+      }
+      expect(capturedError).toBeDefined();
+      const names = capturedError!.getModifiedSignalNames();
+      expect(names).toContain('TestCounter');
+    });
+
+    it('should provide fallback names for signals without names', () => {
+      let capturedError: TransactionError | null = null;
+      try {
+        spTransaction(() => {
+          testSignal1.setValue(42);
+          testSignal2.setValue('modified');
+          throw new Error('Fallback name test');
+        });
+      } catch (error) {
+        capturedError = error as TransactionError;
+      }
+      expect(capturedError).toBeDefined();
+      const names = capturedError!.getModifiedSignalNames();
+      expect(names).toHaveSize(2);
+      expect(names[0]).toMatch(/Signal #\d+/);
+      expect(names[1]).toMatch(/Signal #\d+/);
+    });
+
+    it('should track transaction timing accurately', () => {
+      let capturedError: TransactionError | null = null;
+      try {
+        spTransaction(() => {
+          testSignal1.setValue(555);
+          throw new Error('Timing test');
+        });
+      } catch (error) {
+        capturedError = error as TransactionError;
+      }
+      expect(capturedError).toBeDefined();
+      expect(capturedError!.transactionStartTime).toBeInstanceOf(Date);
+      expect(capturedError!.transactionEndTime).toBeInstanceOf(Date);
+      expect(capturedError!.transactionEndTime.getTime()).toBeGreaterThanOrEqual(capturedError!.transactionStartTime.getTime());
+    });
+  });
+
   describe('spTransaction', () => {
     it('should execute a transaction and commit changes on success', () => {
       spTransaction(() => {
@@ -73,7 +243,7 @@ describe('Transactions and Batching', () => {
         error = e as Error;
       }
       expect(error).not.toBeNull();
-      expect(error?.message).toBe('Test error');
+      expect(error?.message).toBe('Transaction failed: Test error');
       expect(testSignal1.value).toBe(originalValue1);
       expect(testSignal2.value).toBe(originalValue2);
     });
@@ -90,7 +260,7 @@ describe('Transactions and Batching', () => {
         nestedError = e as Error;
       }
       expect(nestedError).not.toBeNull();
-      expect(nestedError?.message).toBe('Nested transactions are not allowed');
+      expect(nestedError?.message).toBe('Transaction failed: Nested transactions are not allowed');
       expect(testSignal1.value).toBe(1);
     });
 
@@ -837,7 +1007,7 @@ describe('Transactions and Batching', () => {
         } catch (e) {
           caughtError = e as Error;
         }
-        expect(caughtError?.message).toBe('Transaction error');
+        expect(caughtError?.message).toBe('Transaction failed: Transaction error');
         expect(consoleErrorSpy).toHaveBeenCalledWith('Error during transaction rollback:', jasmine.any(Error));
       });
     });
