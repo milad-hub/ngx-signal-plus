@@ -247,6 +247,19 @@ export class SignalBuilder<T> {
             return histArray;
         };
 
+        /**
+         * Helper function to enforce redo stack size limit
+         * @param redoArray The redo stack array to enforce size on
+         * @returns The redo stack array with size limit applied
+         */
+        const enforceRedoStackSize = (redoArray: T[]): T[] => {
+            // Use the same size limit as history for consistency
+            if (this.options.historySize && redoArray.length > this.options.historySize) {
+                return redoArray.slice(-this.options.historySize);
+            }
+            return redoArray;
+        };
+
         const serializeWithCircularCheck = (data: any, fallbackData?: any): string => {
             const safeStringify = (obj: any): string => {
                 const seen = new WeakSet();
@@ -711,6 +724,8 @@ export class SignalBuilder<T> {
 
                 // Move current value to redo stack
                 redoStack.push(conditionalClone(currentValue));
+                // Enforce redo stack size limit
+                redoStack = enforceRedoStackSize(redoStack);
 
                 // Get the previous value from history
                 const currentHistory: T[] = history();

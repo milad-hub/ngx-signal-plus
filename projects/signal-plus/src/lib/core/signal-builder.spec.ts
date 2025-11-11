@@ -3257,6 +3257,67 @@ describe('SignalBuilder', () => {
         });
     });
 
+    describe('Redo Stack Size Limits', () => {
+        it('should limit redo stack size to match history size limit', () => {
+            const historySize = 3;
+            const signal: SignalPlus<number> = new SignalBuilder(0)
+                .withHistory(historySize)
+                .build();
+            for (let i = 1; i <= historySize + 2; i++) {
+                signal.setValue(i);
+            }
+            for (let i = 0; i < historySize; i++) {
+                signal.undo();
+            }
+            for (let i = 0; i < historySize; i++) {
+                signal.redo();
+            }
+            const valueBeforeExtraRedo = signal.value;
+            expect(() => signal.redo()).not.toThrow();
+            expect(signal.value).toBe(valueBeforeExtraRedo);
+        });
+
+        it('should handle redo stack size limits with default history size', () => {
+            const signal: SignalPlus<number> = new SignalBuilder(0)
+                .withHistory()
+                .build();
+            for (let i = 1; i <= 100; i++) {
+                signal.setValue(i);
+            }
+            while (signal.history().length > 1) {
+                signal.undo();
+            }
+            const maxRedoOperations = 50;
+            let redoCount = 0;
+            while (redoCount < maxRedoOperations) {
+                const valueBefore = signal.value;
+                signal.redo();
+                if (signal.value === valueBefore) {
+                    break;
+                }
+                redoCount++;
+            }
+            expect(redoCount).toBeGreaterThan(0);
+            expect(redoCount).toBeLessThanOrEqual(100);
+        });
+
+        it('should limit redo stack size to prevent memory leaks', () => {
+            const historySize = 3;
+            const signal: SignalPlus<number> = new SignalBuilder(0)
+                .withHistory(historySize)
+                .build();
+            for (let i = 1; i <= 5; i++) {
+                signal.setValue(i);
+            }
+            for (let i = 0; i < 4; i++) {
+                signal.undo();
+            }
+            const currentValue = signal.value;
+            signal.redo();
+            expect(signal.value).toBeGreaterThan(currentValue);
+        });
+    });
+
     describe('Subscription Lifecycle Documentation', () => {
         beforeEach(() => {
             TestBed.configureTestingModule({
@@ -3418,7 +3479,7 @@ describe('SignalBuilder', () => {
             const values2: number[] = [];
             signal.subscribe(v => values2.push(v));
             expect(values2).toEqual([0]);
-            
+
             signal.setValue(10);
             tick(100);
             expect(values2).toEqual([0, 10]);
