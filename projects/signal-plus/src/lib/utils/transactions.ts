@@ -25,7 +25,83 @@
  */
 
 import { SignalPlus } from '../models/signal-plus.model';
-import { TransactionContext, BatchContext } from '../models/transactions.models';
+import { BatchContext, TransactionContext } from '../models/transactions.models';
+
+/**
+ * Enhanced error class for transaction failures with detailed metadata
+ */
+export class TransactionError extends Error {
+  public readonly originalError: Error;
+  public readonly modifiedSignals: SignalPlus<any>[];
+  public readonly originalValues: Map<SignalPlus<any>, any>;
+  public readonly attemptedValues: Map<SignalPlus<any>, any>;
+  public readonly transactionStartTime: Date;
+  public readonly transactionEndTime: Date;
+  public readonly rollbackSuccessful: boolean;
+
+  constructor(
+    message: string,
+    originalError: Error,
+    modifiedSignals: SignalPlus<any>[],
+    originalValues: Map<SignalPlus<any>, any>,
+    attemptedValues: Map<SignalPlus<any>, any>,
+    transactionStartTime: Date,
+    rollbackSuccessful: boolean
+  ) {
+    super(message);
+    this.name = 'TransactionError';
+    this.originalError = originalError;
+    this.modifiedSignals = [...modifiedSignals];
+    this.originalValues = new Map(originalValues);
+    this.attemptedValues = new Map(attemptedValues);
+    this.transactionStartTime = transactionStartTime;
+    this.transactionEndTime = new Date();
+    this.rollbackSuccessful = rollbackSuccessful;
+
+    // Maintain proper stack trace
+    if (originalError.stack) {
+      this.stack = originalError.stack;
+    }
+  }
+
+  /**
+   * Get a summary of the transaction failure
+   */
+  getSummary(): string {
+    const duration = this.transactionEndTime.getTime() - this.transactionStartTime.getTime();
+    return `Transaction failed after ${duration}ms with ${this.modifiedSignals.length} signal modifications. Rollback ${this.rollbackSuccessful ? 'successful' : 'failed'}.`;
+  }
+
+  /**
+   * Get detailed information about signal changes
+   */
+  getSignalChanges(): Array<{
+    signal: SignalPlus<any>;
+    originalValue: any;
+    attemptedValue: any;
+    currentValue: any;
+  }> {
+    return this.modifiedSignals.map(signal => ({
+      signal,
+      originalValue: this.originalValues.get(signal),
+      attemptedValue: this.attemptedValues.get(signal),
+      currentValue: signal.value
+    }));
+  }
+
+  /**
+   * Get the names/identifiers of modified signals (if available)
+   */
+  getModifiedSignalNames(): string[] {
+    return this.modifiedSignals.map((signal, index) => {
+      // Try to get a meaningful name from the signal if possible
+      if ((signal as any).name) {
+        return (signal as any).name;
+      }
+      return `Signal #${index + 1}`;
+    });
+  }
+}
 
 // Global state management for transactions and batching
 const state = {
@@ -34,9 +110,15 @@ const state = {
     originalValues: new Map<SignalPlus<any>, any>(),
     originalHistories: new Map<SignalPlus<any>, any[]>(),
     patchedSignals: new Map<SignalPlus<any>, (value: any) => void>(),
-    modifiedSignals: []
-  } as TransactionContext & { originalHistories: Map<SignalPlus<any>, any[]> },
-  
+    modifiedSignals: [],
+    attemptedValues: new Map<SignalPlus<any>, any>(),
+    startTime: null as Date | null
+  } as TransactionContext & {
+    originalHistories: Map<SignalPlus<any>, any[]>,
+    attemptedValues: Map<SignalPlus<any>, any>,
+    startTime: Date | null
+  },
+
   batch: {
     active: false,
     signals: new Set<SignalPlus<any>>()
@@ -49,24 +131,24 @@ const state = {
  */
 function patchSignal<T>(signal: SignalPlus<T>): void {
   const txState = state.transaction;
-  
+
   // Skip if already patched
   if (txState.patchedSignals.has(signal)) {
     return;
   }
-  
+
   // Store original setValue method
   const originalSetValue = signal.setValue;
   txState.patchedSignals.set(signal, originalSetValue);
-  
+
   // Replace with transaction-aware version
-  signal.setValue = function(value: T): void {
+  signal.setValue = function (value: T): void {
     // If in a transaction
     if (txState.active) {
       // Store original value if first time seeing this signal
       if (!txState.originalValues.has(signal)) {
         txState.originalValues.set(signal, signal.value);
-        
+
         // Also store history state if signal has history
         if (signal.history && typeof signal.history === 'function') {
           const currentHistory = signal.history();
@@ -74,14 +156,17 @@ function patchSignal<T>(signal: SignalPlus<T>): void {
             txState.originalHistories.set(signal, [...currentHistory]);
           }
         }
-        
+
         // Add to the modified signals list to maintain order of modification
         if (!txState.modifiedSignals.includes(signal)) {
           txState.modifiedSignals.push(signal);
         }
       }
+
+      // Always track the latest attempted value
+      txState.attemptedValues.set(signal, value);
     }
-    
+
     // Delegate to the original implementation
     return originalSetValue.call(this, value);
   };
@@ -92,25 +177,28 @@ function patchSignal<T>(signal: SignalPlus<T>): void {
  */
 function restoreOriginalMethods(): void {
   const txState = state.transaction;
-  
+
   for (const [signal, originalSetValue] of txState.patchedSignals.entries()) {
     // Properly restore the original method
     signal.setValue = originalSetValue;
   }
-  
+
   txState.patchedSignals.clear();
 }
 
 /**
  * Rolls back all changes made during a transaction
+ * @returns true if rollback was successful, false if errors occurred
  */
-function rollbackChanges(): void {
+function rollbackChanges(): boolean {
   const txState = state.transaction;
-  
+
   // To avoid capturing rollback operations, temporarily disable transaction mode
   const wasActive = txState.active;
   txState.active = false;
-  
+
+  let rollbackSuccessful = true;
+
   try {
     // First, clear any pending debounced operations on all modified signals
     for (const [signal] of txState.originalValues.entries()) {
@@ -121,10 +209,11 @@ function rollbackChanges(): void {
         }
       } catch (error) {
         console.error('Error clearing pending operations during rollback:', error);
+        rollbackSuccessful = false;
         // Continue with other signals even if one fails
       }
     }
-    
+
     // Restore original values using internal methods for fast rollback
     for (const [signal, originalValue] of txState.originalValues.entries()) {
       try {
@@ -134,7 +223,7 @@ function rollbackChanges(): void {
         } else {
           // Fallback to original setValue method
           const originalSetValue = txState.patchedSignals.get(signal);
-          
+
           if (originalSetValue) {
             // Apply the original value using the original method
             originalSetValue.call(signal, originalValue);
@@ -143,7 +232,7 @@ function rollbackChanges(): void {
             signal.setValue(originalValue);
           }
         }
-        
+
         // Restore history state if it was captured
         const originalHistory = txState.originalHistories.get(signal);
         if (originalHistory && signal._setHistoryImmediate) {
@@ -151,6 +240,7 @@ function rollbackChanges(): void {
         }
       } catch (error) {
         console.error('Error during transaction rollback:', error);
+        rollbackSuccessful = false;
         // Continue with other rollbacks even if one fails
       }
     }
@@ -160,7 +250,10 @@ function rollbackChanges(): void {
     // Clear captured original values and histories
     txState.originalValues.clear();
     txState.originalHistories.clear();
+    txState.attemptedValues.clear();
   }
+
+  return rollbackSuccessful;
 }
 
 /**
@@ -179,37 +272,61 @@ function rollbackChanges(): void {
  */
 export function spTransaction<T>(fn: () => T): T {
   const txState = state.transaction;
-  
+
   // Prevent nested transactions
   if (txState.active) {
     throw new Error('Nested transactions are not allowed');
   }
-  
+
   // Initialize transaction state
+  const transactionStartTime = new Date();
   txState.active = true;
+  txState.startTime = transactionStartTime;
   txState.originalValues.clear();
+  txState.attemptedValues.clear();
   txState.modifiedSignals = [];
-  
+
   try {
     // Execute the transaction
     const result = fn();
-    
+
     // Transaction completed successfully
     txState.active = false;
+    txState.startTime = null;
     txState.originalValues.clear();
-    
+    txState.attemptedValues.clear();
+
     return result;
   } catch (error) {
-    // Error occurred, rollback all changes
-    rollbackChanges();
+    // Error occurred, capture transaction state before rollback
+    const modifiedSignals = [...txState.modifiedSignals];
+    const originalValues = new Map(txState.originalValues);
+    const attemptedValues = new Map(txState.attemptedValues);
+
+    // Perform rollback (this clears the maps)
+    const rollbackSuccessful = rollbackChanges();
     txState.active = false;
-    
-    // Re-throw the original error
-    throw error;
+    txState.startTime = null;
+
+    // Create enhanced error with captured transaction metadata
+    const originalError = error instanceof Error ? error : new Error(String(error));
+    const transactionError = new TransactionError(
+      `Transaction failed: ${originalError.message}`,
+      originalError,
+      modifiedSignals,
+      originalValues,
+      attemptedValues,
+      transactionStartTime,
+      rollbackSuccessful
+    );
+
+    // Re-throw the enhanced error
+    throw transactionError;
   } finally {
     // Clean up patched signals
     restoreOriginalMethods();
     txState.modifiedSignals = [];
+    txState.startTime = null;
   }
 }
 
@@ -228,11 +345,11 @@ export function spTransaction<T>(fn: () => T): T {
  */
 export function spBatch<T>(fn: () => T): T {
   const batchState = state.batch;
-  
+
   // Mark batch as active
   batchState.active = true;
   batchState.signals.clear();
-  
+
   try {
     // Execute batch operations
     return fn();
@@ -288,7 +405,7 @@ export function spGetModifiedSignals(): SignalPlus<any>[] {
   if (!state.transaction.active) {
     return [];
   }
-  
+
   return [...state.transaction.modifiedSignals];
 }
 
@@ -298,14 +415,16 @@ export function spGetModifiedSignals(): SignalPlus<any>[] {
 export function _resetTransactionState(): void {
   const txState = state.transaction;
   const batchState = state.batch;
-  
+
   // Reset transaction state
   txState.active = false;
+  txState.startTime = null;
   txState.originalValues.clear();
   txState.originalHistories.clear();
+  txState.attemptedValues.clear();
   txState.modifiedSignals = [];
   restoreOriginalMethods();
-  
+
   // Reset batch state
   batchState.active = false;
   batchState.signals.clear();
@@ -319,11 +438,11 @@ export function _resetTransactionState(): void {
 export function _patchAllSignalsInTest<T>(signal: SignalPlus<T>): void {
   // This is a special helper for testing scenarios to make signals
   // interact correctly with our transaction mechanism in test environments
-  
+
   // For testing purposes, we need to make sure that setValue will work
   // with our transaction tracking mechanism
   patchSignal(signal);
-  
+
   // Explicitly add this signal to the tracked list
   if (state.transaction.active) {
     spIsInTransaction(signal);
