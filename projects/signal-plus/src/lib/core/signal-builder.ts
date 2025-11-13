@@ -806,60 +806,119 @@ export class SignalBuilder<T> {
                 return result;
             },
             destroy: () => {
+                // Prevent multiple destroy calls
+                if (isCleanedUp) {
+                    return;
+                }
+
                 const errors: Error[] = [];
+                const cleanupSteps: string[] = [];
 
-                try {
-                    // Mark as cleaned up
+                // Helper function to safely execute cleanup steps
+                const safeCleanup = (stepName: string, cleanupFn: () => void): void => {
+                    try {
+                        cleanupFn();
+                        cleanupSteps.push(`${stepName}: SUCCESS`);
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        const cleanupError = new Error(`Failed to ${stepName.toLowerCase()}: ${errorMessage}`);
+                        errors.push(cleanupError);
+                        cleanupSteps.push(`${stepName}: FAILED - ${errorMessage}`);
+                    }
+                };
+
+                // Step 1: Mark as cleaned up (must be first to prevent operations during cleanup)
+                safeCleanup('Set cleanup flag', () => {
                     isCleanedUp = true;
-                } catch (error) {
-                    errors.push(new Error(`Failed to set cleanup flag: ${error}`));
-                }
+                });
 
-                try {
-                    // Clear all subscribers
+                // Step 2: Clear all subscribers
+                safeCleanup('Clear subscribers', () => {
                     subscribers.clear();
-                } catch (error) {
-                    errors.push(new Error(`Failed to clear subscribers: ${error}`));
-                }
+                });
 
-                try {
-                    // Cleanup storage event listener
+                // Step 3: Cleanup storage event listener
+                safeCleanup('Cleanup storage listener', () => {
                     if (storageListenerCleanup) {
                         storageListenerCleanup();
                         storageListenerCleanup = undefined;
                     }
-                } catch (error) {
-                    errors.push(new Error(`Failed to cleanup storage listener: ${error}`));
-                }
+                });
 
-                try {
-                    // Clear any pending debounce timeout
+                // Step 4: Clear any pending debounce timeout
+                safeCleanup('Clear debounce timeout', () => {
                     if (debounceTimeout !== null) {
                         safeClearTimeout(debounceTimeout);
                         debounceTimeout = null;
+                        pendingValue = null;
+                        isProcessingDebounce = false;
+                        debounceCancelled = false;
                     }
-                } catch (error) {
-                    errors.push(new Error(`Failed to clear debounce timeout: ${error}`));
-                }
+                });
 
-                try {
-                    // Clear pending value
+                // Step 5: Clear pending value
+                safeCleanup('Clear pending value', () => {
                     pendingValue = null;
-                } catch (error) {
-                    errors.push(new Error(`Failed to clear pending value: ${error}`));
-                }
+                });
 
-                // If any errors occurred during cleanup, log them (don't throw to ensure all cleanup steps run)
+                // Step 6: Clear history and redo stack (if enabled)
+                safeCleanup('Clear history and redo stack', () => {
+                    if (this.options.enableHistory) {
+                        try {
+                            history.set([]);
+                        } catch (error) {
+                            // If history.set fails, try to clear redoStack anyway
+                            redoStack = [];
+                            throw error;
+                        }
+                    }
+                    redoStack = [];
+                });
+
+                // Step 7: Reset processing flags
+                safeCleanup('Reset processing flags', () => {
+                    isProcessingStorage = false;
+                });
+
+                // Handle errors: log and notify error handlers
                 if (errors.length > 0) {
-                    console.error(`Signal cleanup encountered ${errors.length} error(s):`, errors);
+                    const errorDetails = {
+                        totalErrors: errors.length,
+                        errors: errors.map(e => ({
+                            message: e.message,
+                            stack: e.stack
+                        })),
+                        cleanupSteps: cleanupSteps,
+                        signalInfo: {
+                            hasStorage: !!this.options.storageKey,
+                            hasHistory: !!this.options.enableHistory,
+                            hasDebounce: !!this.options.debounceTime,
+                            subscriberCount: subscribers.size
+                        }
+                    };
+
+                    // Log detailed error information
+                    console.error(`Signal cleanup encountered ${errors.length} error(s) during destroy:`, errorDetails);
+
                     // Call custom error handlers if available
                     if (this.options.errorHandlers && this.options.errorHandlers.length > 0) {
-                        const cleanupError = new Error(`Cleanup failed with ${errors.length} error(s): ${errors.map(e => e.message).join(', ')}`);
-                        this.options.errorHandlers.forEach(handler => {
+                        const cleanupError = new Error(
+                            `Cleanup failed with ${errors.length} error(s): ${errors.map(e => e.message).join('; ')}`
+                        );
+                        // Attach additional context to error
+                        (cleanupError as any).cleanupDetails = errorDetails;
+
+                        this.options.errorHandlers.forEach((handler, index) => {
                             try {
                                 handler(cleanupError);
                             } catch (handlerError) {
-                                console.error('Error handler itself failed during cleanup:', handlerError);
+                                const handlerErrorMessage = handlerError instanceof Error 
+                                    ? handlerError.message 
+                                    : String(handlerError);
+                                console.error(
+                                    `Error handler #${index + 1} failed during cleanup: ${handlerErrorMessage}`,
+                                    handlerError
+                                );
                             }
                         });
                     }

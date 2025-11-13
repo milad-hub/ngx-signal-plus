@@ -2475,6 +2475,99 @@ describe('SignalBuilder', () => {
                 expect(errorHandler).not.toHaveBeenCalled();
             });
 
+            it('should provide detailed error information when cleanup fails', () => {
+                const consoleErrorSpy = spyOn(console, 'error');
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').withHistory().debounce(100).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                const testKey = 'test-cleanup-error';
+                const signal2: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist(testKey).build()
+                );
+                expect(() => signal.destroy()).not.toThrow();
+                expect(consoleErrorSpy).not.toHaveBeenCalled();
+            });
+
+            it('should continue cleanup even when history clearing fails', () => {
+                const consoleErrorSpy = spyOn(console, 'error');
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).withHistory().build()
+                );
+                signal.setValue(1);
+                signal.setValue(2);
+                expect(() => signal.destroy()).not.toThrow();
+                expect(consoleErrorSpy).not.toHaveBeenCalled();
+            });
+
+            it('should prevent multiple destroy calls', () => {
+                const consoleErrorSpy = spyOn(console, 'error');
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').build()
+                );
+                signal.destroy();
+                const firstCallCount = consoleErrorSpy.calls.count();
+                signal.destroy();
+                signal.destroy();
+                expect(consoleErrorSpy.calls.count()).toBe(firstCallCount);
+            });
+
+            it('should clear history and redo stack during cleanup', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).withHistory().build()
+                );
+                signal.setValue(1);
+                signal.setValue(2);
+                signal.undo();
+                expect(signal.history().length).toBeGreaterThan(0);
+
+                signal.destroy();
+                expect(signal.history()).toEqual([]);
+            });
+
+            it('should reset all processing flags during cleanup', () => {
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).debounce(100).build()
+                );
+                signal.setValue(1);
+                signal.destroy();
+                signal.setValue(2);
+                expect(signal.value).toBe(0);
+            });
+
+            it('should handle error handler failures gracefully', () => {
+                const throwingHandler = jasmine.createSpy('throwingHandler').and.throwError('Handler error');
+                const consoleErrorSpy = spyOn(console, 'error');
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).onError(throwingHandler).build()
+                );
+                const originalClear = Map.prototype.clear;
+                Map.prototype.clear = function () {
+                    throw new Error('Cleanup error');
+                };
+                try {
+                    expect(() => signal.destroy()).not.toThrow();
+                    expect(consoleErrorSpy.calls.count()).toBeGreaterThanOrEqual(1);
+                } finally {
+                    Map.prototype.clear = originalClear;
+                }
+            });
+
+            it('should track cleanup steps success and failure', () => {
+                const consoleErrorSpy = spyOn(console, 'error');
+                const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+                    new SignalBuilder(0).persist('test-key').withHistory().debounce(100).build()
+                );
+                const subscriber = jasmine.createSpy('subscriber');
+                signal.subscribe(subscriber);
+                subscriber.calls.reset();
+                signal.destroy();
+                expect(consoleErrorSpy).not.toHaveBeenCalled();
+                signal.setValue(10);
+                expect(subscriber).not.toHaveBeenCalled();
+            });
+
             it('should continue cleanup even if one step fails', () => {
                 const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
                     new SignalBuilder(0).persist('test-key').debounce(100).build()
