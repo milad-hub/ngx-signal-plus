@@ -18,7 +18,15 @@
     "release:lib:dual": "npm run prepare:lib && npm run publish:lib:dual",
     "test:lib": "ng test signal-plus --browsers=ChromeHeadless --watch=false",
     "test:lib:coverage": "ng test signal-plus --browsers=ChromeHeadless --watch=false --code-coverage",
-    "lint:lib": "ng lint signal-plus"
+    "lint": "ng lint signal-plus",
+    "lint:lib": "ng lint signal-plus",
+    "lint:fix": "ng lint signal-plus --fix",
+    "format": "prettier --write \"projects/**/*.{ts,html,css,scss,json,md}\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"projects/**/*.{ts,html,css,scss,json,md}\" \"*.{json,md}\"",
+    "format:lib": "prettier --write \"projects/signal-plus/**/*.{ts,html,css,scss,json,md}\"",
+    "format:check:lib": "prettier --check \"projects/signal-plus/**/*.{ts,html,css,scss,json,md}\"",
+    "check": "npm run lint:lib && npm run format:check:lib",
+    "fix": "npm run lint:fix && npm run format:lib"
   },
   "private": true,
   "dependencies": {
@@ -46,6 +54,7 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "ng-packagr": "^20.3.0",
+    "prettier": "^3.0.0",
     "typescript": "~5.9.3"
   },
   "engines": {
