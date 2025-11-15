@@ -35,12 +35,25 @@
               "zone.js/testing"
             ]
           }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "projects/signal-plus/**/*.ts",
+              "projects/signal-plus/**/*.html"
+            ],
+            "eslintConfig": "projects/signal-plus/eslint.config.js"
+          }
         }
       }
     }
   },
   "cli": {
-    "analytics": false
+    "analytics": false,
+    "schematicCollections": [
+      "angular-eslint"
+    ]
   },
   "schematics": {
     "@schematics/angular:component": {
