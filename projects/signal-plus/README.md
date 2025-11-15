@@ -11,6 +11,7 @@ A powerful utility library that enhances Angular Signals with additional feature
 - Signal operators for transformation and combination
 - Built-in undo/redo functionality
 - Form handling with validation
+- Form groups with aggregated state and validation
 - Automatic cleanup and memory management
 - Performance optimizations
 - Transactions and batching for atomic operations
@@ -147,6 +148,70 @@ const age = spForm.number({ min: 18, max: 99, initial: 30 });
 const isFormValid = computed(() => 
   username.isValid() && email.isValid() && age.isValid()
 );
+```
+
+### Form Groups
+
+Group multiple form controls together with aggregated state, validation, and persistence:
+
+```typescript
+import { spFormGroup, spForm } from 'ngx-signal-plus';
+
+// Basic form group
+const loginForm = spFormGroup({
+  email: spForm.email(''),
+  password: spForm.text('', { minLength: 8 })
+});
+
+// Access aggregated state
+loginForm.isValid();    // false if password < 8 chars
+loginForm.isDirty();    // true if any field changed
+loginForm.isTouched();  // true if any field touched
+loginForm.value();      // { email: '', password: '' }
+loginForm.errors();     // { email: [...], password: [...] }
+
+// Update values
+loginForm.setValue({ email: 'user@example.com', password: 'secret123' });
+loginForm.patchValue({ email: 'new@example.com' }); // Partial update
+
+// Form actions
+loginForm.reset();           // Reset all fields to initial values
+loginForm.markAsTouched();   // Mark all fields as touched
+loginForm.submit();          // Returns values if valid, null otherwise
+
+// Nested form groups
+const credentials = spFormGroup({
+  email: spForm.email(''),
+  password: spForm.text('', { minLength: 8 })
+});
+
+const profile = spFormGroup({
+  name: spForm.text(''),
+  age: spForm.number({ min: 18 })
+});
+
+const registrationForm = spFormGroup({
+  credentials,
+  profile
+});
+
+// Group-level validation
+const passwordForm = spFormGroup({
+  password: spForm.text('password123'),
+  confirmPassword: spForm.text('password123')
+}, {
+  validators: [
+    (values) => values.password === values.confirmPassword || 'Passwords must match'
+  ]
+});
+
+// Persistence
+const persistedForm = spFormGroup({
+  email: spForm.email(''),
+  preferences: spForm.text('')
+}, {
+  persistKey: 'user-form' // Automatically saves/restores from localStorage
+});
 ```
 
 ### Validation and Presets
@@ -298,6 +363,7 @@ What happens during SSR:
 | **Signal Creation** | `sp`, `spCounter`, `spToggle`, `spForm` |
 | **Signal Enhancement** | `enhance`, validation, transformation, persistence, history |
 | **Signal Operators** | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spSkip`, `spTake`, `spMerge`, `spCombineLatest` |
+| **Form Groups** | `spFormGroup` - Group multiple controls with aggregated state, validation, and persistence |
 | **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals` |
 | **Utilities** | `spValidators`, `spPresets` |
 | **State Management** | `spHistoryManager`, `spStorageManager` |
