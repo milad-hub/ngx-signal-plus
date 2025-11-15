@@ -8,9 +8,7 @@
 // Core Signal Creation
 export {
     sp,
-    spCounter,
-    spToggle,
-    spForm
+    spCounter, spForm, spToggle
 } from './lib/utils/create';
 
 // Signal Enhancement
@@ -19,51 +17,32 @@ export {
 } from './lib/utils/enhance';
 
 // Core Components and Services
-export { 
-    spSignalBuilder,
-    spSignalPlusService,
-    spSignalPlusComponent
+export {
+    spSignalBuilder, spSignalPlusComponent, spSignalPlusService
 } from './lib/core';
 
 // Models and Types
 export type {
-    // Core Types
-    SignalPlus,
-    SignalOptions,
-    BuilderOptions,
-    
+    BuilderOptions, ErrorHandler, FormNumberOptions,
     // Form Types
     FormTextOptions,
-    FormNumberOptions,
-    
-    // Function Types
-    Validator,
-    Transform,
-    ErrorHandler,
-    
     // State Types
-    SignalHistory,
-    SignalState
+    SignalHistory, SignalOptions,
+    // Core Types
+    SignalPlus, SignalState, Transform,
+    // Function Types
+    Validator
 } from './lib/models';
 
 // Signal Operators
 export {
-    spMap,
-    spFilter,
-    spDebounceTime,
-    spDistinctUntilChanged,
-    spDelay,
-    spThrottleTime,
-    spSkip,
-    spTake,
-    spMerge,
-    spCombineLatest
+    spCombineLatest, spDebounceTime, spDelay, spDistinctUntilChanged, spFilter, spMap, spMerge, spSkip,
+    spTake, spThrottleTime
 } from './lib/operators';
 
 // Utilities and Presets
 export {
-    spValidators,
-    spPresets
+    spPresets, spValidators
 } from './lib/utils';
 
 // State Management
@@ -74,10 +53,12 @@ export {
 
 // Transactions and Batching
 export {
-    spTransaction,
-    spBatch,
-    spIsInTransaction,
-    spIsInBatch,
-    spIsTransactionActive,
-    spGetModifiedSignals
+    spBatch, spGetModifiedSignals, spIsInBatch, spIsInTransaction, spIsTransactionActive, spTransaction
 } from './lib/utils/transactions';
+// Form Groups
+export type {
+    FormGroupConfig,
+    FormGroupOptions,
+    FormGroupValidator, SignalFormGroup
+} from './lib/models/form-group.model';
+export { spFormGroup } from './lib/utils/form-group';

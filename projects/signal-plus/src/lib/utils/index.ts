@@ -7,22 +7,12 @@ export { HistoryManager as spHistoryManager, StorageManager as spStorageManager 
 
 // Utilities
 export { enhance as spEnhance } from './enhance';
-export { presets as spPresets, validators as spValidators } from './presets';
-export { 
-  spTransaction, 
-  spBatch, 
-  spIsInTransaction, 
-  spIsInBatch,
-  spGetModifiedSignals,
-  spIsTransactionActive
-} from './transactions';
+export { spFormGroup } from './form-group';
 export {
-  isBrowser,
-  hasLocalStorage,
-  safeLocalStorageGet,
-  safeLocalStorageSet,
-  safeLocalStorageRemove,
-  safeSetTimeout,
-  safeClearTimeout,
-  safeAddEventListener
+  hasLocalStorage, isBrowser, safeAddEventListener, safeClearTimeout, safeLocalStorageGet, safeLocalStorageRemove, safeLocalStorageSet, safeSetTimeout
 } from './platform';
+export { presets as spPresets, validators as spValidators } from './presets';
+export {
+  spBatch, spGetModifiedSignals, spIsInBatch, spIsInTransaction, spIsTransactionActive, spTransaction
+} from './transactions';
+
