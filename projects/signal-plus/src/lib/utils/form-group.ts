@@ -1,60 +1,113 @@
 import { computed, signal } from '@angular/core';
-import { FormGroupConfig, FormGroupOptions, SignalFormGroup } from '../models/form-group.model';
+import {
+  FormGroupConfig,
+  FormGroupOptions,
+  SignalFormGroup,
+} from '../models/form-group.model';
 import { SignalPlus } from '../models/signal-plus.model';
 import { safeLocalStorageGet, safeLocalStorageSet } from './platform';
 
-function isFormGroup(control: SignalPlus<any> | SignalFormGroup<any>): control is SignalFormGroup<any> {
+function isFormGroup(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: SignalPlus<any> | SignalFormGroup<any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): control is SignalFormGroup<any> {
   if (!control || typeof control !== 'object') {
     return false;
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c = control as any;
   if ('writable' in c || 'signal' in c) {
     return false;
   }
-  return 'value' in c && typeof c.value === 'function' &&
-    'setValue' in c && typeof c.setValue === 'function' &&
-    'getControl' in c && typeof c.getControl === 'function';
+  return (
+    'value' in c &&
+    typeof c.value === 'function' &&
+    'setValue' in c &&
+    typeof c.setValue === 'function' &&
+    'getControl' in c &&
+    typeof c.getControl === 'function'
+  );
 }
 
-function getControlValue(control: SignalPlus<any> | SignalFormGroup<any>): any {
+function getControlValue(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: SignalPlus<any> | SignalFormGroup<any>,
+): unknown {
   if (isFormGroup(control)) {
     return control.value();
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (control as SignalPlus<any>).value;
 }
 
-function getControlErrors(control: SignalPlus<any> | SignalFormGroup<any>): string[] {
+function getControlErrors(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: SignalPlus<any> | SignalFormGroup<any>,
+): string[] {
   if (isFormGroup(control)) {
     const errors = control.errors();
     return Object.values(errors).flat();
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signalControl = control as SignalPlus<any>;
   return signalControl.isValid && !signalControl.isValid() ? ['Invalid'] : [];
 }
 
-function isControlValid(control: SignalPlus<any> | SignalFormGroup<any>): boolean {
+function isControlValid(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: SignalPlus<any> | SignalFormGroup<any>,
+): boolean {
   if (isFormGroup(control)) {
     return control.isValid();
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (control as SignalPlus<any>).isValid();
 }
 
-const dirtyState = new WeakMap<SignalPlus<any> | SignalFormGroup<any>, boolean>();
-const touchedState = new WeakMap<SignalPlus<any> | SignalFormGroup<any>, boolean>();
+const dirtyState = new WeakMap<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  SignalPlus<any> | SignalFormGroup<any>,
+  boolean
+>();
+const touchedState = new WeakMap<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  SignalPlus<any> | SignalFormGroup<any>,
+  boolean
+>();
 
-function markControlTouched(control: SignalPlus<any> | SignalFormGroup<any>, touched: boolean, trigger?: ReturnType<typeof signal<number>>): void {
+function markControlTouched(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: SignalPlus<any> | SignalFormGroup<any>,
+  touched: boolean,
+  trigger?: ReturnType<typeof signal<number>>,
+): void {
   if (isFormGroup(control)) {
-    touched ? control.markAsTouched() : control.markAsUntouched();
+    if (touched) {
+      control.markAsTouched();
+    } else {
+      control.markAsUntouched();
+    }
   } else {
     touchedState.set(control, touched);
-    trigger?.update(v => v + 1);
+    trigger?.update((v) => v + 1);
   }
 }
 
-function markControlDirty(control: SignalPlus<any> | SignalFormGroup<any>, dirty: boolean, trigger?: ReturnType<typeof signal<number>>): void {
+function markControlDirty(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: SignalPlus<any> | SignalFormGroup<any>,
+  dirty: boolean,
+  trigger?: ReturnType<typeof signal<number>>,
+): void {
   if (isFormGroup(control)) {
-    dirty ? control.markAsDirty() : control.markAsPristine();
+    if (dirty) {
+      control.markAsDirty();
+    } else {
+      control.markAsPristine();
+    }
   } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const signalControl = control as SignalPlus<any>;
     if (!dirty) {
       if (signalControl.reset) {
@@ -66,11 +119,15 @@ function markControlDirty(control: SignalPlus<any> | SignalFormGroup<any>, dirty
     } else {
       dirtyState.set(control, true);
     }
-    trigger?.update(v => v + 1);
+    trigger?.update((v) => v + 1);
   }
 }
 
-function setControlValue<T extends Record<string, any>>(control: SignalPlus<T> | SignalFormGroup<T>, value: T | Partial<T>): void {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function setControlValue<T extends Record<string, any>>(
+  control: SignalPlus<T> | SignalFormGroup<T>,
+  value: T | Partial<T>,
+): void {
   if (isFormGroup(control)) {
     control.patchValue(value as Partial<T>);
   } else {
@@ -78,10 +135,16 @@ function setControlValue<T extends Record<string, any>>(control: SignalPlus<T> |
   }
 }
 
-function resetControl(control: SignalPlus<any> | SignalFormGroup<any>, touchedTrigger?: ReturnType<typeof signal<number>>, dirtyTrigger?: ReturnType<typeof signal<number>>): void {
+function resetControl(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: SignalPlus<any> | SignalFormGroup<any>,
+  touchedTrigger?: ReturnType<typeof signal<number>>,
+  dirtyTrigger?: ReturnType<typeof signal<number>>,
+): void {
   if (isFormGroup(control)) {
     control.reset();
   } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const signalControl = control as SignalPlus<any>;
     if (signalControl.reset) {
       signalControl.reset();
@@ -95,64 +158,74 @@ function resetControl(control: SignalPlus<any> | SignalFormGroup<any>, touchedTr
 
 /**
  * Creates a form group that manages multiple form controls together
- * 
+ *
  * @param config - Object mapping field names to controls (signals or nested form groups)
  * @param options - Optional configuration (persistence, validators)
  * @returns A SignalFormGroup instance with aggregated state and methods
- * 
+ *
  * @example
  * ```typescript
  * const loginForm = spFormGroup({
  *   email: spForm.email(''),
  *   password: spForm.text('', { minLength: 8 })
  * });
- * 
+ *
  * loginForm.isValid(); // false if password < 8 chars
  * loginForm.value(); // { email: '', password: '' }
  * ```
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function spFormGroup<T extends Record<string, any>>(
   config: FormGroupConfig<T>,
-  options?: FormGroupOptions
+  options?: FormGroupOptions,
 ): SignalFormGroup<T> {
   const controls = config;
-  const controlKeys = Object.keys(controls) as Array<keyof T>;
+  const controlKeys = Object.keys(controls) as (keyof T)[];
 
   const touchedTrigger = signal(0);
   const dirtyTrigger = signal(0);
 
   const initialValues = {} as T;
-  controlKeys.forEach(key => {
-    initialValues[key] = getControlValue(controls[key as keyof FormGroupConfig<T>]);
+  controlKeys.forEach((key) => {
+    initialValues[key] = getControlValue(
+      controls[key as keyof FormGroupConfig<T>],
+    ) as T[keyof T];
   });
 
-  const persistedData = options?.persistKey ? safeLocalStorageGet(options.persistKey) : null;
+  const persistedData = options?.persistKey
+    ? safeLocalStorageGet(options.persistKey)
+    : null;
   if (persistedData) {
     try {
       const parsed = JSON.parse(persistedData);
-      controlKeys.forEach(key => {
+      controlKeys.forEach((key) => {
         if (parsed[key] !== undefined) {
-          setControlValue(controls[key as keyof FormGroupConfig<T>], parsed[key]);
+          setControlValue(
+            controls[key as keyof FormGroupConfig<T>],
+            parsed[key],
+          );
         }
       });
     } catch {
+      // Ignore parsing errors for persisted data
     }
   }
 
   const value = computed(() => {
     const result = {} as T;
-    controlKeys.forEach(key => {
+    controlKeys.forEach((key) => {
       const control = controls[key as keyof FormGroupConfig<T>];
       result[key] = isFormGroup(control)
         ? control.value()
-        : (control as SignalPlus<any>).value;
+        : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (control as SignalPlus<any>).value;
     });
     return result;
   });
 
   const isValid = computed(() => {
-    const allControlsValid = controlKeys.every(key =>
-      isControlValid(controls[key as keyof FormGroupConfig<T>])
+    const allControlsValid = controlKeys.every((key) =>
+      isControlValid(controls[key as keyof FormGroupConfig<T>]),
     );
     if (!allControlsValid) {
       return false;
@@ -160,7 +233,7 @@ export function spFormGroup<T extends Record<string, any>>(
 
     if (options?.validators && options.validators.length > 0) {
       const currentValue = value();
-      return options.validators.every(validator => {
+      return options.validators.every((validator) => {
         const result = validator(currentValue);
         return result === true || result === '';
       });
@@ -173,7 +246,7 @@ export function spFormGroup<T extends Record<string, any>>(
     dirtyTrigger();
     const currentValue = value();
 
-    return controlKeys.some(key => {
+    return controlKeys.some((key) => {
       const control = controls[key as keyof FormGroupConfig<T>];
 
       if (isFormGroup(control)) {
@@ -196,7 +269,7 @@ export function spFormGroup<T extends Record<string, any>>(
 
   const isTouched = computed(() => {
     touchedTrigger();
-    return controlKeys.some(key => {
+    return controlKeys.some((key) => {
       const control = controls[key as keyof FormGroupConfig<T>];
       if (isFormGroup(control)) {
         return control.isTouched();
@@ -208,8 +281,10 @@ export function spFormGroup<T extends Record<string, any>>(
   const errors = computed(() => {
     const result: Record<string, string[]> = {};
 
-    controlKeys.forEach(key => {
-      const controlErrors = getControlErrors(controls[key as keyof FormGroupConfig<T>]);
+    controlKeys.forEach((key) => {
+      const controlErrors = getControlErrors(
+        controls[key as keyof FormGroupConfig<T>],
+      );
       if (controlErrors.length > 0) {
         result[String(key)] = controlErrors;
       }
@@ -217,10 +292,13 @@ export function spFormGroup<T extends Record<string, any>>(
 
     if (options?.validators && options.validators.length > 0) {
       const currentValue = value();
-      options.validators.forEach(validator => {
+      options.validators.forEach((validator) => {
         const validatorResult = validator(currentValue);
         if (validatorResult !== true && validatorResult !== '') {
-          const errorMessage = typeof validatorResult === 'string' ? validatorResult : 'Validation failed';
+          const errorMessage =
+            typeof validatorResult === 'string'
+              ? validatorResult
+              : 'Validation failed';
           if (!result['_group']) {
             result['_group'] = [];
           }
@@ -233,9 +311,12 @@ export function spFormGroup<T extends Record<string, any>>(
   });
 
   function setValue(newValue: Partial<T>): void {
-    controlKeys.forEach(key => {
+    controlKeys.forEach((key) => {
       if (newValue[key] !== undefined) {
-        setControlValue(controls[key as keyof FormGroupConfig<T>], newValue[key]!);
+        setControlValue(
+          controls[key as keyof FormGroupConfig<T>],
+          newValue[key]!,
+        );
       }
     });
     if (options?.persistKey) {
@@ -248,8 +329,12 @@ export function spFormGroup<T extends Record<string, any>>(
   }
 
   function reset(): void {
-    controlKeys.forEach(key => {
-      resetControl(controls[key as keyof FormGroupConfig<T>], touchedTrigger, dirtyTrigger);
+    controlKeys.forEach((key) => {
+      resetControl(
+        controls[key as keyof FormGroupConfig<T>],
+        touchedTrigger,
+        dirtyTrigger,
+      );
     });
     if (options?.persistKey) {
       safeLocalStorageSet(options.persistKey, JSON.stringify(initialValues));
@@ -257,26 +342,42 @@ export function spFormGroup<T extends Record<string, any>>(
   }
 
   function markAsTouched(): void {
-    controlKeys.forEach(key => {
-      markControlTouched(controls[key as keyof FormGroupConfig<T>], true, touchedTrigger);
+    controlKeys.forEach((key) => {
+      markControlTouched(
+        controls[key as keyof FormGroupConfig<T>],
+        true,
+        touchedTrigger,
+      );
     });
   }
 
   function markAsUntouched(): void {
-    controlKeys.forEach(key => {
-      markControlTouched(controls[key as keyof FormGroupConfig<T>], false, touchedTrigger);
+    controlKeys.forEach((key) => {
+      markControlTouched(
+        controls[key as keyof FormGroupConfig<T>],
+        false,
+        touchedTrigger,
+      );
     });
   }
 
   function markAsDirty(): void {
-    controlKeys.forEach(key => {
-      markControlDirty(controls[key as keyof FormGroupConfig<T>], true, dirtyTrigger);
+    controlKeys.forEach((key) => {
+      markControlDirty(
+        controls[key as keyof FormGroupConfig<T>],
+        true,
+        dirtyTrigger,
+      );
     });
   }
 
   function markAsPristine(): void {
-    controlKeys.forEach(key => {
-      markControlDirty(controls[key as keyof FormGroupConfig<T>], false, dirtyTrigger);
+    controlKeys.forEach((key) => {
+      markControlDirty(
+        controls[key as keyof FormGroupConfig<T>],
+        false,
+        dirtyTrigger,
+      );
     });
   }
 
@@ -291,10 +392,13 @@ export function spFormGroup<T extends Record<string, any>>(
   }
 
   function get<K extends keyof T>(field: K): T[K] {
-    return getControlValue(controls[field as keyof FormGroupConfig<T>]);
+    return getControlValue(controls[field as keyof FormGroupConfig<T>]) as T[K];
   }
 
-  function getControl<K extends keyof T>(field: K): SignalPlus<any> | SignalFormGroup<any> {
+  function getControl<K extends keyof T>(
+    field: K,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): SignalPlus<any> | SignalFormGroup<any> {
     return controls[field as keyof FormGroupConfig<T>];
   }
 
@@ -314,6 +418,6 @@ export function spFormGroup<T extends Record<string, any>>(
     submit,
     validate,
     get,
-    getControl
+    getControl,
   };
 }

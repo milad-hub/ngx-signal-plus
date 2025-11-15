@@ -14,7 +14,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('', { minLength: 8 });
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.value()).toEqual({ email: '', password: '' });
       expect(form.isValid()).toBe(false);
@@ -27,7 +27,7 @@ describe('spFormGroup', () => {
       const age = spForm.number({ initial: 25 });
       const form = spFormGroup({
         email,
-        age
+        age,
       });
       expect(form.value()).toEqual({ email: 'test@example.com', age: 25 });
     });
@@ -37,7 +37,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('', { minLength: 8 });
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.isValid()).toBe(false);
       password.setValue('password123');
@@ -49,7 +49,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.isDirty()).toBe(false);
       email.setValue('new@example.com');
@@ -61,7 +61,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.isTouched()).toBe(false);
       form.markAsTouched();
@@ -75,10 +75,13 @@ describe('spFormGroup', () => {
       const password = spForm.text('');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       form.setValue({ email: 'test@example.com', password: 'password123' });
-      expect(form.value()).toEqual({ email: 'test@example.com', password: 'password123' });
+      expect(form.value()).toEqual({
+        email: 'test@example.com',
+        password: 'password123',
+      });
       expect(email.value).toBe('test@example.com');
       expect(password.value).toBe('password123');
     });
@@ -88,10 +91,13 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       form.patchValue({ email: 'new@example.com' });
-      expect(form.value()).toEqual({ email: 'new@example.com', password: 'password123' });
+      expect(form.value()).toEqual({
+        email: 'new@example.com',
+        password: 'password123',
+      });
       expect(email.value).toBe('new@example.com');
       expect(password.value).toBe('password123');
     });
@@ -101,7 +107,7 @@ describe('spFormGroup', () => {
       const age = spForm.number({ initial: 0 });
       const form = spFormGroup({
         email,
-        age
+        age,
       });
       form.setValue({ email: 'test@example.com', age: 25 });
       expect(typeof form.value().email).toBe('string');
@@ -115,11 +121,14 @@ describe('spFormGroup', () => {
       const password = spForm.text('initial123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       form.setValue({ email: 'changed@example.com', password: 'changed123' });
       form.reset();
-      expect(form.value()).toEqual({ email: 'initial@example.com', password: 'initial123' });
+      expect(form.value()).toEqual({
+        email: 'initial@example.com',
+        password: 'initial123',
+      });
     });
 
     it('should reset dirty and touched state', () => {
@@ -127,7 +136,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       form.setValue({ email: 'new@example.com', password: 'newpassword123' });
       form.markAsTouched();
@@ -145,7 +154,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('', { minLength: 8 });
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.isValid()).toBe(false);
       email.setValue('test@example.com');
@@ -157,15 +166,19 @@ describe('spFormGroup', () => {
     it('should run group-level validators', () => {
       const password = spForm.text('password123');
       const confirmPassword = spForm.text('password123');
-      const form = spFormGroup({
-        password,
-        confirmPassword
-      }, {
-        validators: [
-          (values: { password: string; confirmPassword: string }) =>
-            values.password === values.confirmPassword || 'Passwords must match'
-        ]
-      });
+      const form = spFormGroup(
+        {
+          password,
+          confirmPassword,
+        },
+        {
+          validators: [
+            (values: { password: string; confirmPassword: string }) =>
+              values.password === values.confirmPassword ||
+              'Passwords must match',
+          ],
+        },
+      );
       expect(form.isValid()).toBe(true);
       confirmPassword.setValue('different');
       expect(form.isValid()).toBe(false);
@@ -179,7 +192,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('', { minLength: 8 });
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       form.validate();
       const errors = form.errors();
@@ -189,15 +202,19 @@ describe('spFormGroup', () => {
     it('should support cross-field validation', () => {
       const startDate = spForm.text('2024-01-01');
       const endDate = spForm.text('2024-01-02');
-      const form = spFormGroup({
-        startDate,
-        endDate
-      }, {
-        validators: [
-          (values: { startDate: string; endDate: string }) =>
-            values.startDate <= values.endDate || 'End date must be after start date'
-        ]
-      });
+      const form = spFormGroup(
+        {
+          startDate,
+          endDate,
+        },
+        {
+          validators: [
+            (values: { startDate: string; endDate: string }) =>
+              values.startDate <= values.endDate ||
+              'End date must be after start date',
+          ],
+        },
+      );
       expect(form.isValid()).toBe(true);
       endDate.setValue('2023-12-31');
       expect(form.isValid()).toBe(false);
@@ -210,19 +227,19 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const credentials = spFormGroup({
         email,
-        password
+        password,
       });
       const name = spForm.text('John Doe');
       const profile = spFormGroup({
-        name
+        name,
       });
       const form = spFormGroup({
         credentials,
-        profile
+        profile,
       });
       expect(form.value()).toEqual({
         credentials: { email: 'test@example.com', password: 'password123' },
-        profile: { name: 'John Doe' }
+        profile: { name: 'John Doe' },
       });
     });
 
@@ -231,12 +248,14 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const credentials = spFormGroup({
         email,
-        password
+        password,
       });
       const form = spFormGroup({
-        credentials
+        credentials,
       });
-      const formValue = form.value() as { credentials: { email: string; password: string } };
+      const formValue = form.value() as {
+        credentials: { email: string; password: string };
+      };
       expect(formValue.credentials.email).toBe('test@example.com');
       expect(formValue.credentials.password).toBe('password123');
     });
@@ -246,10 +265,10 @@ describe('spFormGroup', () => {
       const password = spForm.text('', { minLength: 8 });
       const credentials = spFormGroup({
         email,
-        password
+        password,
       });
       const form = spFormGroup({
-        credentials
+        credentials,
       });
       expect(form.isValid()).toBe(false);
       email.setValue('test@example.com');
@@ -262,12 +281,15 @@ describe('spFormGroup', () => {
     it('should persist entire form state', () => {
       const email = spForm.text('test@example.com');
       const password = spForm.text('password123');
-      const form = spFormGroup({
-        email,
-        password
-      }, {
-        persistKey: 'test-form'
-      });
+      const form = spFormGroup(
+        {
+          email,
+          password,
+        },
+        {
+          persistKey: 'test-form',
+        },
+      );
       form.setValue({ email: 'saved@example.com', password: 'saved123' });
       const stored = localStorage.getItem('test-form');
       expect(stored).toBeTruthy();
@@ -276,15 +298,24 @@ describe('spFormGroup', () => {
     });
 
     it('should restore form state on load', () => {
-      localStorage.setItem('test-form', JSON.stringify({ email: 'restored@example.com', password: 'restored123' }));
+      localStorage.setItem(
+        'test-form',
+        JSON.stringify({
+          email: 'restored@example.com',
+          password: 'restored123',
+        }),
+      );
       const email = spForm.text('');
       const password = spForm.text('');
-      const form = spFormGroup({
-        email,
-        password
-      }, {
-        persistKey: 'test-form'
-      });
+      const form = spFormGroup(
+        {
+          email,
+          password,
+        },
+        {
+          persistKey: 'test-form',
+        },
+      );
       expect(form.value().email).toBe('restored@example.com');
       expect(form.value().password).toBe('restored123');
     });
@@ -296,10 +327,13 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       const result = form.submit();
-      expect(result).toEqual({ email: 'test@example.com', password: 'password123' });
+      expect(result).toEqual({
+        email: 'test@example.com',
+        password: 'password123',
+      });
     });
 
     it('should return null when invalid', () => {
@@ -307,7 +341,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('', { minLength: 8 });
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       const result = form.submit();
       expect(result).toBeNull();
@@ -318,7 +352,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.isTouched()).toBe(false);
       form.submit();
@@ -332,7 +366,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.get('email')).toBe('test@example.com');
       expect(form.get('password')).toBe('password123');
@@ -343,10 +377,11 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       const emailControl = form.getControl('email');
       expect(emailControl).toBe(email);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (emailControl as any).setValue('new@example.com');
       expect(form.get('email')).toBe('new@example.com');
     });
@@ -358,7 +393,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.isTouched()).toBe(false);
       form.markAsTouched();
@@ -370,7 +405,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       form.markAsTouched();
       expect(form.isTouched()).toBe(true);
@@ -383,7 +418,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       form.markAsDirty();
       expect(form.isDirty()).toBe(true);
@@ -394,7 +429,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       email.setValue('new@example.com');
       expect(form.isDirty()).toBe(true);
@@ -409,7 +444,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.validate()).toBe(true);
     });
@@ -419,7 +454,7 @@ describe('spFormGroup', () => {
       const password = spForm.text('password123');
       const form = spFormGroup({
         email,
-        password
+        password,
       });
       expect(form.isTouched()).toBe(false);
       form.validate();
@@ -427,4 +462,3 @@ describe('spFormGroup', () => {
     });
   });
 });
-

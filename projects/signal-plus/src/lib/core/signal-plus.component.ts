@@ -2,21 +2,21 @@
  * @fileoverview SignalPlus Demo Component
  * @description A standalone component that demonstrates the core features of the SignalPlus library.
  * This component serves as both documentation and a testing ground for the library's functionality.
- * 
+ *
  * Features demonstrated:
  * - Basic signal presets (counter, toggle)
  * - Form input handling with validation
  * - Persistent storage integration
  * - History tracking and undo/redo
  * - Debounced search functionality
- * 
+ *
  * @example
  * ```typescript
  * // Standalone component usage
  * @Component({
  *   imports: [SignalPlusComponent]
  * })
- * 
+ *
  * // Or in NgModule
  * @NgModule({
  *   imports: [SignalPlusComponent]
@@ -26,9 +26,8 @@
 
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { SignalPlus } from '../models/signal-plus.model';
 import { SignalPlusService } from './signal-plus.service';
-import { sp, spCounter, spForm, spToggle } from '../utils/create';
+import { spCounter, spForm, spToggle } from '../utils/create';
 import { SignalBuilder } from '../core/signal-builder';
 
 /**
@@ -42,13 +41,13 @@ import { SignalBuilder } from '../core/signal-builder';
   template: `
     <div class="signal-plus-demo">
       <h3>Signal Plus Demo</h3>
-      
+
       <div class="counter">
         <h4>Basic Counter (Preset)</h4>
         <p>Current value: {{ counter.value }}</p>
         <p>Previous value: {{ counter.previousValue }}</p>
         <p>Is valid: {{ counter.isValid() ? 'Yes' : 'No' }}</p>
-        
+
         <button (click)="increment()">Increment</button>
         <button (click)="decrement()">Decrement</button>
         <button (click)="counter.reset()">Reset</button>
@@ -57,19 +56,23 @@ import { SignalBuilder } from '../core/signal-builder';
 
       <div class="form">
         <h4>Text Input (Simple Creation)</h4>
-        <input [value]="input.value" 
-               (input)="handleInput($event)"
-               placeholder="Type here...">
+        <input
+          [value]="input.value"
+          (input)="handleInput($event)"
+          placeholder="Type here..."
+        />
         <p class="hint">Value updates after 300ms of inactivity</p>
       </div>
 
       <div class="amount">
         <h4>Amount Input (Builder Pattern)</h4>
         <p>Value: {{ amount.value }}</p>
-        <input type="number" 
-               [value]="amount.value"
-               [class.invalid]="!amount.isValid()"
-               (input)="updateAmount($event)">
+        <input
+          type="number"
+          [value]="amount.value"
+          [class.invalid]="!amount.isValid()"
+          (input)="updateAmount($event)"
+        />
         @if (!amount.isValid()) {
           <p class="error-message">Value must be between 0 and 10</p>
         }
@@ -84,65 +87,71 @@ import { SignalBuilder } from '../core/signal-builder';
 
       <div class="search">
         <h4>Search Input (Debounced)</h4>
-        <input [value]="search.value"
-               (input)="onSearch($event)"
-               placeholder="Search...">
+        <input
+          [value]="search.value"
+          (input)="onSearch($event)"
+          placeholder="Search..."
+        />
         <p class="hint">Last search: {{ search.value }}</p>
       </div>
     </div>
   `,
-  styles: [`
-    .signal-plus-demo {
-      padding: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    
-    .counter, .form, .amount {
-      margin-top: 1rem;
-      padding: 1rem;
-      background: #f5f5f5;
-      border-radius: 4px;
-    }
-    
-    input {
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      width: 100%;
-      max-width: 300px;
-    }
+  styles: [
+    `
+      .signal-plus-demo {
+        padding: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
 
-    input:focus {
-      outline: none;
-      border-color: #007bff;
-    }
+      .counter,
+      .form,
+      .amount {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f5f5f5;
+        border-radius: 4px;
+      }
 
-    input.invalid {
-      border-color: #dc3545;
-    }
-    
-    button {
-      margin-right: 0.5rem;
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 4px;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
-    }
-    
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
+      input {
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        width: 100%;
+        max-width: 300px;
+      }
 
-    .error-message {
-      color: #dc3545;
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
-  `]
+      input:focus {
+        outline: none;
+        border-color: #007bff;
+      }
+
+      input.invalid {
+        border-color: #dc3545;
+      }
+
+      button {
+        margin-right: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        background: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      .error-message {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+      }
+    `,
+  ],
 })
 export class SignalPlusComponent {
   /** Service instance for creating and managing signals */
@@ -166,9 +175,9 @@ export class SignalPlusComponent {
    * - Persistent storage
    * - Automatic value sync
    */
-  readonly input = spForm.text('', { 
+  readonly input = spForm.text('', {
     minLength: 3,
-    debounce: 300
+    debounce: 300,
   });
 
   /**
@@ -182,7 +191,7 @@ export class SignalPlusComponent {
   readonly amount = new SignalBuilder(0)
     .validate((value: number) => value >= 0 && value <= 10)
     .onError((error: Error) => {
-        console.error(error);
+      console.error(error);
     })
     .build();
 
@@ -206,7 +215,7 @@ export class SignalPlusComponent {
    */
   readonly search = spForm.text('', {
     debounce: 300,
-    minLength: 2
+    minLength: 2,
   });
 
   /**
@@ -246,9 +255,9 @@ export class SignalPlusComponent {
     const target: HTMLInputElement = event.target as HTMLInputElement;
     const value: number = +target.value;
     try {
-        this.amount.setValue(value);
+      this.amount.setValue(value);
     } catch (error) {
-        console.error(error);
+      console.error(error);
     }
   }
 

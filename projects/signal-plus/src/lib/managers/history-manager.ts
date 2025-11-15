@@ -1,13 +1,13 @@
 /**
  * @fileoverview History management system for signal values
  * Provides undo/redo functionality with a fixed-size circular buffer.
- * 
+ *
  * Features:
  * - Type-safe history tracking with generics
  * - Fixed-size buffer to prevent memory leaks
  * - Undo/redo operations with state tracking
  * - Current state access and validation
- * 
+ *
  * @example Basic Usage
  * ```typescript
  * const history = new HistoryManager(0);
@@ -22,21 +22,21 @@ import { SignalHistory } from '../models/signal-plus.model';
 
 /**
  * Manages undo/redo history for signal values with a fixed-size buffer.
- * 
+ *
  * @remarks
  * This class provides a robust history management system with:
  * - Fixed-size circular buffer to prevent memory leaks
  * - Type-safe operations with generics
  * - Undo/redo functionality with state validation
  * - Automatic cleanup of old entries
- * 
+ *
  * @typeParam T - The type of value being tracked in history
  */
 export class HistoryManager<T> {
   /** Maximum number of history entries to maintain. Prevents unbounded memory growth */
   private readonly maxHistory = 50;
-  
-  /** 
+
+  /**
    * Internal history state tracking past, present, and future values.
    * Past: Array of previous values for undo operations
    * Present: Current active value
@@ -46,9 +46,9 @@ export class HistoryManager<T> {
 
   /**
    * Creates a new history manager instance
-   * 
+   *
    * @param initialValue - The initial value to track
-   * 
+   *
    * @example
    * ```typescript
    * const manager = new HistoryManager(0);
@@ -61,19 +61,19 @@ export class HistoryManager<T> {
     this.history = {
       past: [],
       present: initialValue,
-      future: []
+      future: [],
     };
   }
 
   /**
    * Pushes a new value onto the history stack
-   * 
+   *
    * @param value - The new value to add to history
    * @remarks
    * - Clears the redo stack (future values)
    * - Maintains the maximum history size by removing oldest entries
    * - Updates the present value and moves current to past
-   * 
+   *
    * @example
    * ```typescript
    * manager.push(5);  // Adds 5 to history
@@ -92,13 +92,13 @@ export class HistoryManager<T> {
 
   /**
    * Reverts to the previous value in history
-   * 
+   *
    * @returns The previous value, or undefined if no history exists
    * @remarks
    * - Moves present value to future for redo
    * - Updates present value to last past entry
    * - Removes used past entry
-   * 
+   *
    * @example
    * ```typescript
    * manager.push(1);
@@ -117,13 +117,13 @@ export class HistoryManager<T> {
 
   /**
    * Restores a previously undone value
-   * 
+   *
    * @returns The next value in the redo stack, or undefined if no redo history
    * @remarks
    * - Moves present value to past for undo
    * - Updates present value to first future entry
    * - Removes used future entry
-   * 
+   *
    * @example
    * ```typescript
    * manager.push(1);
@@ -142,7 +142,7 @@ export class HistoryManager<T> {
 
   /**
    * Gets the current value in history
-   * 
+   *
    * @returns The present value
    * @remarks
    * Always returns the current value regardless of undo/redo state
@@ -153,7 +153,7 @@ export class HistoryManager<T> {
 
   /**
    * Checks if undo operation is available
-   * 
+   *
    * @returns True if there are past values to undo to
    * @remarks
    * Use this to validate before calling undo()
@@ -164,7 +164,7 @@ export class HistoryManager<T> {
 
   /**
    * Checks if redo operation is available
-   * 
+   *
    * @returns True if there are future values to redo to
    * @remarks
    * Use this to validate before calling redo()
@@ -172,4 +172,4 @@ export class HistoryManager<T> {
   get canRedo(): boolean {
     return this.history.future.length > 0;
   }
-} 
+}

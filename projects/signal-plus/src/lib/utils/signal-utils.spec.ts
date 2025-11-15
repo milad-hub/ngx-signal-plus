@@ -1,7 +1,24 @@
-import { Injector, runInInjectionContext, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  Injector,
+  runInInjectionContext,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { Validator } from '../models';
-import { asyncSignal, batchSignal, CleanupSignal, cleanupSignal, debouncedSignal, memoized, persistentSignal, signalWithHistory, throttledSignal, validatedSignal } from './signal-utils';
+import {
+  asyncSignal,
+  batchSignal,
+  CleanupSignal,
+  cleanupSignal,
+  debouncedSignal,
+  memoized,
+  persistentSignal,
+  signalWithHistory,
+  throttledSignal,
+  validatedSignal,
+} from './signal-utils';
 
 describe('Signal Utils', () => {
   let injector: Injector;
@@ -56,7 +73,7 @@ describe('Signal Utils', () => {
       const age: WritableSignal<number> = signal(25);
       const info: Signal<string> = memoized(
         () => `${name()} is ${age()} years old`,
-        [name, age]
+        [name, age],
       );
       expect(info()).toBe('John is 25 years old');
     });
@@ -66,7 +83,7 @@ describe('Signal Utils', () => {
       const age: WritableSignal<number> = signal(25);
       const info: Signal<string> = memoized(
         () => `${name()} is ${age()} years old`,
-        [name, age]
+        [name, age],
       );
       name.set('Jane');
       age.set(30);
@@ -139,8 +156,8 @@ describe('Signal Utils', () => {
     it('should batch multiple updates', fakeAsync(() => {
       runInInjectionContext(injector, () => {
         const counter = batchSignal(0);
-        counter.update(v => v + 1);
-        counter.update(v => v * 2);
+        counter.update((v) => v + 1);
+        counter.update((v) => v * 2);
         expect(counter.value()).toBe(0);
         tick(0);
         expect(counter.value()).toBe(2);
@@ -160,7 +177,7 @@ describe('Signal Utils', () => {
     it('should handle cleanup on update', () => {
       const cleanup: jasmine.Spy = jasmine.createSpy('cleanup');
       const value: CleanupSignal<string> = cleanupSignal('initial');
-      value.update(v => v + '!', cleanup);
+      value.update((v) => v + '!', cleanup);
       value.destroy();
       expect(cleanup).toHaveBeenCalled();
     });
@@ -200,7 +217,7 @@ describe('Signal Utils', () => {
     it('should track loading state', async () => {
       const data = asyncSignal<string>();
       let resolvePromise: (value: string) => void;
-      const promise: Promise<string> = new Promise<string>(resolve => {
+      const promise: Promise<string> = new Promise<string>((resolve) => {
         resolvePromise = resolve;
       });
       const execution: Promise<void> = data.execute(promise);
@@ -267,8 +284,8 @@ describe('Signal Utils', () => {
     it('should handle errors in batch operations', fakeAsync(() => {
       runInInjectionContext(injector, () => {
         const counter = batchSignal(0);
-        counter.update(v => v + 1);
-        counter.update(v => v * 2);
+        counter.update((v) => v + 1);
+        counter.update((v) => v * 2);
         expect(counter.value()).toBe(0);
         tick(0);
         expect(counter.value()).toBe(2);
@@ -339,7 +356,10 @@ describe('Signal Utils', () => {
 
   describe('signalWithHistory - comprehensive', () => {
     it('should handle complex object types', () => {
-      interface TestObject { id: number; data: string[]; }
+      interface TestObject {
+        id: number;
+        data: string[];
+      }
 
       const history = signalWithHistory<TestObject>({ id: 1, data: [] });
       history.push({ id: 2, data: ['test'] });
@@ -367,7 +387,7 @@ describe('Signal Utils', () => {
       const c: WritableSignal<number> = signal(3);
       const computed: Signal<number> = memoized(
         () => a() + b() + c(),
-        [a, b, c]
+        [a, b, c],
       );
       expect(computed()).toBe(6);
       a.set(2);
@@ -379,13 +399,10 @@ describe('Signal Utils', () => {
     it('should cleanup properly', () => {
       const source: WritableSignal<number> = signal(0);
       const computeSpy: jasmine.Spy = jasmine.createSpy('compute');
-      const computed: Signal<number> = memoized(
-        () => {
-          computeSpy();
-          return source() * 2;
-        },
-        [source]
-      );
+      const computed: Signal<number> = memoized(() => {
+        computeSpy();
+        return source() * 2;
+      }, [source]);
       computed();
       expect(computeSpy).toHaveBeenCalledTimes(1);
       computed();
@@ -401,8 +418,10 @@ describe('Signal Utils', () => {
       const isPositive: Validator<number> = (n: number) => n > 0;
       const isInteger: Validator<number> = (n: number) => Number.isInteger(n);
       const isLessThan100: Validator<number> = (n: number) => n < 100;
-      const number = validatedSignal(1, (value) =>
-        isPositive(value) && isInteger(value) && isLessThan100(value)
+      const number = validatedSignal(
+        1,
+        (value) =>
+          isPositive(value) && isInteger(value) && isLessThan100(value),
       );
       expect(number.set(50)).toBe(true);
       expect(number.set(-1)).toBe(false);
@@ -411,7 +430,10 @@ describe('Signal Utils', () => {
     });
 
     it('should handle edge cases', () => {
-      const number = validatedSignal<number>(0, (n: number) => !isNaN(n) && isFinite(n));
+      const number = validatedSignal<number>(
+        0,
+        (n: number) => !isNaN(n) && isFinite(n),
+      );
       expect(number.set(NaN)).toBe(false);
       expect(number.set(Infinity)).toBe(false);
       expect(number.set(-Infinity)).toBe(false);
@@ -421,7 +443,10 @@ describe('Signal Utils', () => {
 
   describe('debouncedSignal - comprehensive', () => {
     it('should handle cleanup on destroy', fakeAsync(() => {
-      const clearTimeoutSpy: jasmine.Spy = spyOn(window, 'clearTimeout').and.callThrough();
+      const clearTimeoutSpy: jasmine.Spy = spyOn(
+        window,
+        'clearTimeout',
+      ).and.callThrough();
       const signal = debouncedSignal('', 100);
       signal.set('test1');
       signal.set('test2');
@@ -432,6 +457,7 @@ describe('Signal Utils', () => {
 
     it('should handle rapid successive updates', fakeAsync(() => {
       const signal = debouncedSignal('', 100);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const values: string[] = [];
       signal.set('t');
       tick(50);
@@ -455,7 +481,10 @@ describe('Signal Utils', () => {
     }));
 
     it('should reset timeout to null after cancel', fakeAsync(() => {
-      const clearTimeoutSpy: jasmine.Spy = spyOn(window, 'clearTimeout').and.callThrough();
+      const clearTimeoutSpy: jasmine.Spy = spyOn(
+        window,
+        'clearTimeout',
+      ).and.callThrough();
       const signal = debouncedSignal('', 100);
       signal.set('test1');
       signal.cancel();
@@ -485,6 +514,7 @@ describe('Signal Utils', () => {
   describe('throttledSignal - comprehensive', () => {
     it('should handle edge cases around throttle window', fakeAsync(() => {
       const signal = throttledSignal(0, 100);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const updates: number[] = [];
       signal.set(1);
       expect(signal.value()).toBe(1);
@@ -549,9 +579,9 @@ describe('Signal Utils', () => {
     it('should preserve update order', fakeAsync(() => {
       runInInjectionContext(injector, () => {
         const signal = batchSignal(0);
-        signal.update(v => v + 1);
-        signal.update(v => v * 2);
-        signal.update(v => v + 3);
+        signal.update((v) => v + 1);
+        signal.update((v) => v * 2);
+        signal.update((v) => v + 3);
         tick(0);
         expect(signal.value()).toBe(5);
       });
@@ -560,9 +590,9 @@ describe('Signal Utils', () => {
     it('should handle nested batch operations', fakeAsync(() => {
       runInInjectionContext(injector, () => {
         const signal = batchSignal({ count: 0, total: 0 });
-        signal.update(v => ({ ...v, count: v.count + 1 }));
-        signal.update(v => ({ ...v, total: v.total + v.count }));
-        signal.update(v => ({ ...v, count: v.count * 2 }));
+        signal.update((v) => ({ ...v, count: v.count + 1 }));
+        signal.update((v) => ({ ...v, total: v.total + v.count }));
+        signal.update((v) => ({ ...v, count: v.count * 2 }));
         tick(0);
         expect(signal.value()).toEqual({ count: 2, total: 1 });
       });
@@ -582,7 +612,7 @@ describe('Signal Utils', () => {
 
     it('should handle async cleanup', fakeAsync(() => {
       const signal: CleanupSignal<string> = cleanupSignal('initial');
-      let cleanupExecuted: boolean = false;
+      let cleanupExecuted = false;
       signal.set('test', () => {
         setTimeout(() => {
           cleanupExecuted = true;
@@ -596,7 +626,7 @@ describe('Signal Utils', () => {
     it('should handle errors in cleanup', () => {
       const signal: CleanupSignal<string> = cleanupSignal('initial');
       const successCleanup: jasmine.Spy = jasmine.createSpy('successCleanup');
-      let errorThrown: boolean = false;
+      let errorThrown = false;
       signal.set('first', () => {
         try {
           throw new Error('Cleanup error');
@@ -623,9 +653,13 @@ describe('Signal Utils', () => {
 
     it('should handle storage quota exceeded', fakeAsync(() => {
       runInInjectionContext(injector, () => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const consoleSpy: jasmine.Spy = spyOn(console, 'error');
         spyOn(localStorage, 'setItem').and.callFake(() => {
-          throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+          throw new DOMException(
+            'Storage quota exceeded',
+            'QuotaExceededError',
+          );
         });
         const signal = persistentSignal('test-key', 'initial');
         tick();
@@ -645,7 +679,7 @@ describe('Signal Utils', () => {
           key: 'sync-key',
           newValue: JSON.stringify('updated'),
           oldValue: JSON.stringify('initial'),
-          storageArea: localStorage
+          storageArea: localStorage,
         });
         window.dispatchEvent(event);
         tick();
@@ -695,9 +729,10 @@ describe('Signal Utils', () => {
 
     it('should handle storage quota exceeded errors', fakeAsync(() => {
       runInInjectionContext(injector, () => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const consoleSpy: jasmine.Spy = spyOn(console, 'error');
         spyOn(localStorage, 'setItem').and.throwError(
-          new DOMException('Quota exceeded', 'QuotaExceededError')
+          new DOMException('Quota exceeded', 'QuotaExceededError'),
         );
         const signal = persistentSignal('test-key', { data: 'large-data' });
         tick();
@@ -717,7 +752,10 @@ describe('Signal Utils', () => {
         localStorage.setItem('test-key', 'invalid{json');
         const signal = persistentSignal('test-key', 'default');
         tick();
-        expect(consoleSpy).toHaveBeenCalledWith('Error loading from storage:', jasmine.any(Error));
+        expect(consoleSpy).toHaveBeenCalledWith(
+          'Error loading from storage:',
+          jasmine.any(Error),
+        );
         expect(signal.value()).toBe('default');
         signal.set('new-value');
         tick();

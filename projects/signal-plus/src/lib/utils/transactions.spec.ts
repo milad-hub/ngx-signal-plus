@@ -1,7 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { SignalPlusService } from '../core/signal-plus.service';
 import { SignalPlus } from '../models/signal-plus.model';
-import { _patchAllSignalsInTest, _resetTransactionState, spBatch, spGetModifiedSignals, spIsInBatch, spIsInTransaction, spIsTransactionActive, spTransaction, TransactionError } from './transactions';
+import {
+  _patchAllSignalsInTest,
+  _resetTransactionState,
+  spBatch,
+  spGetModifiedSignals,
+  spIsInBatch,
+  spIsInTransaction,
+  spIsTransactionActive,
+  spTransaction,
+  TransactionError,
+} from './transactions';
 
 describe('Transactions and Batching', () => {
   let signalPlusService: SignalPlusService;
@@ -11,20 +21,25 @@ describe('Transactions and Batching', () => {
   let testSignal1: SignalPlus<number>;
   let testSignal2: SignalPlus<string>;
 
-  function monkeyPatchSignal(signal: SignalPlus<any>): { originalSetValue: any } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function monkeyPatchSignal(signal: SignalPlus<any>): {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    originalSetValue: any;
+  } {
     const originalSetValue = signal.setValue;
     return { originalSetValue };
   }
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [SignalPlusService]
+      providers: [SignalPlusService],
     });
     signalPlusService = TestBed.inject(SignalPlusService);
     counterA = signalPlusService.create(10).build();
     counterB = signalPlusService.create(20).build();
-    validCounter = signalPlusService.create(50)
-      .validate(val => val >= 0 ? true : false)
+    validCounter = signalPlusService
+      .create(50)
+      .validate((val) => (val >= 0 ? true : false))
       .build();
     monkeyPatchSignal(counterA);
     monkeyPatchSignal(counterB);
@@ -56,8 +71,12 @@ describe('Transactions and Batching', () => {
 
       expect(capturedError).toBeInstanceOf(TransactionError);
       expect(capturedError?.name).toBe('TransactionError');
-      expect(capturedError?.message).toBe('Transaction failed: Test transaction failure');
-      expect(capturedError?.originalError.message).toBe('Test transaction failure');
+      expect(capturedError?.message).toBe(
+        'Transaction failed: Test transaction failure',
+      );
+      expect(capturedError?.originalError.message).toBe(
+        'Test transaction failure',
+      );
       expect(capturedError?.modifiedSignals).toHaveSize(2);
       expect(capturedError?.originalValues.has(testSignal1)).toBe(true);
       expect(capturedError?.originalValues.has(testSignal2)).toBe(true);
@@ -85,8 +104,8 @@ describe('Transactions and Batching', () => {
       expect(capturedError!.attemptedValues.size).toBeGreaterThan(0);
       const changes = capturedError!.getSignalChanges();
       expect(changes).toHaveSize(2);
-      const signal1Change = changes.find(c => c.signal === testSignal1);
-      const signal2Change = changes.find(c => c.signal === testSignal2);
+      const signal1Change = changes.find((c) => c.signal === testSignal1);
+      const signal2Change = changes.find((c) => c.signal === testSignal2);
       expect(signal1Change).toBeDefined();
       expect(signal2Change).toBeDefined();
       expect(signal1Change?.attemptedValue).toBe(99);
@@ -159,6 +178,7 @@ describe('Transactions and Batching', () => {
 
     it('should provide meaningful signal names when available', () => {
       const signalWithName = signalPlusService.create(0).build();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (signalWithName as any).name = 'TestCounter';
       let capturedError: TransactionError | null = null;
       try {
@@ -206,7 +226,9 @@ describe('Transactions and Batching', () => {
       expect(capturedError).toBeDefined();
       expect(capturedError!.transactionStartTime).toBeInstanceOf(Date);
       expect(capturedError!.transactionEndTime).toBeInstanceOf(Date);
-      expect(capturedError!.transactionEndTime.getTime()).toBeGreaterThanOrEqual(capturedError!.transactionStartTime.getTime());
+      expect(
+        capturedError!.transactionEndTime.getTime(),
+      ).toBeGreaterThanOrEqual(capturedError!.transactionStartTime.getTime());
     });
   });
 
@@ -260,7 +282,9 @@ describe('Transactions and Batching', () => {
         nestedError = e as Error;
       }
       expect(nestedError).not.toBeNull();
-      expect(nestedError?.message).toBe('Transaction failed: Nested transactions are not allowed');
+      expect(nestedError?.message).toBe(
+        'Transaction failed: Nested transactions are not allowed',
+      );
       expect(testSignal1.value).toBe(1);
     });
 
@@ -293,6 +317,7 @@ describe('Transactions and Batching', () => {
     it('should restore signal methods after transaction completes', () => {
       const s = signalPlusService.create(10).build();
       _patchAllSignalsInTest(s);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const originalSetMethod = s.setValue;
       expect(s.value).toBe(10);
       spTransaction(() => {
@@ -307,6 +332,7 @@ describe('Transactions and Batching', () => {
     it('should restore signal methods even when transaction fails', () => {
       const s = signalPlusService.create(10).build();
       _patchAllSignalsInTest(s);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const originalSetMethod = s.setValue;
       expect(s.value).toBe(10);
       try {
@@ -314,7 +340,8 @@ describe('Transactions and Batching', () => {
           s.setValue(20);
           throw new Error('Simulated error');
         });
-      } catch (e) {
+      } catch {
+        // Expected error - testing transaction rollback
       }
       expect(s.value).toBe(10);
       s.setValue(30);
@@ -340,7 +367,7 @@ describe('Transactions and Batching', () => {
       const testSignal3 = signalPlusService.create(100).build();
       _patchAllSignalsInTest(testSignal3);
       const originalValue3 = testSignal3.value;
-      const testSignal4 = signalPlusService.create("fourth signal").build();
+      const testSignal4 = signalPlusService.create('fourth signal').build();
       _patchAllSignalsInTest(testSignal4);
       const originalValue4 = testSignal4.value;
       let error: Error | null = null;
@@ -349,7 +376,7 @@ describe('Transactions and Batching', () => {
           testSignal1.setValue(42);
           testSignal2.setValue('modified');
           testSignal3.setValue(500);
-          testSignal4.setValue("also modified");
+          testSignal4.setValue('also modified');
           testSignal1.setValue(84);
           testSignal3.setValue(1000);
           throw new Error('Test error');
@@ -371,7 +398,7 @@ describe('Transactions and Batching', () => {
         _patchAllSignalsInTest(signal);
         signals.push(signal);
       }
-      const originalValues = signals.map(s => s.value);
+      const originalValues = signals.map((s) => s.value);
       try {
         spTransaction(() => {
           signals.forEach((s, i) => {
@@ -382,7 +409,8 @@ describe('Transactions and Batching', () => {
           });
           throw new Error('Simulated error');
         });
-      } catch (e) {
+      } catch {
+        // Expected error - testing transaction rollback
       }
       signals.forEach((s, i) => {
         expect(s.value).toBe(originalValues[i]);
@@ -495,6 +523,7 @@ describe('Transactions and Batching', () => {
           throw new Error('Test error');
         });
       } catch {
+        // Expected error - testing transaction cleanup
       }
       expect(spIsTransactionActive()).toBe(false);
     });
@@ -598,8 +627,9 @@ describe('Transactions and Batching', () => {
         const modifiedSignals = spGetModifiedSignals();
         expect(modifiedSignals.indexOf(testSignal2)).not.toBe(-1);
         expect(modifiedSignals.indexOf(testSignal1)).not.toBe(-1);
-        expect(modifiedSignals.indexOf(testSignal2))
-          .toBeLessThan(modifiedSignals.indexOf(testSignal1));
+        expect(modifiedSignals.indexOf(testSignal2)).toBeLessThan(
+          modifiedSignals.indexOf(testSignal1),
+        );
       });
     });
 
@@ -650,6 +680,7 @@ describe('Transactions and Batching', () => {
           throw new Error('Test error');
         });
       } catch {
+        // Expected error - testing transaction cleanup
       }
       _resetTransactionState();
       expect(spIsTransactionActive()).toBe(false);
@@ -677,7 +708,10 @@ describe('Transactions and Batching', () => {
   describe('Transaction rollback improvements', () => {
     describe('debounce handling', () => {
       it('should clear pending debounced updates during rollback', (done) => {
-        const debouncedSignal = signalPlusService.create(0).debounce(200).build();
+        const debouncedSignal = signalPlusService
+          .create(0)
+          .debounce(200)
+          .build();
         _patchAllSignalsInTest(debouncedSignal);
         const originalValue = debouncedSignal.value;
         const subscriber = jasmine.createSpy('subscriber');
@@ -689,7 +723,9 @@ describe('Transactions and Batching', () => {
             debouncedSignal.setValue(20);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         setTimeout(() => {
           expect(debouncedSignal.value).toBe(originalValue);
           expect(subscriber).not.toHaveBeenCalledWith(10);
@@ -699,14 +735,19 @@ describe('Transactions and Batching', () => {
       });
 
       it('should allow new debounced updates after rollback', (done) => {
-        const debouncedSignal = signalPlusService.create(0).debounce(100).build();
+        const debouncedSignal = signalPlusService
+          .create(0)
+          .debounce(100)
+          .build();
         _patchAllSignalsInTest(debouncedSignal);
         try {
           spTransaction(() => {
             debouncedSignal.setValue(10);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(debouncedSignal.value).toBe(0);
         const subscriber = jasmine.createSpy('subscriber');
         debouncedSignal.subscribe(subscriber);
@@ -736,7 +777,9 @@ describe('Transactions and Batching', () => {
             signal2.setValue(200);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         setTimeout(() => {
           expect(signal1.value).toBe(0);
           expect(signal2.value).toBe(100);
@@ -762,7 +805,9 @@ describe('Transactions and Batching', () => {
             historySignal.setValue(20);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(historySignal.value).toBe(originalValue);
         expect(historySignal.history()).toEqual(originalHistory);
       });
@@ -778,7 +823,9 @@ describe('Transactions and Batching', () => {
             historySignal.setValue(20);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(historySignal.history()).toEqual([0, 1, 2]);
         historySignal.undo();
         expect(historySignal.value).toBe(1);
@@ -787,7 +834,10 @@ describe('Transactions and Batching', () => {
       });
 
       it('should handle history with size limit during rollback', () => {
-        const historySignal = signalPlusService.create(0).withHistory(3).build();
+        const historySignal = signalPlusService
+          .create(0)
+          .withHistory(3)
+          .build();
         _patchAllSignalsInTest(historySignal);
         historySignal.setValue(1);
         historySignal.setValue(2);
@@ -799,7 +849,9 @@ describe('Transactions and Batching', () => {
             historySignal.setValue(30);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(historySignal.history()).toEqual(originalHistory);
       });
     });
@@ -816,7 +868,9 @@ describe('Transactions and Batching', () => {
             signal.setValue(10);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(subscriber).toHaveBeenCalledWith(0);
         expect(signal.value).toBe(0);
       });
@@ -838,7 +892,9 @@ describe('Transactions and Batching', () => {
             signal.setValue(10);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(sub1).toHaveBeenCalledWith(0);
         expect(sub2).toHaveBeenCalledWith(0);
         expect(sub3).toHaveBeenCalledWith(0);
@@ -847,7 +903,8 @@ describe('Transactions and Batching', () => {
 
     describe('complex scenarios', () => {
       it('should handle rollback with debounce + history + persistence', (done) => {
-        const complexSignal = signalPlusService.create(0)
+        const complexSignal = signalPlusService
+          .create(0)
           .debounce(100)
           .withHistory()
           .persist('test-rollback-key')
@@ -868,7 +925,9 @@ describe('Transactions and Batching', () => {
                 complexSignal.setValue(20);
                 throw new Error('Rollback test');
               });
-            } catch (e) { }
+            } catch {
+              // Expected error - testing rollback
+            }
             setTimeout(() => {
               expect(complexSignal.value).toBe(originalValue);
               expect(complexSignal.history()).toEqual(originalHistory);
@@ -881,9 +940,18 @@ describe('Transactions and Batching', () => {
       });
 
       it('should handle multiple signals with different features in rollback', (done) => {
-        const debouncedSignal = signalPlusService.create(0).debounce(100).build();
-        const historySignal = signalPlusService.create(10).withHistory().build();
-        const validatedSignal = signalPlusService.create(20).validate(x => x >= 0).build();
+        const debouncedSignal = signalPlusService
+          .create(0)
+          .debounce(100)
+          .build();
+        const historySignal = signalPlusService
+          .create(10)
+          .withHistory()
+          .build();
+        const validatedSignal = signalPlusService
+          .create(20)
+          .validate((x) => x >= 0)
+          .build();
         _patchAllSignalsInTest(debouncedSignal);
         _patchAllSignalsInTest(historySignal);
         _patchAllSignalsInTest(validatedSignal);
@@ -906,7 +974,9 @@ describe('Transactions and Batching', () => {
             validatedSignal.setValue(300);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         setTimeout(() => {
           expect(debouncedSignal.value).toBe(0);
           expect(historySignal.value).toBe(12);
@@ -922,7 +992,11 @@ describe('Transactions and Batching', () => {
       });
 
       it('should handle consecutive transactions with rollback', (done) => {
-        const signal = signalPlusService.create(0).debounce(100).withHistory().build();
+        const signal = signalPlusService
+          .create(0)
+          .debounce(100)
+          .withHistory()
+          .build();
         _patchAllSignalsInTest(signal);
         const subscriber = jasmine.createSpy('subscriber');
         signal.subscribe(subscriber);
@@ -937,7 +1011,9 @@ describe('Transactions and Batching', () => {
               signal.setValue(10);
               throw new Error('Rollback test');
             });
-          } catch (e) { }
+          } catch {
+            // Expected error - testing rollback
+          }
           expect(signal.value).toBe(1);
           expect(signal.history()).toContain(1);
           spTransaction(() => {
@@ -960,19 +1036,26 @@ describe('Transactions and Batching', () => {
             signal.setValue(10);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(signal.value).toBe(0);
       });
 
       it('should handle rollback with validation failures', () => {
-        const signal = signalPlusService.create(5).validate(x => x >= 0).build();
+        const signal = signalPlusService
+          .create(5)
+          .validate((x) => x >= 0)
+          .build();
         _patchAllSignalsInTest(signal);
         try {
           spTransaction(() => {
             signal.setValue(10);
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(signal.value).toBe(5);
         expect(signal.isValid()).toBe(true);
       });
@@ -984,7 +1067,9 @@ describe('Transactions and Batching', () => {
           spTransaction(() => {
             throw new Error('Rollback test');
           });
-        } catch (e) { }
+        } catch {
+          // Expected error - testing rollback
+        }
         expect(signal.value).toBe(0);
       });
 
@@ -993,7 +1078,9 @@ describe('Transactions and Batching', () => {
         _patchAllSignalsInTest(signal);
         const consoleErrorSpy = spyOn(console, 'error');
         if (signal._setValueImmediate) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const original = signal._setValueImmediate.bind(signal);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           spyOn(signal as any, '_setValueImmediate').and.callFake(() => {
             throw new Error('Rollback error');
           });
@@ -1007,8 +1094,13 @@ describe('Transactions and Batching', () => {
         } catch (e) {
           caughtError = e as Error;
         }
-        expect(caughtError?.message).toBe('Transaction failed: Transaction error');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Error during transaction rollback:', jasmine.any(Error));
+        expect(caughtError?.message).toBe(
+          'Transaction failed: Transaction error',
+        );
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Error during transaction rollback:',
+          jasmine.any(Error),
+        );
       });
     });
   });

@@ -1,6 +1,27 @@
-import { EffectRef, Injector, Signal, WritableSignal, computed, effect, runInInjectionContext, signal } from '@angular/core';
+import {
+  EffectRef,
+  Injector,
+  Signal,
+  WritableSignal,
+  computed,
+  effect,
+  runInInjectionContext,
+  signal,
+} from '@angular/core';
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { SignalOperator, combineLatest, debounceTime, delay, distinctUntilChanged, filter, map, merge, skip, take, throttleTime } from './signal-operators';
+import {
+  SignalOperator,
+  combineLatest,
+  debounceTime,
+  delay,
+  distinctUntilChanged,
+  filter,
+  map,
+  merge,
+  skip,
+  take,
+  throttleTime,
+} from './signal-operators';
 
 describe('Signal Operators', () => {
   let injector: Injector;
@@ -36,8 +57,12 @@ describe('Signal Operators', () => {
 
     it('should handle null values with fallback', () => {
       runTest(() => {
-        const source: WritableSignal<number | null> = signal<number | null>(null);
-        const doubled: Signal<number> = map((x: number | null) => x === null ? 0 : x * 2)(source);
+        const source: WritableSignal<number | null> = signal<number | null>(
+          null,
+        );
+        const doubled: Signal<number> = map((x: number | null) =>
+          x === null ? 0 : x * 2,
+        )(source);
         expect(doubled()).toBe(0);
         source.set(5);
         expect(doubled()).toBe(10);
@@ -46,9 +71,15 @@ describe('Signal Operators', () => {
 
     it('should transform object properties', () => {
       runTest(() => {
-        interface User { id: number; name: string; }
+        interface User {
+          id: number;
+          name: string;
+        }
 
-        const source: WritableSignal<User> = signal<User>({ id: 1, name: 'John' });
+        const source: WritableSignal<User> = signal<User>({
+          id: 1,
+          name: 'John',
+        });
         const nameOnly: Signal<string> = map((user: User) => user.name)(source);
         expect(nameOnly()).toBe('John');
         source.set({ id: 2, name: 'Jane' });
@@ -61,7 +92,9 @@ describe('Signal Operators', () => {
     it('should filter numeric values', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(1);
-        const filtered: Signal<number> = filter((x: number) => x % 2 === 0)(source);
+        const filtered: Signal<number> = filter((x: number) => x % 2 === 0)(
+          source,
+        );
         expect(filtered()).toBe(1);
         source.set(2);
         expect(filtered()).toBe(2);
@@ -72,8 +105,12 @@ describe('Signal Operators', () => {
 
     it('should handle type predicates with null values', () => {
       runTest(() => {
-        const source: WritableSignal<number | null> = signal<number | null>(null);
-        const nonNull: Signal<number | null> = filter((x: number | null): x is number => x !== null)(source);
+        const source: WritableSignal<number | null> = signal<number | null>(
+          null,
+        );
+        const nonNull: Signal<number | null> = filter(
+          (x: number | null): x is number => x !== null,
+        )(source);
         expect(nonNull()).toBe(null);
         source.set(1);
         expect(nonNull()).toBe(1);
@@ -84,10 +121,18 @@ describe('Signal Operators', () => {
 
     it('should filter complex objects based on condition', () => {
       runTest(() => {
-        interface ValidatedItem { value: number; valid: boolean; }
+        interface ValidatedItem {
+          value: number;
+          valid: boolean;
+        }
 
-        const source: WritableSignal<ValidatedItem> = signal<ValidatedItem>({ value: 1, valid: true });
-        const validOnly: Signal<ValidatedItem> = filter((x: ValidatedItem) => x.valid)(source);
+        const source: WritableSignal<ValidatedItem> = signal<ValidatedItem>({
+          value: 1,
+          valid: true,
+        });
+        const validOnly: Signal<ValidatedItem> = filter(
+          (x: ValidatedItem) => x.valid,
+        )(source);
         expect(validOnly()).toEqual({ value: 1, valid: true });
         source.set({ value: 2, valid: false });
         expect(validOnly()).toEqual({ value: 1, valid: true });
@@ -200,7 +245,9 @@ describe('Signal Operators', () => {
 
     it('should use deep comparison for nested objects', () => {
       runTest(() => {
-        const source: WritableSignal<{ user: { name: string } }> = signal({ user: { name: 'John' } });
+        const source: WritableSignal<{ user: { name: string } }> = signal({
+          user: { name: 'John' },
+        });
         const distinct: Signal<unknown> = distinctUntilChanged()(source);
         expect(distinct()).toEqual({ user: { name: 'John' } });
         source.set({ user: { name: 'John' } });
@@ -224,6 +271,7 @@ describe('Signal Operators', () => {
 
     it('should handle null and undefined correctly', () => {
       runTest(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const source: WritableSignal<any> = signal(null);
         const distinct: Signal<unknown> = distinctUntilChanged()(source);
         expect(distinct()).toBe(null);
@@ -444,16 +492,24 @@ describe('Signal Operators', () => {
   describe('Edge Cases', () => {
     it('should handle undefined signals', () => {
       runTest(() => {
-        const source: WritableSignal<number | undefined> = signal<number | undefined>(undefined);
-        const mapped: Signal<number> = map((x: number | undefined) => x ?? 0)(source);
+        const source: WritableSignal<number | undefined> = signal<
+          number | undefined
+        >(undefined);
+        const mapped: Signal<number> = map((x: number | undefined) => x ?? 0)(
+          source,
+        );
         expect(mapped()).toBe(0);
       });
     });
 
     it('should handle null signals', () => {
       runTest(() => {
-        const source: WritableSignal<number | null> = signal<number | null>(null);
-        const mapped: Signal<number> = map((x: number | null) => x ?? 0)(source);
+        const source: WritableSignal<number | null> = signal<number | null>(
+          null,
+        );
+        const mapped: Signal<number> = map((x: number | null) => x ?? 0)(
+          source,
+        );
         expect(mapped()).toBe(0);
       });
     });
@@ -493,7 +549,7 @@ describe('Signal Operators', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(0);
         const start: number = performance.now();
-        for (let i: number = 0; i < 1000; i++) {
+        for (let i = 0; i < 1000; i++) {
           source.set(i);
         }
         tick(10);
@@ -507,7 +563,7 @@ describe('Signal Operators', () => {
         const source: WritableSignal<number> = signal(0);
         const debounced: Signal<unknown> = debounceTime(50)(source);
         const start: number = performance.now();
-        for (let i: number = 0; i < 1000; i++) {
+        for (let i = 0; i < 1000; i++) {
           source.set(i);
         }
         tick(50);
@@ -520,13 +576,11 @@ describe('Signal Operators', () => {
     it('should handle chained operators efficiently', fakeAsync(() => {
       runTest(() => {
         const source: WritableSignal<number> = signal(0);
-        const result: Signal<number> = map<number, number>(x => x * 2)(
-          throttleTime<number>(100)(
-            map<number, number>(x => x + 1)(source)
-          )
+        const result: Signal<number> = map<number, number>((x) => x * 2)(
+          throttleTime<number>(100)(map<number, number>((x) => x + 1)(source)),
         );
         const start: number = performance.now();
-        for (let i: number = 0; i < 100; i++) {
+        for (let i = 0; i < 100; i++) {
           source.set(i);
         }
         tick(100);
@@ -542,35 +596,48 @@ describe('Signal Operators', () => {
       it('should handle transformation errors', () => {
         runTest(() => {
           const source: WritableSignal<number> = signal<number>(1);
-          const errorThrowingMap: SignalOperator<number, number> = map((x: number) => {
-            if (x < 0) {
-              console.warn('Error in signal map operator:', new Error('Negative numbers not allowed'));
-              return 0;
-            }
-            return x * 2;
-          });
+          const errorThrowingMap: SignalOperator<number, number> = map(
+            (x: number) => {
+              if (x < 0) {
+                console.warn(
+                  'Error in signal map operator:',
+                  new Error('Negative numbers not allowed'),
+                );
+                return 0;
+              }
+              return x * 2;
+            },
+          );
           const result: Signal<number> = errorThrowingMap(source);
           expect(result()).toBe(2);
           source.set(-1);
           expect(result()).toBe(0);
           source.set(2);
           expect(result()).toBe(4);
-          expect(consoleWarnSpy).toHaveBeenCalledWith('Error in signal map operator:', jasmine.any(Error));
+          expect(consoleWarnSpy).toHaveBeenCalledWith(
+            'Error in signal map operator:',
+            jasmine.any(Error),
+          );
         });
       });
 
       it('should maintain signal state after error recovery', () => {
         runTest(() => {
           const source: WritableSignal<number> = signal<number>(1);
-          let errorCount: number = 0;
-          const mapWithRecovery: SignalOperator<number, number> = map((x: number) => {
-            if (x < 0) {
-              errorCount++;
-              console.warn('Error in signal map operator:', new Error('Negative value'));
-              return 0;
-            }
-            return x * 2;
-          });
+          let errorCount = 0;
+          const mapWithRecovery: SignalOperator<number, number> = map(
+            (x: number) => {
+              if (x < 0) {
+                errorCount++;
+                console.warn(
+                  'Error in signal map operator:',
+                  new Error('Negative value'),
+                );
+                return 0;
+              }
+              return x * 2;
+            },
+          );
           const result: Signal<number> = mapWithRecovery(source);
           expect(result()).toBe(2);
           source.set(-1);
@@ -578,7 +645,10 @@ describe('Signal Operators', () => {
           expect(errorCount).toBe(1);
           source.set(2);
           expect(result()).toBe(4);
-          expect(consoleWarnSpy).toHaveBeenCalledWith('Error in signal map operator:', jasmine.any(Error));
+          expect(consoleWarnSpy).toHaveBeenCalledWith(
+            'Error in signal map operator:',
+            jasmine.any(Error),
+          );
         });
       });
     });
@@ -587,15 +657,20 @@ describe('Signal Operators', () => {
       it('should handle predicate errors', () => {
         runTest(() => {
           const source: WritableSignal<number> = signal<number>(1);
-          let errorCount: number = 0;
-          const errorThrowingFilter: SignalOperator<number, number> = filter((x: number) => {
-            if (x === 0) {
-              errorCount++;
-              console.warn('Error in signal filter operator:', new Error('Zero not allowed'));
-              return false;
-            }
-            return x > 0;
-          });
+          let errorCount = 0;
+          const errorThrowingFilter: SignalOperator<number, number> = filter(
+            (x: number) => {
+              if (x === 0) {
+                errorCount++;
+                console.warn(
+                  'Error in signal filter operator:',
+                  new Error('Zero not allowed'),
+                );
+                return false;
+              }
+              return x > 0;
+            },
+          );
           const result: Signal<number> = errorThrowingFilter(source);
           expect(result()).toBe(1);
           source.set(-1);
@@ -603,18 +678,24 @@ describe('Signal Operators', () => {
           source.set(0);
           expect(result()).toBe(1);
           expect(errorCount).toBe(1);
-          expect(consoleWarnSpy).toHaveBeenCalledWith('Error in signal filter operator:', jasmine.any(Error));
+          expect(consoleWarnSpy).toHaveBeenCalledWith(
+            'Error in signal filter operator:',
+            jasmine.any(Error),
+          );
         });
       });
 
       it('should maintain last valid state after filter error', () => {
         runTest(() => {
           const source: WritableSignal<number> = signal<number>(1);
-          let errorCount: number = 0;
+          let errorCount = 0;
           const result: Signal<number> = filter((x: number) => {
             if (x === 0) {
               errorCount++;
-              console.warn('Error in signal filter operator:', new Error('Zero not allowed'));
+              console.warn(
+                'Error in signal filter operator:',
+                new Error('Zero not allowed'),
+              );
               return false;
             }
             return x > 0;
@@ -625,7 +706,10 @@ describe('Signal Operators', () => {
           source.set(0);
           expect(result()).toBe(2);
           expect(errorCount).toBe(1);
-          expect(consoleWarnSpy).toHaveBeenCalledWith('Error in signal filter operator:', jasmine.any(Error));
+          expect(consoleWarnSpy).toHaveBeenCalledWith(
+            'Error in signal filter operator:',
+            jasmine.any(Error),
+          );
         });
       });
     });
@@ -635,21 +719,29 @@ describe('Signal Operators', () => {
         runTest(() => {
           const source1: WritableSignal<number> = signal(1);
           const source2: WritableSignal<number> = signal(2);
-          const errorProneMap: SignalOperator<number, number> = map((x: number) => {
-            if (x < 0) {
-              console.warn('Error in signal map operator:', new Error('Negative value'));
-              return 0;
-            }
-            return x * 2;
-          });
+          const errorProneMap: SignalOperator<number, number> = map(
+            (x: number) => {
+              if (x < 0) {
+                console.warn(
+                  'Error in signal map operator:',
+                  new Error('Negative value'),
+                );
+                return 0;
+              }
+              return x * 2;
+            },
+          );
           const combined: Signal<number[]> = combineLatest([
             errorProneMap(source1),
-            errorProneMap(source2)
+            errorProneMap(source2),
           ]);
           expect(combined()).toEqual([2, 4]);
           source1.set(-1);
           expect(combined()).toEqual([0, 4]);
-          expect(consoleWarnSpy).toHaveBeenCalledWith('Error in signal map operator:', jasmine.any(Error));
+          expect(consoleWarnSpy).toHaveBeenCalledWith(
+            'Error in signal map operator:',
+            jasmine.any(Error),
+          );
         });
       });
     });
@@ -660,7 +752,9 @@ describe('Signal Operators', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(3);
         const doubled: Signal<number> = computed(() => source() * 2);
-        const filtered: Signal<number> = computed(() => doubled() > 0 ? doubled() : doubled());
+        const filtered: Signal<number> = computed(() =>
+          doubled() > 0 ? doubled() : doubled(),
+        );
         const result: Signal<number> = computed(() => filtered());
         expect(result()).toBe(6);
         source.set(4);
@@ -672,9 +766,17 @@ describe('Signal Operators', () => {
 
     it('should handle complex transformations in chain', () => {
       runTest(() => {
-        interface User { id: number; name: string; active: boolean; }
+        interface User {
+          id: number;
+          name: string;
+          active: boolean;
+        }
 
-        const source: WritableSignal<User> = signal<User>({ id: 3, name: 'Bob', active: true });
+        const source: WritableSignal<User> = signal<User>({
+          id: 3,
+          name: 'Bob',
+          active: true,
+        });
         const activeUsers: Signal<User | null> = computed(() => {
           const user: User = source();
           return user.active ? user : null;
@@ -684,10 +786,13 @@ describe('Signal Operators', () => {
           if (!user) return null;
           return {
             id: user.id,
-            displayName: user.name.toUpperCase()
+            displayName: user.name.toUpperCase(),
           };
         });
-        const result: Signal<{}> = computed(() => userDisplay() || { id: 0, displayName: '' });
+        // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        const result: Signal<{}> = computed(
+          () => userDisplay() || { id: 0, displayName: '' },
+        );
         expect(result()).toEqual({ id: 3, displayName: 'BOB' });
         source.set({ id: 2, name: 'Jane', active: false });
         expect(result()).toEqual({ id: 0, displayName: '' });
@@ -720,11 +825,15 @@ describe('Signal Operators', () => {
         const source: WritableSignal<NestedData> = signal({
           user: {
             profile: { name: 'John', age: 30 },
-            settings: { theme: 'dark' }
-          }
+            settings: { theme: 'dark' },
+          },
         });
-        const profileData: Signal<Profile> = map<NestedData, Profile>((data: NestedData) => data.user.profile)(source);
-        const userProfile: Signal<Profile> = filter<Profile>((profile: Profile) => profile.age >= 18)(profileData);
+        const profileData: Signal<Profile> = map<NestedData, Profile>(
+          (data: NestedData) => data.user.profile,
+        )(source);
+        const userProfile: Signal<Profile> = filter<Profile>(
+          (profile: Profile) => profile.age >= 18,
+        )(profileData);
         expect(userProfile()).toEqual({ name: 'John', age: 30 });
       });
     });
@@ -732,8 +841,12 @@ describe('Signal Operators', () => {
     it('should handle array transformations with multiple operators', () => {
       runTest(() => {
         const source: WritableSignal<number[]> = signal([1, 2, 3]);
-        const doubled: Signal<number[]> = map<number[], number[]>((arr: number[]) => arr.map(x => x * 2))(source);
-        const filtered: Signal<number[]> = map<number[], number[]>((arr: number[]) => arr.filter(x => x > 4))(doubled);
+        const doubled: Signal<number[]> = map<number[], number[]>(
+          (arr: number[]) => arr.map((x) => x * 2),
+        )(source);
+        const filtered: Signal<number[]> = map<number[], number[]>(
+          (arr: number[]) => arr.filter((x) => x > 4),
+        )(doubled);
         expect(source()).toEqual([1, 2, 3]);
         expect(doubled()).toEqual([2, 4, 6]);
         expect(filtered()).toEqual([6]);
@@ -866,10 +979,18 @@ describe('Signal Operators', () => {
   describe('Type Safety', () => {
     it('should preserve generic types in transformations', () => {
       runTest(() => {
-        interface User { id: number; name: string; }
-        
-        const source: WritableSignal<User> = signal<User>({ id: 1, name: 'John' });
-        const transformed: Signal<string> = map<User, string>(user => user.name)(source);
+        interface User {
+          id: number;
+          name: string;
+        }
+
+        const source: WritableSignal<User> = signal<User>({
+          id: 1,
+          name: 'John',
+        });
+        const transformed: Signal<string> = map<User, string>(
+          (user) => user.name,
+        )(source);
         expect(transformed()).toBe('John');
       });
     });
@@ -877,9 +998,9 @@ describe('Signal Operators', () => {
     it('should handle type inference in chained operations', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal<number>(1);
-        const result: Signal<string> = map<number, string>(
-          n => n.toString()
-        )(source);
+        const result: Signal<string> = map<number, string>((n) => n.toString())(
+          source,
+        );
         expect(typeof result()).toBe('string');
         expect(result()).toBe('1');
       });
@@ -890,7 +1011,7 @@ describe('Signal Operators', () => {
     it('should handle errors in map operator', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(0);
-        let errorOccurred: boolean = false;
+        let errorOccurred = false;
         const result: Signal<number> = map((x: number) => {
           if (x === 0) {
             errorOccurred = true;
@@ -908,7 +1029,7 @@ describe('Signal Operators', () => {
     it('should handle errors in filter operator', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(1);
-        let lastValidValue: number = 1;
+        let lastValidValue = 1;
         const filtered: Signal<number> = filter((x: number) => {
           if (x < 0) {
             return false;
@@ -947,7 +1068,8 @@ describe('Signal Operators', () => {
 
     it('should handle errors in filter predicates', () => {
       runTest(() => {
-        const source: WritableSignal<{ value: number; valid: boolean }> = signal({ value: 1, valid: true });
+        const source: WritableSignal<{ value: number; valid: boolean }> =
+          signal({ value: 1, valid: true });
         const error: Error = new Error('Invalid value');
         const filtered: Signal<unknown> = computed(() => {
           const item: { value: number; valid: boolean } = source();
@@ -966,11 +1088,11 @@ describe('Signal Operators', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(0);
         const delayed: Signal<unknown> = delay(100)(source);
-        let errorThrown: boolean = false;
+        let errorThrown = false;
         effect(() => {
           try {
             delayed();
-          } catch (e) {
+          } catch {
             errorThrown = true;
           }
         });
@@ -989,7 +1111,9 @@ describe('Signal Operators', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(3);
         const doubled: Signal<number> = computed(() => source() * 2);
-        const filtered: Signal<number> = computed(() => doubled() > 0 ? doubled() : doubled());
+        const filtered: Signal<number> = computed(() =>
+          doubled() > 0 ? doubled() : doubled(),
+        );
         const result: Signal<number> = computed(() => filtered());
         expect(result()).toBe(6);
         source.set(4);
@@ -1001,9 +1125,17 @@ describe('Signal Operators', () => {
 
     it('should handle complex transformations in chain', () => {
       runTest(() => {
-        interface User { id: number; name: string; active: boolean; }
+        interface User {
+          id: number;
+          name: string;
+          active: boolean;
+        }
 
-        const source: WritableSignal<User> = signal<User>({ id: 3, name: 'Bob', active: true });
+        const source: WritableSignal<User> = signal<User>({
+          id: 3,
+          name: 'Bob',
+          active: true,
+        });
         const activeUsers: Signal<User | null> = computed(() => {
           const user: User = source();
           return user.active ? user : null;
@@ -1013,10 +1145,13 @@ describe('Signal Operators', () => {
           if (!user) return null;
           return {
             id: user.id,
-            displayName: user.name.toUpperCase()
+            displayName: user.name.toUpperCase(),
           };
         });
-        const result: Signal<{}> = computed(() => userDisplay() || { id: 0, displayName: '' });
+        // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        const result: Signal<{}> = computed(
+          () => userDisplay() || { id: 0, displayName: '' },
+        );
         expect(result()).toEqual({ id: 3, displayName: 'BOB' });
         source.set({ id: 2, name: 'Jane', active: false });
         expect(result()).toEqual({ id: 0, displayName: '' });
@@ -1050,7 +1185,9 @@ describe('Signal Operators', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(0);
         const doubled: Signal<number> = map((x: number) => x * 2)(source);
-        const transformed: Signal<number> = debounceTime(100)(doubled) as Signal<number>;
+        const transformed: Signal<number> = debounceTime(100)(
+          doubled,
+        ) as Signal<number>;
         const effects: EffectRef[] = [];
         const values1: number[] = [];
         const values2: number[] = [];
@@ -1071,8 +1208,10 @@ describe('Signal Operators', () => {
   describe('edge cases', () => {
     it('should handle undefined and null values', () => {
       runTest(() => {
-        const source: WritableSignal<number | null | undefined> = signal<number | null | undefined>(0);
-        let lastValidValue: number = 0;
+        const source: WritableSignal<number | null | undefined> = signal<
+          number | null | undefined
+        >(0);
+        let lastValidValue = 0;
         const validNumber: Signal<number> = computed(() => {
           const value: number | null | undefined = source();
           if (value != null) {
@@ -1081,7 +1220,9 @@ describe('Signal Operators', () => {
           }
           return lastValidValue;
         });
-        const transformed: Signal<number> = map((x: number) => x * 2)(validNumber);
+        const transformed: Signal<number> = map((x: number) => x * 2)(
+          validNumber,
+        );
         expect(transformed()).toBe(0);
         source.set(null);
         expect(transformed()).toBe(0);
@@ -1096,6 +1237,7 @@ describe('Signal Operators', () => {
       runTest(() => {
         const source: WritableSignal<number> = signal(0);
         const values: number[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let timeoutId: any = null;
         effect(() => {
           const value: number = source();
@@ -1145,7 +1287,9 @@ describe('Signal Operators', () => {
     it('should propagate null values through map operator', () => {
       runTest(() => {
         const source: WritableSignal<number | null> = signal<number | null>(1);
-        const mapped: Signal<string | null> = map((x: number | null) => x === null ? null : String(x))(source);
+        const mapped: Signal<string | null> = map((x: number | null) =>
+          x === null ? null : String(x),
+        )(source);
         expect(mapped()).toBe('1');
         source.set(null);
         expect(mapped()).toBe(null);
@@ -1156,8 +1300,12 @@ describe('Signal Operators', () => {
 
     it('should propagate undefined values through map operator', () => {
       runTest(() => {
-        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
-        const mapped: Signal<string | undefined> = map((x: number | undefined) => x === undefined ? undefined : String(x))(source);
+        const source: WritableSignal<number | undefined> = signal<
+          number | undefined
+        >(1);
+        const mapped: Signal<string | undefined> = map(
+          (x: number | undefined) => (x === undefined ? undefined : String(x)),
+        )(source);
         expect(mapped()).toBe('1');
         source.set(undefined);
         expect(mapped()).toBe(undefined);
@@ -1169,7 +1317,9 @@ describe('Signal Operators', () => {
     it('should propagate null values through filter operator', () => {
       runTest(() => {
         const source: WritableSignal<number | null> = signal<number | null>(1);
-        const filtered: Signal<number | null> = filter((x: number | null) => x !== null && x > 0)(source);
+        const filtered: Signal<number | null> = filter(
+          (x: number | null) => x !== null && x > 0,
+        )(source);
         expect(filtered()).toBe(1);
         source.set(null);
         expect(filtered()).toBe(null);
@@ -1182,8 +1332,12 @@ describe('Signal Operators', () => {
 
     it('should propagate undefined values through filter operator', () => {
       runTest(() => {
-        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
-        const filtered: Signal<number | undefined> = filter((x: number | undefined) => x !== undefined && x > 0)(source);
+        const source: WritableSignal<number | undefined> = signal<
+          number | undefined
+        >(1);
+        const filtered: Signal<number | undefined> = filter(
+          (x: number | undefined) => x !== undefined && x > 0,
+        )(source);
         expect(filtered()).toBe(1);
         source.set(undefined);
         expect(filtered()).toBe(undefined);
@@ -1207,9 +1361,16 @@ describe('Signal Operators', () => {
 
     it('should propagate undefined values through combineLatest', () => {
       runTest(() => {
-        const sig1: WritableSignal<number | undefined> = signal<number | undefined>(1);
-        const sig2: WritableSignal<number | undefined> = signal<number | undefined>(2);
-        const combined: Signal<(number | undefined)[]> = combineLatest([sig1, sig2]);
+        const sig1: WritableSignal<number | undefined> = signal<
+          number | undefined
+        >(1);
+        const sig2: WritableSignal<number | undefined> = signal<
+          number | undefined
+        >(2);
+        const combined: Signal<(number | undefined)[]> = combineLatest([
+          sig1,
+          sig2,
+        ]);
         expect(combined()).toEqual([1, 2]);
         sig1.set(undefined);
         expect(combined()).toEqual([undefined, 2]);
@@ -1219,7 +1380,9 @@ describe('Signal Operators', () => {
     it('should propagate null values through distinctUntilChanged', () => {
       runTest(() => {
         const source: WritableSignal<number | null> = signal<number | null>(1);
-        const distinct: Signal<number | null> = distinctUntilChanged()(source) as Signal<number | null>;
+        const distinct: Signal<number | null> = distinctUntilChanged()(
+          source,
+        ) as Signal<number | null>;
         expect(distinct()).toBe(1);
         source.set(1);
         expect(distinct()).toBe(1);
@@ -1234,8 +1397,12 @@ describe('Signal Operators', () => {
 
     it('should propagate undefined values through distinctUntilChanged', () => {
       runTest(() => {
-        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
-        const distinct: Signal<number | undefined> = distinctUntilChanged()(source) as Signal<number | undefined>;
+        const source: WritableSignal<number | undefined> = signal<
+          number | undefined
+        >(1);
+        const distinct: Signal<number | undefined> = distinctUntilChanged()(
+          source,
+        ) as Signal<number | undefined>;
         expect(distinct()).toBe(1);
         source.set(undefined);
         expect(distinct()).toBe(undefined);
@@ -1247,7 +1414,9 @@ describe('Signal Operators', () => {
     it('should propagate null values through delay operator', fakeAsync(() => {
       runTest(() => {
         const source: WritableSignal<number | null> = signal<number | null>(1);
-        const delayed: Signal<number | null> = delay(100)(source) as Signal<number | null>;
+        const delayed: Signal<number | null> = delay(100)(source) as Signal<
+          number | null
+        >;
         expect(delayed()).toBe(1);
         source.set(null);
         expect(delayed()).toBe(1);
@@ -1258,8 +1427,12 @@ describe('Signal Operators', () => {
 
     it('should propagate undefined values through delay operator', fakeAsync(() => {
       runTest(() => {
-        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
-        const delayed: Signal<number | undefined> = delay(100)(source) as Signal<number | undefined>;
+        const source: WritableSignal<number | undefined> = signal<
+          number | undefined
+        >(1);
+        const delayed: Signal<number | undefined> = delay(100)(
+          source,
+        ) as Signal<number | undefined>;
         expect(delayed()).toBe(1);
         source.set(undefined);
         tick(100);
@@ -1270,7 +1443,9 @@ describe('Signal Operators', () => {
     it('should propagate null values through debounceTime operator', fakeAsync(() => {
       runTest(() => {
         const source: WritableSignal<number | null> = signal<number | null>(1);
-        const debounced: Signal<number | null> = debounceTime(100)(source) as Signal<number | null>;
+        const debounced: Signal<number | null> = debounceTime(100)(
+          source,
+        ) as Signal<number | null>;
         expect(debounced()).toBe(1);
         source.set(null);
         expect(debounced()).toBe(1);
@@ -1281,8 +1456,12 @@ describe('Signal Operators', () => {
 
     it('should propagate undefined values through debounceTime operator', fakeAsync(() => {
       runTest(() => {
-        const source: WritableSignal<number | undefined> = signal<number | undefined>(1);
-        const debounced: Signal<number | undefined> = debounceTime(100)(source) as Signal<number | undefined>;
+        const source: WritableSignal<number | undefined> = signal<
+          number | undefined
+        >(1);
+        const debounced: Signal<number | undefined> = debounceTime(100)(
+          source,
+        ) as Signal<number | undefined>;
         expect(debounced()).toBe(1);
         source.set(undefined);
         tick(100);
