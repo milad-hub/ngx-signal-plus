@@ -1,6 +1,7 @@
 import { Signal } from '@angular/core';
 import { SignalPlus } from './signal-plus.model';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FormGroupValidator<T = any> = (values: T) => boolean | string;
 
 export interface FormGroupOptions {
@@ -8,10 +9,13 @@ export interface FormGroupOptions {
   validators?: FormGroupValidator[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FormGroupConfig<T extends Record<string, any>> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [K in keyof T]: SignalPlus<T[K]> | SignalFormGroup<any>;
-}
+};
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface SignalFormGroup<T extends Record<string, any>> {
   value: Signal<T>;
   isValid: Signal<boolean>;
@@ -30,6 +34,8 @@ export interface SignalFormGroup<T extends Record<string, any>> {
   validate(): boolean;
 
   get<K extends keyof T>(field: K): T[K];
-  getControl<K extends keyof T>(field: K): SignalPlus<any> | SignalFormGroup<any>;
+  getControl<K extends keyof T>(
+    field: K,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): SignalPlus<any> | SignalFormGroup<any>;
 }
-

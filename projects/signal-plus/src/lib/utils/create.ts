@@ -3,21 +3,21 @@
  * @description
  * Provides a collection of factory functions for creating common signal types.
  * Each function is designed for specific use cases with sensible defaults.
- * 
+ *
  * Features:
  * - Type-safe signal creation
  * - Common preset configurations
  * - Automatic validation setup
  * - Built-in error handling
- * 
+ *
  * @example Basic Usage
  * ```typescript
  * // Simple signal
  * const count = createSignal(0);
- * 
+ *
  * // Validated counter
  * const counter = createCounter({ initial: 0, min: 0, max: 100 });
- * 
+ *
  * // Form input with validation
  * const input = createForm({
  *   initial: '',
@@ -33,24 +33,24 @@ import { safeLocalStorageSet } from './platform';
 
 /**
  * Creates a new SignalBuilder for configuring enhanced signals
- * 
+ *
  * @typeParam T - The type of value to be stored in the signal
  * @param initialValue - The initial value for the signal. Cannot be undefined.
  * @returns A SignalBuilder instance for fluent configuration
  * @throws {Error} If initialValue is undefined
- * 
+ *
  * @remarks
  * This is the primary entry point for creating enhanced signals with the builder pattern.
  * It provides a fluent API for configuring validation, persistence, history, and more.
- * 
+ *
  * The builder must be finalized with `.build()` to create the actual signal.
- * 
+ *
  * @example Basic Usage
  * ```typescript
  * const counter = sp(0).build();
  * counter.setValue(5);
  * ```
- * 
+ *
  * @example With Validation
  * ```typescript
  * const age = sp(0)
@@ -58,7 +58,7 @@ import { safeLocalStorageSet } from './platform';
  *   .validate(n => n <= 150)
  *   .build();
  * ```
- * 
+ *
  * @example With Persistence and History
  * ```typescript
  * const username = sp('')
@@ -67,7 +67,7 @@ import { safeLocalStorageSet } from './platform';
  *   .debounce(300)
  *   .build();
  * ```
- * 
+ *
  * @example With Transformation
  * ```typescript
  * const rounded = sp(0)
@@ -76,41 +76,41 @@ import { safeLocalStorageSet } from './platform';
  * ```
  */
 export function sp<T>(initialValue: T): SignalBuilder<T> {
-    if (initialValue === undefined) {
-        throw new Error('Initial value cannot be undefined');
-    }
-    return new SignalBuilder<T>(initialValue);
+  if (initialValue === undefined) {
+    throw new Error('Initial value cannot be undefined');
+  }
+  return new SignalBuilder<T>(initialValue);
 }
 
 /**
  * Creates a counter signal with automatic validation and history
- * 
+ *
  * @param initial - The initial counter value. Defaults to 0.
  * @param options - Optional configuration for min/max bounds
  * @param options.min - Minimum allowed value (inclusive)
  * @param options.max - Maximum allowed value (inclusive)
  * @returns A SignalPlus instance configured as a counter
- * 
+ *
  * @remarks
  * The counter signal automatically:
  * - Validates against min/max bounds if provided
  * - Tracks history for undo/redo operations
  * - Rejects invalid values that exceed bounds
- * 
+ *
  * @example Basic Counter
  * ```typescript
  * const counter = spCounter();
  * counter.setValue(5);
  * counter.update(n => n + 1); // 6
  * ```
- * 
+ *
  * @example Counter with Bounds
  * ```typescript
  * const percentage = spCounter(0, { min: 0, max: 100 });
  * percentage.setValue(150); // Validation fails
  * percentage.setValue(50);  // Success
  * ```
- * 
+ *
  * @example With History
  * ```typescript
  * const counter = spCounter(10);
@@ -120,22 +120,31 @@ export function sp<T>(initialValue: T): SignalBuilder<T> {
  * counter.redo(); // Forward to 30
  * ```
  */
-export const spCounter = (initial = 0, options?: Partial<{ max: number, min: number }>) => {
-    // Validate input options
-    if (options?.min !== undefined && options?.max !== undefined && options.min > options.max) {
-        throw new RangeError(`spCounter: min (${options.min}) cannot be greater than max (${options.max})`);
-    }
+export const spCounter = (
+  initial = 0,
+  options?: Partial<{ max: number; min: number }>,
+) => {
+  // Validate input options
+  if (
+    options?.min !== undefined &&
+    options?.max !== undefined &&
+    options.min > options.max
+  ) {
+    throw new RangeError(
+      `spCounter: min (${options.min}) cannot be greater than max (${options.max})`,
+    );
+  }
 
-    return sp(initial)
-        .validate(n => options?.min === undefined || n >= options.min)
-        .validate(n => options?.max === undefined || n <= options.max)
-        .withHistory()
-        .build();
+  return sp(initial)
+    .validate((n) => options?.min === undefined || n >= options.min)
+    .validate((n) => options?.max === undefined || n <= options.max)
+    .withHistory()
+    .build();
 };
 
 /**
  * Collection of form input signal presets with built-in validation
- * 
+ *
  * @remarks
  * Provides ready-to-use form input signals for common scenarios:
  * - `text`: Plain text inputs with length validation
@@ -147,13 +156,13 @@ export const spCounter = (initial = 0, options?: Partial<{ max: number, min: num
  * - `date`: Date inputs with validation
  * - `checkbox`: Boolean inputs
  * - `select`: Selection inputs with allowed values
- * 
+ *
  * All form signals support:
  * - Automatic validation
  * - Debouncing for performance
  * - Optional persistence
  * - Type-safe values
- * 
+ *
  * @example Text Input
  * ```typescript
  * const username = spForm.text('', {
@@ -162,13 +171,13 @@ export const spCounter = (initial = 0, options?: Partial<{ max: number, min: num
  *   debounce: 300
  * });
  * ```
- * 
+ *
  * @example Email Input
  * ```typescript
  * const email = spForm.email('', { debounce: 500 });
  * console.log(email.isValid()); // false until valid email entered
  * ```
- * 
+ *
  * @example Number Input
  * ```typescript
  * const age = spForm.number(0, {
@@ -179,174 +188,202 @@ export const spCounter = (initial = 0, options?: Partial<{ max: number, min: num
  * ```
  */
 export const spForm = {
-    text: (initial = '', options?: Partial<FormTextOptions>) => {
-        // Validate input options
-        if (options?.minLength !== undefined && options?.maxLength !== undefined && options.minLength > options.maxLength) {
-            throw new RangeError(`spForm.text: minLength (${options.minLength}) cannot be greater than maxLength (${options.maxLength})`);
-        }
-        if (options?.debounce !== undefined && options.debounce < 0) {
-            throw new RangeError(`spForm.text: debounce (${options.debounce}) cannot be negative`);
-        }
-
-        const signal = sp(initial);
-        signal.transform(v => v === undefined || v === null ? '' : String(v));
-
-        if (options?.minLength !== undefined || options?.maxLength !== undefined) {
-            signal.validate(v => {
-                if (options?.minLength && (v === '' || v.length < options.minLength)) return false;
-                if (options?.maxLength && v.length > options.maxLength) return false;
-                return true;
-            });
-        }
-
-        return options?.debounce !== undefined ? signal.debounce(options.debounce).build() : signal.build();
-    },
-
-    email: (initial = '', options?: Pick<FormTextOptions, 'debounce'>) => {
-        // Validate input options
-        if (options?.debounce !== undefined && options.debounce < 0) {
-            throw new RangeError(`spForm.email: debounce (${options.debounce}) cannot be negative`);
-        }
-
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        let lastValidValue = initial;
-
-        // Create signal with error handling
-        const signal = sp(initial)
-            .transform(v => {
-                if (v === undefined || v === null) return '';
-                const str = String(v);
-
-                if (str === '') return str;  // Always allow empty string for validation
-
-                // Validate email format
-                if (!emailRegex.test(str)) {
-                    if (options?.debounce) {
-                        return lastValidValue; // Silently revert to last valid value in debounced mode
-                    }
-                    throw new Error('Invalid email format'); // Throw in non-debounced mode
-                }
-
-                // Valid email - update lastValidValue and return
-                lastValidValue = str;
-                return str;
-            })
-            .validate(v => {
-                if (options?.debounce) {
-                    return v === '' || emailRegex.test(v);
-                }
-                return v !== '';
-            });
-
-        // Add debounce if specified
-        if (options?.debounce !== undefined) {
-            signal.debounce(options.debounce);
-        }
-
-        return signal.build();
-    },
-
-    number: (options?: Partial<FormNumberOptions>) => {
-        // Validate input options
-        if (options?.min !== undefined && options?.max !== undefined && options.min > options.max) {
-            throw new RangeError(`spForm.number: min (${options.min}) cannot be greater than max (${options.max})`);
-        }
-        if (options?.debounce !== undefined && options.debounce < 0) {
-            throw new RangeError(`spForm.number: debounce (${options.debounce}) cannot be negative`);
-        }
-
-        const effectiveMin = options?.min;
-        const effectiveMax = options?.max;
-        const init = options?.initial ?? 0;
-        const isDebounced = options?.debounce !== undefined;
-
-        // Helper function to clamp value within min/max bounds
-        const getValidValue = (value: number): number => {
-            if (effectiveMin !== undefined && value < effectiveMin) return effectiveMin;
-            if (effectiveMax !== undefined && value > effectiveMax) return effectiveMax;
-            return value;
-        };
-
-        // Create signal with appropriate initial value
-        const signal = isDebounced
-            ? sp<number | null>(null)
-            : sp<number>(getValidValue(init));
-
-        // Apply transform based on signal type
-        if (isDebounced) {
-            // Debounced version: handle null/undefined inputs
-            (signal as any).transform((input: number | boolean | null | undefined): number | null => {
-                if (input === null || input === undefined) return input as null;
-
-                const num = typeof input === 'boolean' ? (input ? 1 : 0) : Number(input);
-                if (isNaN(num)) return null;
-
-                const rounded = Math.round(num);
-                return getValidValue(rounded);
-            });
-        } else {
-            // Non-debounced version: never return null
-            signal.transform((input: number | boolean | null | undefined): number => {
-                if (input === null || input === undefined) return getValidValue(init);
-
-                const num = typeof input === 'boolean' ? (input ? 1 : 0) : Number(input);
-                if (isNaN(num)) return getValidValue(init);
-
-                const rounded = Math.round(num);
-                return getValidValue(rounded);
-            });
-        }
-
-        // Apply validation
-        signal.validate(value => {
-            // Allow null values in debounced mode
-            if (isDebounced && value === null) return true;
-
-            // For non-null values, ensure they match the clamped version
-            const clamped = getValidValue(value as number);
-            return clamped === value;
-        });
-
-        // Apply debounce if specified and build
-        return isDebounced
-            ? signal.debounce(options.debounce!).build()
-            : signal.build();
+  text: (initial = '', options?: Partial<FormTextOptions>) => {
+    // Validate input options
+    if (
+      options?.minLength !== undefined &&
+      options?.maxLength !== undefined &&
+      options.minLength > options.maxLength
+    ) {
+      throw new RangeError(
+        `spForm.text: minLength (${options.minLength}) cannot be greater than maxLength (${options.maxLength})`,
+      );
     }
+    if (options?.debounce !== undefined && options.debounce < 0) {
+      throw new RangeError(
+        `spForm.text: debounce (${options.debounce}) cannot be negative`,
+      );
+    }
+
+    const signal = sp(initial);
+    signal.transform((v) => (v === undefined || v === null ? '' : String(v)));
+
+    if (options?.minLength !== undefined || options?.maxLength !== undefined) {
+      signal.validate((v) => {
+        if (options?.minLength && (v === '' || v.length < options.minLength))
+          return false;
+        if (options?.maxLength && v.length > options.maxLength) return false;
+        return true;
+      });
+    }
+
+    return options?.debounce !== undefined
+      ? signal.debounce(options.debounce).build()
+      : signal.build();
+  },
+
+  email: (initial = '', options?: Pick<FormTextOptions, 'debounce'>) => {
+    // Validate input options
+    if (options?.debounce !== undefined && options.debounce < 0) {
+      throw new RangeError(
+        `spForm.email: debounce (${options.debounce}) cannot be negative`,
+      );
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    let lastValidValue = initial;
+
+    // Create signal with error handling
+    const signal = sp(initial)
+      .transform((v) => {
+        if (v === undefined || v === null) return '';
+        const str = String(v);
+
+        if (str === '') return str; // Always allow empty string for validation
+
+        // Validate email format
+        if (!emailRegex.test(str)) {
+          if (options?.debounce) {
+            return lastValidValue; // Silently revert to last valid value in debounced mode
+          }
+          throw new Error('Invalid email format'); // Throw in non-debounced mode
+        }
+
+        // Valid email - update lastValidValue and return
+        lastValidValue = str;
+        return str;
+      })
+      .validate((v) => {
+        if (options?.debounce) {
+          return v === '' || emailRegex.test(v);
+        }
+        return v !== '';
+      });
+
+    // Add debounce if specified
+    if (options?.debounce !== undefined) {
+      signal.debounce(options.debounce);
+    }
+
+    return signal.build();
+  },
+
+  number: (options?: Partial<FormNumberOptions>) => {
+    // Validate input options
+    if (
+      options?.min !== undefined &&
+      options?.max !== undefined &&
+      options.min > options.max
+    ) {
+      throw new RangeError(
+        `spForm.number: min (${options.min}) cannot be greater than max (${options.max})`,
+      );
+    }
+    if (options?.debounce !== undefined && options.debounce < 0) {
+      throw new RangeError(
+        `spForm.number: debounce (${options.debounce}) cannot be negative`,
+      );
+    }
+
+    const effectiveMin = options?.min;
+    const effectiveMax = options?.max;
+    const init = options?.initial ?? 0;
+    const isDebounced = options?.debounce !== undefined;
+
+    // Helper function to clamp value within min/max bounds
+    const getValidValue = (value: number): number => {
+      if (effectiveMin !== undefined && value < effectiveMin)
+        return effectiveMin;
+      if (effectiveMax !== undefined && value > effectiveMax)
+        return effectiveMax;
+      return value;
+    };
+
+    // Create signal with appropriate initial value
+    const signal = isDebounced
+      ? sp<number | null>(null)
+      : sp<number>(getValidValue(init));
+
+    // Apply transform based on signal type
+    if (isDebounced) {
+      // Debounced version: handle null/undefined inputs
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (signal as any).transform(
+        (input: number | boolean | null | undefined): number | null => {
+          if (input === null || input === undefined) return input as null;
+
+          const num =
+            typeof input === 'boolean' ? (input ? 1 : 0) : Number(input);
+          if (isNaN(num)) return null;
+
+          const rounded = Math.round(num);
+          return getValidValue(rounded);
+        },
+      );
+    } else {
+      // Non-debounced version: never return null
+      signal.transform((input: number | boolean | null | undefined): number => {
+        if (input === null || input === undefined) return getValidValue(init);
+
+        const num =
+          typeof input === 'boolean' ? (input ? 1 : 0) : Number(input);
+        if (isNaN(num)) return getValidValue(init);
+
+        const rounded = Math.round(num);
+        return getValidValue(rounded);
+      });
+    }
+
+    // Apply validation
+    signal.validate((value) => {
+      // Allow null values in debounced mode
+      if (isDebounced && value === null) return true;
+
+      // For non-null values, ensure they match the clamped version
+      const clamped = getValidValue(value as number);
+      return clamped === value;
+    });
+
+    // Apply debounce if specified and build
+    return isDebounced
+      ? signal.debounce(options.debounce!).build()
+      : signal.build();
+  },
 };
 
 /**
  * Creates a boolean toggle signal with history and optional persistence
- * 
+ *
  * @param initial - The initial boolean value. Defaults to false.
  * @param key - Optional storage key for persistence in localStorage
  * @returns A SignalPlus instance configured for toggle operations
- * 
+ *
  * @remarks
  * The toggle signal automatically:
  * - Tracks history for undo/redo operations
  * - Persists state in localStorage if key is provided
  * - Provides a convenient boolean state management
- * 
+ *
  * Perfect for:
  * - UI toggles (dark mode, sidebar, etc.)
  * - Feature flags
  * - Boolean preferences
  * - Checkbox state
- * 
+ *
  * @example Basic Toggle
  * ```typescript
  * const darkMode = spToggle(false);
  * darkMode.setValue(true);
  * console.log(darkMode.value); // true
  * ```
- * 
+ *
  * @example Toggle with Persistence
  * ```typescript
  * const sidebarOpen = spToggle(false, 'sidebar-state');
  * sidebarOpen.setValue(true);
  * // State persists across page reloads
  * ```
- * 
+ *
  * @example With History
  * ```typescript
  * const feature = spToggle(false);
@@ -355,7 +392,7 @@ export const spForm = {
  * feature.undo(); // Back to true
  * feature.redo(); // Forward to false
  * ```
- * 
+ *
  * @example Update Pattern
  * ```typescript
  * const visible = spToggle(false);
@@ -363,56 +400,57 @@ export const spForm = {
  * ```
  */
 export const spToggle = (initial = false, key?: string) => {
-    const signal = sp(initial)
-        .withHistory(false);  // Enable history tracking but don't persist it
+  const signal = sp(initial).withHistory(false); // Enable history tracking but don't persist it
 
-    // Enable persistence if key is provided
-    if (key) {
-        signal.persist(key);
-        // Store initial value using SSR-safe wrapper
-        safeLocalStorageSet(key, JSON.stringify({ value: initial }));
+  // Enable persistence if key is provided
+  if (key) {
+    signal.persist(key);
+    // Store initial value using SSR-safe wrapper
+    safeLocalStorageSet(key, JSON.stringify({ value: initial }));
 
-        // Override updateValue to store in correct format
-        const instance = signal.build();
-        const originalSetValue = instance.setValue;
-        instance.setValue = (value: boolean) => {
-            originalSetValue(value);
-            // Use SSR-safe wrapper for storage
-            safeLocalStorageSet(key, JSON.stringify({ value }));
-        };
-        return instance;
-    }
+    // Override updateValue to store in correct format
+    const instance = signal.build();
+    const originalSetValue = instance.setValue;
+    instance.setValue = (value: boolean) => {
+      originalSetValue(value);
+      // Use SSR-safe wrapper for storage
+      safeLocalStorageSet(key, JSON.stringify({ value }));
+    };
+    return instance;
+  }
 
-    return signal.build();
+  return signal.build();
 };
 
 /**
  * Creates a simple toggle signal with validation
- * 
+ *
  * @typeParam T - The type of value (should be boolean)
  * @param initial - The initial value (must be boolean for spToggle)
  * @param key - Optional storage key for persistence
  * @returns A SignalPlus instance configured for toggle operations
  * @throws {TypeError} If initial value is not a boolean
- * 
+ *
  * @remarks
  * This is a convenience wrapper for spToggle that validates the input type.
  * It ensures type safety by throwing an error if a non-boolean value is provided.
- * 
+ *
  * @example Valid Usage
  * ```typescript
  * const darkMode = createSimple(true, 'dark-mode');
  * darkMode.setValue(false);
  * ```
- * 
+ *
  * @example Invalid Usage (throws error)
  * ```typescript
  * const invalid = createSimple('not a boolean'); // ❌ Throws TypeError
  * ```
  */
 export function createSimple<T>(initial: T, key?: string): SignalPlus<boolean> {
-    if (typeof initial !== 'boolean') {
-        throw new TypeError(`createSimple: initial value must be boolean, got ${typeof initial}`);
-    }
-    return spToggle(initial, key);
-} 
+  if (typeof initial !== 'boolean') {
+    throw new TypeError(
+      `createSimple: initial value must be boolean, got ${typeof initial}`,
+    );
+  }
+  return spToggle(initial, key);
+}

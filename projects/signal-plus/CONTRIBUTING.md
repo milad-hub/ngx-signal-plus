@@ -50,6 +50,7 @@ This project follows the [Angular Code of Conduct](https://github.com/angular/an
 ## Development Workflow
 
 1. Create a new branch for your feature or bug fix:
+
    ```bash
    git checkout -b feature/your-feature-name
    # or for bug fixes
@@ -59,21 +60,24 @@ This project follows the [Angular Code of Conduct](https://github.com/angular/an
 2. Make your changes following our coding standards
 
 3. Run tests to ensure your changes don't break existing functionality:
+
    ```bash
    ng test signal-plus
    ```
 
 4. Run linting:
+
    ```bash
    ng lint
    ```
 
 5. Commit your changes following the commit message format:
+
    ```
    type(scope): description
-   
+
    [optional body]
-   
+
    [optional footer]
    ```
 
@@ -107,21 +111,23 @@ describe("Component/Service name", () => {
 ### Testing Signals
 
 When testing signals, remember to:
+
 - Test the initial state
-- Test state changes 
+- Test state changes
 - Test side effects (if any)
 - Test cleanup behavior
 - Verify validation logic
 
 Example:
+
 ```typescript
-describe('spCounter', () => {
-  it('should respect min/max constraints', () => {
+describe("spCounter", () => {
+  it("should respect min/max constraints", () => {
     const counter = spCounter(5, { min: 0, max: 10 });
-    
+
     counter.setValue(15);
     expect(counter.value()).toBe(10); // Should cap at max
-    
+
     counter.setValue(-5);
     expect(counter.value()).toBe(0); // Should cap at min
   });
@@ -140,6 +146,7 @@ describe('spCounter', () => {
 ### PR Title Format
 
 Follow the Angular commit message format:
+
 - feat: New feature
 - fix: Bug fix
 - docs: Documentation changes
@@ -219,7 +226,7 @@ export function enhance<T>(signal: WritableSignal<T>): SignalBuilder<T> {
 
 ## Documentation
 
-All public APIs must be documented in the `API.md` file. 
+All public APIs must be documented in the `API.md` file.
 
 ### API Documentation Guidelines
 
@@ -232,7 +239,7 @@ All public APIs must be documented in the `API.md` file.
 
 ### Documentation Format
 
-```markdown
+````markdown
 ## Feature Name
 
 Description of the feature and its purpose.
@@ -242,13 +249,14 @@ Description of the feature and its purpose.
 ```typescript
 // Code example showing basic usage
 ```
+````
 
 ### Advanced Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| Option  | Type   | Default   | Description            |
+| ------- | ------ | --------- | ---------------------- |
 | option1 | string | 'default' | Description of option1 |
-| option2 | number | 0 | Description of option2 |
+| option2 | number | 0         | Description of option2 |
 
 ### Methods
 
@@ -257,12 +265,15 @@ Description of the feature and its purpose.
 Description of method.
 
 Parameters:
+
 - `param1` (type): Description
 - `param2` (type): Description
 
 Returns:
+
 - (ReturnType): Description of return value
-```
+
+````
 
 ### Code Comments
 
@@ -288,7 +299,7 @@ Returns:
    - Check bundle size: `ng build signal-plus --configuration production`
 
 3. Publishing
-   
+
    - Build production version:
      ```bash
      ng build signal-plus --configuration production
@@ -301,3 +312,4 @@ Returns:
    - Create a GitHub release with release notes
 
 Thank you for contributing to ngx-signal-plus!
+````

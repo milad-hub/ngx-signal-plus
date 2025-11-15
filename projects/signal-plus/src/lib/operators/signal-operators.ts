@@ -1,25 +1,25 @@
 /**
  * @fileoverview Collection of operators for transforming and manipulating Angular signals
  * @module ngx-signal-plus/operators
- * 
+ *
  * @description
  * This module provides a comprehensive set of operators for Angular signals, including:
  * - Value transformation (map, filter)
  * - Time-based operations (debounce, throttle, delay)
  * - State management (skip, take)
  * - Signal combination (merge, combineLatest)
- * 
+ *
  * All operators are designed to be:
  * - Type-safe with full generic support
  * - Memory-efficient with proper cleanup
  * - Compatible with Angular's change detection
  * - Safe for server-side rendering
- * 
+ *
  * @example Basic Usage
  * ```typescript
  * import { signal } from '@angular/core';
  * import { map, filter, debounceTime } from 'ngx-signal-plus/operators';
- * 
+ *
  * const source = signal(0);
  * const result = source.pipe(
  *   filter(x => x > 0),
@@ -27,7 +27,7 @@
  *   debounceTime(300)
  * );
  * ```
- * 
+ *
  * @example Advanced Usage
  * ```typescript
  * // Combine multiple signals
@@ -37,7 +37,7 @@
  *   map(([n, a]) => ({ name: n, age: a })),
  *   filter(u => u.age >= 18)
  * );
- * 
+ *
  * // Time-based operations
  * const search = signal('');
  * const results = search.pipe(
@@ -48,31 +48,39 @@
  * ```
  */
 
-import { computed, DestroyRef, effect, inject, Injector, runInInjectionContext, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injector,
+  runInInjectionContext,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 
 /**
  * Type definition for signal operators that can transform signal types
  * @template TInput The input signal type
  * @template TOutput The output signal type (defaults to TInput)
- * 
+ *
  * @remarks
  * Operators are functions that take a signal and return a new signal.
  * They can transform both the value type and timing of updates.
  */
-export interface SignalOperator<T, R = T> {
-  (signal: Signal<T>): Signal<R>;
-}
+export type SignalOperator<T, R = T> = (signal: Signal<T>) => Signal<R>;
 
 /**
  * Combines multiple signals into a single signal of array values
  * @param signals Array of signals to combine
  * @returns Signal emitting array of latest values
- * 
+ *
  * @remarks
  * - Updates when any input signal changes
  * - Output array maintains input signal order
  * - All signals must emit at least once
- * 
+ *
  * @example
  * ```typescript
  * const first = signal('John');
@@ -82,19 +90,19 @@ export interface SignalOperator<T, R = T> {
  * ```
  */
 export function combineLatest<T>(signals: Signal<T>[]): Signal<T[]> {
-  return computed(() => signals.map(s => s()));
+  return computed(() => signals.map((s) => s()));
 }
 
 /**
  * Merges multiple signals into a single signal
  * @param signals Signals to merge
  * @returns Signal emitting values from all inputs
- * 
+ *
  * @remarks
  * - Updates when any input signal changes
  * - Maintains value type consistency
  * - Order of emissions is preserved
- * 
+ *
  * @example
  * ```typescript
  * const clicks = signal(0);
@@ -131,12 +139,12 @@ export function merge<T>(...signals: Signal<T>[]): Signal<T> {
  * Delays signal emissions by specified time
  * @param time Delay duration in milliseconds
  * @returns Operator that delays emissions
- * 
+ *
  * @remarks
  * - Uses setTimeout internally
  * - Maintains value order
  * - Cleans up pending timeouts
- * 
+ *
  * @example
  * ```typescript
  * const delayed = source.pipe(
@@ -153,12 +161,12 @@ export function delay<T>(time: number): SignalOperator<T, T> {
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
         const value: T = input();
-        
+
         // Clear previous timeout to prevent memory leak
         if (timeoutId !== null) {
           clearTimeout(timeoutId);
         }
-        
+
         timeoutId = setTimeout(() => {
           output.set(value);
           timeoutId = null;
@@ -174,13 +182,13 @@ export function delay<T>(time: number): SignalOperator<T, T> {
  * Limits signal emissions to specified time interval
  * @param time Minimum time between emissions
  * @returns Operator that throttles emissions
- * 
+ *
  * @remarks
  * - Emits first value immediately (leading-only throttle)
  * - Ignores values during throttle period (no trailing emission)
  * - Resets timer on completion
  * - Includes DestroyRef cleanup
- * 
+ *
  * @example
  * ```typescript
  * const throttled = scroll.pipe(
@@ -192,7 +200,7 @@ export function delay<T>(time: number): SignalOperator<T, T> {
 export function throttleTime<T>(time: number): SignalOperator<T, T> {
   return (input: Signal<T>) => {
     const output: WritableSignal<T> = signal<T>(input());
-    let lastRun: number = 0;
+    let lastRun = 0;
     const destroyRef: DestroyRef = inject(DestroyRef);
 
     runInInjectionContext(inject(Injector), () => {
@@ -220,12 +228,12 @@ export function throttleTime<T>(time: number): SignalOperator<T, T> {
  * Skips specified number of signal emissions
  * @param count Number of emissions to skip
  * @returns Operator that skips initial values
- * 
+ *
  * @remarks
  * - Maintains internal counter
  * - Resets on signal completion
  * - Zero count skips nothing
- * 
+ *
  * @example
  * ```typescript
  * const skipFirst = source.pipe(
@@ -237,7 +245,7 @@ export function throttleTime<T>(time: number): SignalOperator<T, T> {
 export function skip<T>(count: number): SignalOperator<T> {
   return (source: Signal<T>) => {
     const skipped: WritableSignal<T> = signal<T>(source());
-    let skipCount: number = -1; // Start at -1 to handle initial value
+    let skipCount = -1; // Start at -1 to handle initial value
 
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
@@ -258,12 +266,12 @@ export function skip<T>(count: number): SignalOperator<T> {
  * Takes specified number of signal emissions
  * @param count Number of emissions to take
  * @returns Operator that limits emissions
- * 
+ *
  * @remarks
  * - Maintains internal counter
  * - Completes after count reached
  * - Zero count takes nothing
- * 
+ *
  * @example
  * ```typescript
  * const first3 = source.pipe(
@@ -275,7 +283,7 @@ export function skip<T>(count: number): SignalOperator<T> {
 export function take<T>(count: number): SignalOperator<T> {
   return (source: Signal<T>) => {
     const taken: WritableSignal<T> = signal<T>(source());
-    let emitCount: number = 0;
+    let emitCount = 0;
 
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
@@ -296,12 +304,12 @@ export function take<T>(count: number): SignalOperator<T> {
  * Debounces signal emissions by specified time
  * @param duration Debounce duration in milliseconds
  * @returns Operator that debounces emissions
- * 
+ *
  * @remarks
  * - Waits for quiet period
  * - Cancels pending timeouts
  * - Ideal for input handling
- * 
+ *
  * @example
  * ```typescript
  * const search = input.pipe(
@@ -359,21 +367,21 @@ export function debounceTime<T>(duration: number): SignalOperator<T> {
 /**
  * Filters out consecutive duplicate values using deep comparison
  * @returns Operator that removes duplicates
- * 
+ *
  * @remarks
  * - Uses deep value comparison (JSON serialization)
  * - Compares object/array contents, not just references
  * - Falls back to string comparison for non-serializable values
  * - Maintains previous value
  * - Memory efficient
- * 
+ *
  * @example
  * ```typescript
  * const unique = source.pipe(
  *   distinctUntilChanged(),
  *   filter(Boolean)
  * );
- * 
+ *
  * // Deep comparison for objects
  * signal.set({ a: 1 }); // Emits
  * signal.set({ a: 1 }); // Skipped (same value)
@@ -391,7 +399,7 @@ export function distinctUntilChanged<T>(): SignalOperator<T> {
         return String(value);
       }
     };
-    
+
     let lastValue: T = source();
     let lastSerialized: string = serializeValue(lastValue);
 
@@ -399,13 +407,13 @@ export function distinctUntilChanged<T>(): SignalOperator<T> {
     return computed(() => {
       const value: T = source();
       const serialized: string = serializeValue(value);
-      
+
       // Compare serialized values for deep equality
       if (serialized !== lastSerialized) {
         lastValue = value;
         lastSerialized = serialized;
       }
-      
+
       return lastValue;
     });
   };
@@ -415,12 +423,12 @@ export function distinctUntilChanged<T>(): SignalOperator<T> {
  * Maps signal values through transform function
  * @param fn Transform function
  * @returns Operator that transforms values
- * 
+ *
  * @remarks
  * - Type-safe transformation
  * - Synchronous operation
  * - No value caching
- * 
+ *
  * @example
  * ```typescript
  * const doubled = numbers.pipe(
@@ -430,26 +438,27 @@ export function distinctUntilChanged<T>(): SignalOperator<T> {
  * ```
  */
 export function map<T, R>(fn: (value: T) => R): SignalOperator<T, R> {
-  return (signal: Signal<T>) => computed(() => {
-    try {
-      return fn(signal());
-    } catch (error) {
-      console.error('Error in signal map operator:', error);
-      throw error;
-    }
-  });
+  return (signal: Signal<T>) =>
+    computed(() => {
+      try {
+        return fn(signal());
+      } catch (error) {
+        console.error('Error in signal map operator:', error);
+        throw error;
+      }
+    });
 }
 
 /**
  * Filters signal values based on predicate
  * @param predicateFn Filter predicate function
  * @returns Operator that filters values
- * 
+ *
  * @remarks
  * - Type-safe predicate
  * - Synchronous operation
  * - False values dropped
- * 
+ *
  * @example
  * ```typescript
  * const positive = numbers.pipe(
@@ -458,7 +467,9 @@ export function map<T, R>(fn: (value: T) => R): SignalOperator<T, R> {
  * );
  * ```
  */
-export function filter<T>(predicateFn: (value: T) => boolean): SignalOperator<T> {
+export function filter<T>(
+  predicateFn: (value: T) => boolean,
+): SignalOperator<T> {
   return (input: Signal<T>) => {
     const initialValue: T = input();
     let lastValidValue: T = initialValue;
@@ -468,7 +479,7 @@ export function filter<T>(predicateFn: (value: T) => boolean): SignalOperator<T>
       if (predicateFn(initialValue)) {
         lastValidValue = initialValue;
       }
-    } catch (e) {
+    } catch {
       // Keep initial value on error
     }
 
@@ -483,9 +494,9 @@ export function filter<T>(predicateFn: (value: T) => boolean): SignalOperator<T>
           return value;
         }
         return lastValidValue;
-      } catch (e) {
+      } catch {
         return lastValidValue;
       }
     });
   };
-} 
+}

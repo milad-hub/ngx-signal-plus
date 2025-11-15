@@ -2,18 +2,18 @@
  * @fileoverview Core service for managing enhanced Angular signals
  * @description Provides a simplified API for creating and managing signals with additional features.
  * This service is the main entry point for creating and managing enhanced signals.
- * 
+ *
  * The service provides three levels of API complexity:
  * 1. Presets for common use cases (counter, toggle, form)
  * 2. Simple creation with basic options (validation, storage)
  * 3. Builder pattern for advanced configuration (history, transforms)
- * 
+ *
  * @example Basic Usage with Presets
  * ```typescript
  * const counter = signalPlus.presets.counter(0);
  * const toggle = signalPlus.presets.toggle(false);
  * ```
- * 
+ *
  * @example Form Input with Validation
  * ```typescript
  * const name = signalPlus.presets.formInput({
@@ -22,7 +22,7 @@
  *   validator: signalPlus.validators.string.notEmpty
  * });
  * ```
- * 
+ *
  * @example Advanced Configuration
  * ```typescript
  * const advanced = signalPlus.create(0)
@@ -35,7 +35,12 @@
  */
 
 import { Injectable, OnDestroy } from '@angular/core';
-import { CounterConfig, FormConfig, SignalPlus, SimpleSignalOptions } from '../models/signal-plus.model';
+import {
+  CounterConfig,
+  FormConfig,
+  SignalPlus,
+  SimpleSignalOptions,
+} from '../models/signal-plus.model';
 import { validators } from '../utils/presets';
 import { SignalBuilder } from './signal-builder';
 
@@ -44,7 +49,7 @@ import { SignalBuilder } from './signal-builder';
  * Implements OnDestroy for proper cleanup of resources.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SignalPlusService implements OnDestroy {
   /** Internal set of cleanup functions to be executed on service destruction */
@@ -55,7 +60,7 @@ export class SignalPlusService implements OnDestroy {
    * @param initialValue The initial value of the signal
    * @returns A SignalBuilder instance for chaining configuration
    * @throws {Error} If initialValue is undefined
-   * 
+   *
    * @example
    * ```typescript
    * const signal = signalPlus.create(0)
@@ -77,7 +82,7 @@ export class SignalPlusService implements OnDestroy {
    * @param options Configuration options for the signal
    * @returns A SignalPlus instance with the specified configuration
    * @throws {Error} If validation fails and no error handler is provided
-   * 
+   *
    * @example
    * ```typescript
    * const input = signalPlus.createSimple('', {
@@ -89,7 +94,7 @@ export class SignalPlusService implements OnDestroy {
    */
   createSimple<T>(
     initialValue: T,
-    options?: SimpleSignalOptions<T>
+    options?: SimpleSignalOptions<T>,
   ): SignalPlus<T> {
     try {
       const builder: SignalBuilder<T> = this.create(initialValue);
@@ -139,7 +144,7 @@ export class SignalPlusService implements OnDestroy {
    * @internal
    */
   ngOnDestroy(): void {
-    this.cleanup.forEach(cleanup => cleanup());
+    this.cleanup.forEach((cleanup) => cleanup());
     this.cleanup.clear();
   }
 
@@ -162,8 +167,8 @@ export class SignalPlusService implements OnDestroy {
    */
   static counter(config?: CounterConfig) {
     return SignalPlusService.create(config?.initial ?? 0)
-      .validate(x => x >= (config?.min ?? 0))
-      .validate(x => x <= (config?.max ?? Infinity))
+      .validate((x) => x >= (config?.min ?? 0))
+      .validate((x) => x <= (config?.max ?? Infinity))
       .withHistory();
   }
 

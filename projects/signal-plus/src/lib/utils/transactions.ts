@@ -1,13 +1,13 @@
 /**
  * @fileoverview Transaction and batching utilities for ngx-signal-plus
  * @description Provides functionality for atomic operations and batched updates
- * 
+ *
  * Transactions: Allow multiple signal updates to be treated as a single atomic operation,
  * with automatic rollback on error.
- * 
+ *
  * Batching: Allow multiple signal updates to be batched together without triggering
  * intermediate reactions or validations.
- * 
+ *
  * @example
  * ```typescript
  * // Atomic transaction with rollback
@@ -15,7 +15,7 @@
  *   userProfile.setValue({...});
  *   userPreferences.setValue({...});
  * });
- * 
+ *
  * // Simple batching without rollback
  * spBatch(() => {
  *   counter1.setValue(counter1.value() + 1);
@@ -25,15 +25,21 @@
  */
 
 import { SignalPlus } from '../models/signal-plus.model';
-import { BatchContext, TransactionContext } from '../models/transactions.models';
+import {
+  BatchContext,
+  TransactionContext,
+} from '../models/transactions.models';
 
 /**
  * Enhanced error class for transaction failures with detailed metadata
  */
 export class TransactionError extends Error {
   public readonly originalError: Error;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public readonly modifiedSignals: SignalPlus<any>[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public readonly originalValues: Map<SignalPlus<any>, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public readonly attemptedValues: Map<SignalPlus<any>, any>;
   public readonly transactionStartTime: Date;
   public readonly transactionEndTime: Date;
@@ -42,11 +48,14 @@ export class TransactionError extends Error {
   constructor(
     message: string,
     originalError: Error,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     modifiedSignals: SignalPlus<any>[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     originalValues: Map<SignalPlus<any>, any>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attemptedValues: Map<SignalPlus<any>, any>,
     transactionStartTime: Date,
-    rollbackSuccessful: boolean
+    rollbackSuccessful: boolean,
   ) {
     super(message);
     this.name = 'TransactionError';
@@ -68,24 +77,30 @@ export class TransactionError extends Error {
    * Get a summary of the transaction failure
    */
   getSummary(): string {
-    const duration = this.transactionEndTime.getTime() - this.transactionStartTime.getTime();
+    const duration =
+      this.transactionEndTime.getTime() - this.transactionStartTime.getTime();
     return `Transaction failed after ${duration}ms with ${this.modifiedSignals.length} signal modifications. Rollback ${this.rollbackSuccessful ? 'successful' : 'failed'}.`;
   }
 
   /**
    * Get detailed information about signal changes
    */
-  getSignalChanges(): Array<{
+
+  getSignalChanges(): {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     signal: SignalPlus<any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     originalValue: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attemptedValue: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     currentValue: any;
-  }> {
-    return this.modifiedSignals.map(signal => ({
+  }[] {
+    return this.modifiedSignals.map((signal) => ({
       signal,
       originalValue: this.originalValues.get(signal),
       attemptedValue: this.attemptedValues.get(signal),
-      currentValue: signal.value
+      currentValue: signal.value,
     }));
   }
 
@@ -95,7 +110,9 @@ export class TransactionError extends Error {
   getModifiedSignalNames(): string[] {
     return this.modifiedSignals.map((signal, index) => {
       // Try to get a meaningful name from the signal if possible
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((signal as any).name) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (signal as any).name;
       }
       return `Signal #${index + 1}`;
@@ -107,22 +124,29 @@ export class TransactionError extends Error {
 const state = {
   transaction: {
     active: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     originalValues: new Map<SignalPlus<any>, any>(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     originalHistories: new Map<SignalPlus<any>, any[]>(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     patchedSignals: new Map<SignalPlus<any>, (value: any) => void>(),
     modifiedSignals: [],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attemptedValues: new Map<SignalPlus<any>, any>(),
-    startTime: null as Date | null
+    startTime: null as Date | null,
   } as TransactionContext & {
-    originalHistories: Map<SignalPlus<any>, any[]>,
-    attemptedValues: Map<SignalPlus<any>, any>,
-    startTime: Date | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    originalHistories: Map<SignalPlus<any>, any[]>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    attemptedValues: Map<SignalPlus<any>, any>;
+    startTime: Date | null;
   },
 
   batch: {
     active: false,
-    signals: new Set<SignalPlus<any>>()
-  } as BatchContext
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    signals: new Set<SignalPlus<any>>(),
+  } as BatchContext,
 };
 
 /**
@@ -208,7 +232,10 @@ function rollbackChanges(): boolean {
           signal._clearPendingOperations();
         }
       } catch (error) {
-        console.error('Error clearing pending operations during rollback:', error);
+        console.error(
+          'Error clearing pending operations during rollback:',
+          error,
+        );
         rollbackSuccessful = false;
         // Continue with other signals even if one fails
       }
@@ -261,7 +288,7 @@ function rollbackChanges(): boolean {
  * @param fn Function containing signal operations
  * @returns Result of the function execution
  * @throws Will throw any error from the function and perform rollback
- * 
+ *
  * @example
  * ```typescript
  * spTransaction(() => {
@@ -309,7 +336,8 @@ export function spTransaction<T>(fn: () => T): T {
     txState.startTime = null;
 
     // Create enhanced error with captured transaction metadata
-    const originalError = error instanceof Error ? error : new Error(String(error));
+    const originalError =
+      error instanceof Error ? error : new Error(String(error));
     const transactionError = new TransactionError(
       `Transaction failed: ${originalError.message}`,
       originalError,
@@ -317,7 +345,7 @@ export function spTransaction<T>(fn: () => T): T {
       originalValues,
       attemptedValues,
       transactionStartTime,
-      rollbackSuccessful
+      rollbackSuccessful,
     );
 
     // Re-throw the enhanced error
@@ -334,7 +362,7 @@ export function spTransaction<T>(fn: () => T): T {
  * Execute multiple signal updates as a single batch
  * @param fn Function containing signal operations
  * @returns Result of the function execution
- * 
+ *
  * @example
  * ```typescript
  * spBatch(() => {
@@ -401,6 +429,7 @@ export function spIsInBatch<T>(signal?: SignalPlus<T>): boolean {
  * Get a list of signals that have been modified in the current transaction
  * @returns Array of modified signals, or empty array if no transaction is active
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function spGetModifiedSignals(): SignalPlus<any>[] {
   if (!state.transaction.active) {
     return [];
@@ -449,4 +478,4 @@ export function _patchAllSignalsInTest<T>(signal: SignalPlus<T>): void {
   } else if (state.batch.active) {
     spIsInBatch(signal);
   }
-} 
+}

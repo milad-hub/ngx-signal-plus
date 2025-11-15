@@ -4,14 +4,14 @@ import { Signal, WritableSignal } from '@angular/core';
  * @fileoverview Core type definitions for ngx-signal-plus library
  * This file contains all the core interfaces and types used throughout the library.
  * It defines the shape of signals, their configuration options, and utility types.
- * 
+ *
  * Core Concepts:
  * - Signal Types: Enhanced Angular signals with additional features
  * - Validators: Type-safe validation functions
  * - Transformers: Value transformation pipelines
  * - Error Handlers: Centralized error management
  * - Configuration: Builder and simple option interfaces
- * 
+ *
  * @example Core Types Usage
  * ```typescript
  * // Signal creation with validation and transformation
@@ -28,18 +28,18 @@ import { Signal, WritableSignal } from '@angular/core';
  * @typeParam T - The type of value being validated
  * @param value - The value to validate
  * @returns boolean - True if valid, false otherwise
- * 
+ *
  * @remarks
  * Validators are pure functions that check value constraints.
  * Multiple validators can be chained, all must pass for validity.
- * 
+ *
  * @example
  * ```typescript
  * // Simple number range validator
  * const numberValidator: Validator<number> = (value) => value >= 0;
- * 
+ *
  * // Complex object validator
- * const userValidator: Validator<User> = (user) => 
+ * const userValidator: Validator<User> = (user) =>
  *   user.name.length > 0 && user.age >= 18;
  * ```
  */
@@ -50,17 +50,17 @@ export type Validator<T> = (value: T) => boolean;
  * @typeParam T - The type of value being transformed
  * @param value - The value to transform
  * @returns T - The transformed value
- * 
+ *
  * @remarks
  * Transformers modify values before storage.
  * They run before validation and must maintain type consistency.
  * Multiple transforms can be chained in sequence.
- * 
+ *
  * @example
  * ```typescript
  * // Basic value transformation
  * const roundNumber: Transform<number> = (value) => Math.round(value);
- * 
+ *
  * // Complex object transformation
  * const normalizeUser: Transform<User> = (user) => ({
  *   ...user,
@@ -74,18 +74,18 @@ export type Transform<T> = (value: T) => T;
 /**
  * Function type for handling signal errors
  * @param error - The error to handle
- * 
+ *
  * @remarks
  * Error handlers centralize error management.
  * They can be used for logging, user notification, or recovery.
  * Multiple handlers can be registered for different purposes.
- * 
+ *
  * @example
  * ```typescript
  * // Basic error logging
- * const logError: ErrorHandler = (error) => 
+ * const logError: ErrorHandler = (error) =>
  *   console.error('Signal error:', error);
- * 
+ *
  * // User notification with recovery
  * const handleError: ErrorHandler = (error) => {
  *   alert(error.message);
@@ -98,7 +98,7 @@ export type ErrorHandler = (error: Error) => void;
 /**
  * Configuration options for building enhanced signals
  * @typeParam T - The type of value stored in the signal
- * 
+ *
  * @remarks
  * Core configuration interface for signal creation.
  * Provides comprehensive options for:
@@ -106,11 +106,11 @@ export type ErrorHandler = (error: Error) => void;
  * - Validation and transformation
  * - Persistence and history
  * - Error handling and cleanup
- * 
+ *
  * All validation functions must pass for validity.
  * Transform functions are applied in sequence.
  * Error handlers are called in registration order.
- * 
+ *
  * @example
  * ```typescript
  * // Basic configuration
@@ -119,7 +119,7 @@ export type ErrorHandler = (error: Error) => void;
  *   validators: [(n) => n >= 0],
  *   transform: Math.round
  * };
- * 
+ *
  * // Advanced configuration
  * const options: BuilderOptions<User> = {
  *   initialValue: defaultUser,
@@ -189,7 +189,7 @@ export interface SignalOptions<T> {
 /**
  * Core interface representing an enhanced signal
  * @typeParam T - The type of value managed by the signal
- * 
+ *
  * @remarks
  * Extends Angular's signal functionality with:
  * - Value tracking and validation
@@ -197,14 +197,14 @@ export interface SignalOptions<T> {
  * - Transformation pipeline
  * - Subscription system
  * - Error handling
- * 
+ *
  * @example
  * ```typescript
  * // Basic signal usage
  * const counter = createSignal<number>(0);
  * counter.set(5);
  * counter.update(n => n + 1);
- * 
+ *
  * // Advanced features
  * counter.subscribe(value => console.log(value));
  * counter.pipe(
@@ -292,30 +292,30 @@ export interface SignalPlus<T> {
 
   /**
    * Subscribes to value changes
-   * 
+   *
    * @param callback - Function called with new value on changes
    * @returns Cleanup function to unsubscribe
-   * 
+   *
    * @remarks
    * **Automatic Cleanup:** When the last subscriber unsubscribes, the signal automatically:
    * - Removes storage event listeners (for `localStorage` synchronization)
    * - Clears debounce/throttle timers
    * - Cleans up pending operations
-   * 
+   *
    * **Re-subscription:** After automatic cleanup, you can subscribe again and the signal
    * will reinitialize its resources as needed.
-   * 
+   *
    * **Manual Cleanup:** For explicit cleanup regardless of subscriber count, use `destroy()`.
-   * 
+   *
    * @example
    * ```typescript
    * // Basic subscription
    * const signal = sp(0).persist('counter').build();
    * const unsubscribe = signal.subscribe(value => console.log(value));
-   * 
+   *
    * // Clean up when done
    * unsubscribe(); // Automatically cleans up if this was the last subscriber
-   * 
+   *
    * // Can re-subscribe later
    * signal.subscribe(value => console.log('New:', value));
    * ```
@@ -334,30 +334,31 @@ export interface SignalPlus<T> {
    * )
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pipe<R>(...operators: any[]): SignalPlus<R>;
 
   /**
    * Explicitly destroys the signal and cleans up all resources
-   * 
+   *
    * @remarks
    * This method should be called when you're done with a signal to ensure:
    * - Storage event listeners are removed
    * - Pending debounce timers are cleared
    * - Subscribers are notified (optional)
    * - Memory is freed
-   * 
+   *
    * Note: After calling destroy(), the signal should not be used anymore.
-   * 
+   *
    * @example
    * ```typescript
    * const signal = new SignalBuilder(0)
    *   .persist('key')
    *   .debounce(300)
    *   .build();
-   * 
+   *
    * // Use the signal...
    * signal.setValue(42);
-   * 
+   *
    * // When done, clean up
    * signal.destroy();
    * ```
@@ -391,16 +392,16 @@ export interface SignalPlus<T> {
 /**
  * Interface representing signal history state
  * @typeParam T - The type of value stored in history
- * 
+ *
  * @remarks
  * Manages undo/redo state with three arrays:
  * - past: Previous values in chronological order
  * - present: Current active value
  * - future: Values available for redo
- * 
+ *
  * History operations maintain value integrity
  * and handle type safety automatically.
- * 
+ *
  * @example
  * ```typescript
  * const history: SignalHistory<number> = {
@@ -421,15 +422,15 @@ export interface SignalHistory<T> {
 
 /**
  * Interface representing signal's internal state
- * 
+ *
  * @remarks
  * Tracks operational status and error conditions:
  * - loading: Async operation in progress
  * - error: Current error state if any
  * - timestamp: Last update time
- * 
+ *
  * Used for UI feedback and error handling.
- * 
+ *
  * @example
  * ```typescript
  * const state: SignalState = {
@@ -454,7 +455,7 @@ export interface SignalState {
  * @remarks
  * Provides a simpler interface compared to BuilderOptions
  * for common use cases that don't need advanced features
- * 
+ *
  * @example
  * ```typescript
  * const options: SimpleSignalOptions<string> = {
@@ -484,7 +485,7 @@ export interface SimpleSignalOptions<T> {
  * @remarks
  * Used to define how errors should be handled and what value
  * should be used when an error occurs
- * 
+ *
  * @example
  * ```typescript
  * const errorBoundary: ErrorBoundary<number> = {
@@ -505,7 +506,7 @@ export interface ErrorBoundary<T> {
  * @remarks
  * Used to create a number signal with increment/decrement operations
  * and optional bounds checking
- * 
+ *
  * @example
  * ```typescript
  * const config: CounterConfig = {
@@ -527,14 +528,14 @@ export interface CounterConfig {
 /**
  * Configuration options for form input preset
  * @typeParam T - The type of form value
- * 
+ *
  * @remarks
  * Specialized configuration for form inputs:
  * - Initial value setup
  * - Input validation
  * - Debounce control
  * - Persistence options
- * 
+ *
  * @example
  * ```typescript
  * const config: FormConfig<string> = {
@@ -545,6 +546,7 @@ export interface CounterConfig {
  * };
  * ```
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface FormConfig<T = any> {
   /** Initial form value */
   initial: T;
