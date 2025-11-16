@@ -20,6 +20,10 @@ export {
 
 // Models and Types
 export type {
+  AsyncStateOptions,
+  SignalAsync,
+} from './lib/models/async-state.model';
+export type {
   BuilderOptions,
   ErrorHandler,
   FormNumberOptions,
@@ -51,7 +55,7 @@ export {
 } from './lib/operators';
 
 // Utilities and Presets
-export { spPresets, spValidators } from './lib/utils';
+export { spAsync, spPresets, spValidators } from './lib/utils';
 
 // State Management
 export { spHistoryManager, spStorageManager } from './lib/managers';
