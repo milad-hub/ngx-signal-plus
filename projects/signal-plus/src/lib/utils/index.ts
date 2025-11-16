@@ -9,6 +9,7 @@ export {
 } from '../managers';
 
 // Utilities
+export { spAsync } from './async-state';
 export { enhance as spEnhance } from './enhance';
 export { spFormGroup } from './form-group';
 export {
