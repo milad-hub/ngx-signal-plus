@@ -30,10 +30,7 @@
             "main": "projects/signal-plus/src/test.ts",
             "tsConfig": "projects/signal-plus/tsconfig.spec.json",
             "karmaConfig": "projects/signal-plus/karma.conf.js",
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ]
+            "polyfills": ["zone.js", "zone.js/testing"]
           }
         },
         "lint": {
@@ -51,9 +48,7 @@
   },
   "cli": {
     "analytics": false,
-    "schematicCollections": [
-      "angular-eslint"
-    ]
+    "schematicCollections": ["angular-eslint"]
   },
   "schematics": {
     "@schematics/angular:component": {

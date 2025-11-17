@@ -3,6 +3,7 @@
  */
 
 export * from './async-state.model';
+export * from './collection.model';
 export * from './form-group.model';
 export * from './form.model';
 export * from './signal-plus.model';
