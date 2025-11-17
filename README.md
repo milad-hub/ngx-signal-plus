@@ -30,19 +30,19 @@ npm install ngx-signal-plus
 ## Basic Usage
 
 ```typescript
-import { Component } from '@angular/core';
-import { sp, enhance, spMap, spFilter } from 'ngx-signal-plus';
-import { signal, computed } from '@angular/core';
+import { Component } from "@angular/core";
+import { sp, enhance, spMap, spFilter } from "ngx-signal-plus";
+import { signal, computed } from "@angular/core";
 
 @Component({
   standalone: true,
-  selector: 'app-counter',
+  selector: "app-counter",
   template: `
     <div>Count: {{ counter.value() }}</div>
     <div>Doubled: {{ doubled() }}</div>
     <button (click)="increment()">Increment</button>
     <button (click)="decrement()">Decrement</button>
-    
+
     @if (counter.history().length > 0) {
       <button (click)="counter.undo()">Undo</button>
     }
@@ -51,18 +51,18 @@ import { signal, computed } from '@angular/core';
 export class CounterComponent {
   // Create an enhanced signal with persistence and history
   counter = sp(0)
-    .persist('counter')
+    .persist("counter")
     .withHistory(10)
-    .validate(value => value >= 0)
+    .validate((value) => value >= 0)
     .build();
-  
+
   // Use signal operators
   doubled = computed(() => this.counter.value() * 2);
-  
+
   increment() {
     this.counter.setValue(this.counter.value() + 1);
   }
-  
+
   decrement() {
     if (this.counter.value() > 0) {
       this.counter.setValue(this.counter.value() - 1);
@@ -76,22 +76,22 @@ export class CounterComponent {
 ### Signal Creation
 
 ```typescript
-import { sp, spCounter, spToggle, spForm } from 'ngx-signal-plus';
+import { sp, spCounter, spToggle, spForm } from "ngx-signal-plus";
 
 // Simple enhanced signal
-const name = sp('John').build();
+const name = sp("John").build();
 
 // Counter with min/max validation
 const counter = spCounter(0, { min: 0, max: 100 });
 
 // Toggle (boolean) with persistence
-const darkMode = spToggle(false, 'theme-mode');
+const darkMode = spToggle(false, "theme-mode");
 
 // Form input with validation
-const username = spForm.text('', {
+const username = spForm.text("", {
   minLength: 3,
   maxLength: 20,
-  debounce: 300
+  debounce: 300,
 });
 ```
 
@@ -100,12 +100,12 @@ const username = spForm.text('', {
 Enhance existing signals with additional features:
 
 ```typescript
-import { enhance } from 'ngx-signal-plus';
-import { signal } from '@angular/core';
+import { enhance } from "ngx-signal-plus";
+import { signal } from "@angular/core";
 
 const enhanced = enhance(signal(0))
-  .persist('counter')
-  .validate(n => n >= 0)
+  .persist("counter")
+  .validate((n) => n >= 0)
   .transform(Math.round)
   .withHistory(5)
   .debounce(300)
@@ -116,38 +116,35 @@ const enhanced = enhance(signal(0))
 ### Signal Operators
 
 ```typescript
-import { spMap, spFilter, spDebounceTime, spCombineLatest } from 'ngx-signal-plus';
-import { signal } from '@angular/core';
+import { spMap, spFilter, spDebounceTime, spCombineLatest } from "ngx-signal-plus";
+import { signal } from "@angular/core";
 
 // Transform values
 const price = signal(100);
 const withTax = price.pipe(
-  spMap(n => n * 1.2),
-  spMap(n => Math.round(n * 100) / 100)
+  spMap((n) => n * 1.2),
+  spMap((n) => Math.round(n * 100) / 100),
 );
 
 // Combine signals
-const firstName = signal('John');
-const lastName = signal('Doe');
-const fullName = spCombineLatest([firstName, lastName])
-  .pipe(spMap(([first, last]) => `${first} ${last}`));
+const firstName = signal("John");
+const lastName = signal("Doe");
+const fullName = spCombineLatest([firstName, lastName]).pipe(spMap(([first, last]) => `${first} ${last}`));
 ```
 
 ### Form Handling
 
 ```typescript
-import { spForm } from 'ngx-signal-plus';
-import { computed } from '@angular/core';
+import { spForm } from "ngx-signal-plus";
+import { computed } from "@angular/core";
 
 // Form inputs with validation
-const username = spForm.text('', { minLength: 3, maxLength: 20 });
-const email = spForm.email('');
+const username = spForm.text("", { minLength: 3, maxLength: 20 });
+const email = spForm.email("");
 const age = spForm.number({ min: 18, max: 99, initial: 30 });
 
 // Form validation
-const isFormValid = computed(() => 
-  username.isValid() && email.isValid() && age.isValid()
-);
+const isFormValid = computed(() => username.isValid() && email.isValid() && age.isValid());
 ```
 
 ### Form Groups
@@ -155,75 +152,76 @@ const isFormValid = computed(() =>
 Group multiple form controls together with aggregated state, validation, and persistence:
 
 ```typescript
-import { spFormGroup, spForm } from 'ngx-signal-plus';
+import { spFormGroup, spForm } from "ngx-signal-plus";
 
 // Basic form group
 const loginForm = spFormGroup({
-  email: spForm.email(''),
-  password: spForm.text('', { minLength: 8 })
+  email: spForm.email(""),
+  password: spForm.text("", { minLength: 8 }),
 });
 
 // Access aggregated state
-loginForm.isValid();    // false if password < 8 chars
-loginForm.isDirty();    // true if any field changed
-loginForm.isTouched();  // true if any field touched
-loginForm.value();      // { email: '', password: '' }
-loginForm.errors();     // { email: [...], password: [...] }
+loginForm.isValid(); // false if password < 8 chars
+loginForm.isDirty(); // true if any field changed
+loginForm.isTouched(); // true if any field touched
+loginForm.value(); // { email: '', password: '' }
+loginForm.errors(); // { email: [...], password: [...] }
 
 // Update values
-loginForm.setValue({ email: 'user@example.com', password: 'secret123' });
-loginForm.patchValue({ email: 'new@example.com' }); // Partial update
+loginForm.setValue({ email: "user@example.com", password: "secret123" });
+loginForm.patchValue({ email: "new@example.com" }); // Partial update
 
 // Form actions
-loginForm.reset();           // Reset all fields to initial values
-loginForm.markAsTouched();   // Mark all fields as touched
-loginForm.submit();          // Returns values if valid, null otherwise
+loginForm.reset(); // Reset all fields to initial values
+loginForm.markAsTouched(); // Mark all fields as touched
+loginForm.submit(); // Returns values if valid, null otherwise
 
 // Nested form groups
 const credentials = spFormGroup({
-  email: spForm.email(''),
-  password: spForm.text('', { minLength: 8 })
+  email: spForm.email(""),
+  password: spForm.text("", { minLength: 8 }),
 });
 
 const profile = spFormGroup({
-  name: spForm.text(''),
-  age: spForm.number({ min: 18 })
+  name: spForm.text(""),
+  age: spForm.number({ min: 18 }),
 });
 
 const registrationForm = spFormGroup({
   credentials,
-  profile
+  profile,
 });
 
 // Group-level validation
-const passwordForm = spFormGroup({
-  password: spForm.text('password123'),
-  confirmPassword: spForm.text('password123')
-}, {
-  validators: [
-    (values) => values.password === values.confirmPassword || 'Passwords must match'
-  ]
-});
+const passwordForm = spFormGroup(
+  {
+    password: spForm.text("password123"),
+    confirmPassword: spForm.text("password123"),
+  },
+  {
+    validators: [(values) => values.password === values.confirmPassword || "Passwords must match"],
+  },
+);
 
 // Persistence
-const persistedForm = spFormGroup({
-  email: spForm.email(''),
-  preferences: spForm.text('')
-}, {
-  persistKey: 'user-form' // Automatically saves/restores from localStorage
-});
+const persistedForm = spFormGroup(
+  {
+    email: spForm.email(""),
+    preferences: spForm.text(""),
+  },
+  {
+    persistKey: "user-form", // Automatically saves/restores from localStorage
+  },
+);
 ```
 
 ### Validation and Presets
 
 ```typescript
-import { spValidators, spPresets } from 'ngx-signal-plus';
+import { spValidators, spPresets } from "ngx-signal-plus";
 
 // Use built-in validators
-const email = sp('')
-  .validate(spValidators.string.required)
-  .validate(spValidators.string.email)
-  .build();
+const email = sp("").validate(spValidators.string.required).validate(spValidators.string.email).build();
 
 // Use presets for common patterns
 const counter = spPresets.counter({
@@ -231,31 +229,31 @@ const counter = spPresets.counter({
   min: 0,
   max: 100,
   step: 1,
-  withHistory: true
+  withHistory: true,
 });
 
 const darkMode = spPresets.toggle({
   initial: false,
   persistent: true,
-  storageKey: 'theme-mode'
+  storageKey: "theme-mode",
 });
 ```
 
 ### State Management
 
 ```typescript
-import { spStorageManager, sp } from 'ngx-signal-plus';
+import { spStorageManager, sp } from "ngx-signal-plus";
 
 // Storage management (saves to localStorage with namespace prefix)
-spStorageManager.save('app-settings', { theme: 'dark', language: 'en' });
-const settings = spStorageManager.load<{theme: string, language: string}>('app-settings');
+spStorageManager.save("app-settings", { theme: "dark", language: "en" });
+const settings = spStorageManager.load<{ theme: string; language: string }>("app-settings");
 
 // Remove when no longer needed
-spStorageManager.remove('app-settings');
+spStorageManager.remove("app-settings");
 
 // History management through signals
 const counter = sp(0)
-  .withHistory(10)  // Keep last 10 values
+  .withHistory(10) // Keep last 10 values
   .build();
 
 counter.setValue(1);
@@ -276,17 +274,17 @@ console.log(counter.history()); // Array of past values
 **ngx-signal-plus** provides automatic and manual cleanup to prevent memory leaks:
 
 ```typescript
-import { sp } from 'ngx-signal-plus';
+import { sp } from "ngx-signal-plus";
 
 // Automatic cleanup when all subscribers unsubscribe
-const signal = sp(0).persist('counter').debounce(300).build();
-const unsubscribe = signal.subscribe(value => console.log(value));
+const signal = sp(0).persist("counter").debounce(300).build();
+const unsubscribe = signal.subscribe((value) => console.log(value));
 
 // When you're done with the signal
 unsubscribe(); // Automatically cleans up when last subscriber unsubscribes
 
 // Manual cleanup with destroy()
-const signal2 = sp(0).persist('data').withHistory(10).build();
+const signal2 = sp(0).persist("data").withHistory(10).build();
 signal2.setValue(42);
 
 // Explicitly destroy and clean up all resources
@@ -294,6 +292,7 @@ signal2.destroy(); // Removes event listeners, clears timers, frees memory
 ```
 
 **What gets cleaned up:**
+
 - ✅ Storage event listeners (for `localStorage` synchronization)
 - ✅ Debounce/throttle timers
 - ✅ All subscribers
@@ -306,7 +305,7 @@ signal2.destroy(); // Removes event listeners, clears timers, frees memory
 Group multiple updates together with automatic rollback on errors:
 
 ```typescript
-import { spTransaction, spBatch } from 'ngx-signal-plus';
+import { spTransaction, spBatch } from "ngx-signal-plus";
 
 const balance = sp(100).build();
 const cart = sp<string[]>([]).build();
@@ -315,17 +314,17 @@ const cart = sp<string[]>([]).build();
 try {
   spTransaction(() => {
     balance.setValue(balance.value() - 50);
-    cart.update(items => [...items, 'premium-item']);
-    
+    cart.update((items) => [...items, "premium-item"]);
+
     if (balance.value() < 0) {
-      throw new Error('Insufficient funds');
+      throw new Error("Insufficient funds");
     }
     // Success - changes are committed
   });
 } catch (error) {
   // Error - all changes automatically rolled back
   console.log(balance.value()); // 100 (original value)
-  console.log(cart.value());    // [] (original value)
+  console.log(cart.value()); // [] (original value)
 }
 
 // Batch updates for performance (no rollback)
@@ -343,31 +342,30 @@ The library works seamlessly with Angular Universal:
 
 ```typescript
 // This code works in both SSR and browser
-const userPrefs = sp({ theme: 'dark' })
-  .persist('user-preferences')
-  .build();
+const userPrefs = sp({ theme: "dark" }).persist("user-preferences").build();
 
 // In SSR: works in-memory, localStorage calls are safely skipped
 // In browser: full persistence with localStorage
 ```
 
 What happens during SSR:
+
 - Signals work normally with in-memory state
 - localStorage operations are safely skipped (no errors)
 - State automatically persists once the app runs in the browser
 
 ## Available Features
 
-| Category | Features |
-|----------|----------|
-| **Signal Creation** | `sp`, `spCounter`, `spToggle`, `spForm` |
-| **Signal Enhancement** | `enhance`, validation, transformation, persistence, history |
-| **Signal Operators** | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spSkip`, `spTake`, `spMerge`, `spCombineLatest` |
-| **Form Groups** | `spFormGroup` - Group multiple controls with aggregated state, validation, and persistence |
-| **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals` |
-| **Utilities** | `spValidators`, `spPresets` |
-| **State Management** | `spHistoryManager`, `spStorageManager` |
-| **Components** | `spSignalPlusComponent`, `spSignalPlusService`, `spSignalBuilder` |
+| Category                    | Features                                                                                                                                       |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Signal Creation**         | `sp`, `spCounter`, `spToggle`, `spForm`                                                                                                        |
+| **Signal Enhancement**      | `enhance`, validation, transformation, persistence, history                                                                                    |
+| **Signal Operators**        | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spSkip`, `spTake`, `spMerge`, `spCombineLatest` |
+| **Form Groups**             | `spFormGroup` - Group multiple controls with aggregated state, validation, and persistence                                                     |
+| **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals`                                |
+| **Utilities**               | `spValidators`, `spPresets`                                                                                                                    |
+| **State Management**        | `spHistoryManager`, `spStorageManager`                                                                                                         |
+| **Components**              | `spSignalPlusComponent`, `spSignalPlusService`, `spSignalBuilder`                                                                              |
 
 ## Bundle Size Optimization
 
@@ -381,19 +379,19 @@ The package provides **modular exports** for selective importing:
 // Import only what you need - tree-shaking removes unused code
 
 // Core signals only (~3KB gzipped)
-import { sp, spCounter, spToggle } from 'ngx-signal-plus/core';
+import { sp, spCounter, spToggle } from "ngx-signal-plus/core";
 
 // Operators only (~2KB gzipped)
-import { spMap, spFilter, spDebounceTime } from 'ngx-signal-plus/operators';
+import { spMap, spFilter, spDebounceTime } from "ngx-signal-plus/operators";
 
 // Utilities only (~2KB gzipped)
-import { enhance, spValidators, spPresets } from 'ngx-signal-plus/utils';
+import { enhance, spValidators, spPresets } from "ngx-signal-plus/utils";
 
 // State managers (~1KB gzipped)
-import { spHistoryManager, spStorageManager } from 'ngx-signal-plus';
+import { spHistoryManager, spStorageManager } from "ngx-signal-plus";
 
 // Everything (~8KB gzipped)
-import { sp, spMap, spFilter, enhance, spValidators } from 'ngx-signal-plus';
+import { sp, spMap, spFilter, enhance, spValidators } from "ngx-signal-plus";
 ```
 
 ### Tree-Shaking Configuration
@@ -413,40 +411,43 @@ The package is optimized for tree-shaking:
 ### Best Practices for Minimal Bundle
 
 **1. Import only what you need:**
+
 ```typescript
 // ✅ Good - imports only used features
-import { sp, spCounter } from 'ngx-signal-plus';
+import { sp, spCounter } from "ngx-signal-plus";
 
 // ❌ Avoid - imports everything even if unused
-import * as SignalPlus from 'ngx-signal-plus';
+import * as SignalPlus from "ngx-signal-plus";
 ```
 
 **2. Use named imports:**
+
 ```typescript
 // ✅ Good - tree-shaking can remove unused exports
-import { sp, spMap } from 'ngx-signal-plus';
+import { sp, spMap } from "ngx-signal-plus";
 
 // ❌ Less optimal - may import more than needed
-import SignalPlus from 'ngx-signal-plus';
+import SignalPlus from "ngx-signal-plus";
 ```
 
 **3. Import from specific entry points:**
+
 ```typescript
 // ✅ Good - direct import from feature module
-import { spMap, spFilter } from 'ngx-signal-plus/operators';
+import { spMap, spFilter } from "ngx-signal-plus/operators";
 
 // ✅ Also good - barrel export handles tree-shaking
-import { spMap, spFilter } from 'ngx-signal-plus';
+import { spMap, spFilter } from "ngx-signal-plus";
 ```
 
 ### Typical Bundle Sizes
 
-| Feature Set | Size (gzipped) | Savings vs Full |
-|-------------|---|---|
-| Just `sp()` | ~1.5 KB | -87% |
-| Core signals | ~3 KB | -62% |
-| + Operators | ~5 KB | -38% |
-| + All utilities | ~8 KB | 0% |
+| Feature Set     | Size (gzipped) | Savings vs Full |
+| --------------- | -------------- | --------------- |
+| Just `sp()`     | ~1.5 KB        | -87%            |
+| Core signals    | ~3 KB          | -62%            |
+| + Operators     | ~5 KB          | -38%            |
+| + All utilities | ~8 KB          | 0%              |
 
 ### Performance Impact
 

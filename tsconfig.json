@@ -13,9 +13,7 @@
     "experimentalDecorators": true,
     "moduleResolution": "bundler",
     "paths": {
-      "signal-plus": [
-        "./dist/signal-plus"
-      ]
+      "signal-plus": ["./dist/signal-plus"]
     },
     "importHelpers": true,
     "target": "ES2022",
