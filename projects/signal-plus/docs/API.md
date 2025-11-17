@@ -9,6 +9,9 @@
 - [Signal Enhancement](#signal-enhancement)
 - [Signal Operators](#signal-operators)
 - [Form Handling](#form-handling)
+- [Form Groups](#form-groups)
+- [Async State Management](#async-state-management)
+- [Collection Management](#collection-management)
 - [Transactions and Batching](#transactions-and-batching)
 - [Managers](#managers)
 - [Validators and Presets](#validators-and-presets)
@@ -31,6 +34,9 @@
 - Built-in undo/redo functionality
 - Performance optimizations with minimal overhead
 - Smart form input handling
+- Form groups with aggregated state and validation
+- Async state management with loading, error, and retry logic
+- Collection management with ID-based CRUD operations
 
 ### Requirements
 
@@ -323,6 +329,118 @@ interface FormNumberOptions {
   debounce?: number; // Debounce time in milliseconds
   initial?: number; // Initial value
 }
+```
+
+## Form Groups
+
+Group multiple form controls together with aggregated state, validation, and persistence:
+
+```typescript
+import { spFormGroup, spForm } from "ngx-signal-plus";
+
+const loginForm = spFormGroup({
+  email: spForm.email(""),
+  password: spForm.text("", { minLength: 8 }),
+});
+
+// Access aggregated state
+loginForm.isValid(); // Signal<boolean>
+loginForm.isDirty(); // Signal<boolean>
+loginForm.isTouched(); // Signal<boolean>
+loginForm.value(); // Signal<{ email: string; password: string }>
+loginForm.errors(); // Signal<Record<string, string[]>>
+
+// Methods
+loginForm.setValue({ email: "user@example.com", password: "secret123" });
+loginForm.patchValue({ email: "new@example.com" });
+loginForm.reset();
+loginForm.markAsTouched();
+loginForm.submit(); // Returns values if valid, null otherwise
+```
+
+## Async State Management
+
+Manage asynchronous operations with built-in loading, error, and data states:
+
+```typescript
+import { spAsync } from "ngx-signal-plus";
+
+const userData = spAsync<User>({
+  fetcher: () => fetch("/api/user").then((r) => r.json()),
+  initialValue: null,
+  retryCount: 3,
+  retryDelay: 1000,
+  cacheTime: 5000,
+  autoFetch: true,
+  onSuccess: (data) => console.log("Loaded:", data),
+  onError: (error) => console.error("Failed:", error),
+});
+
+// Reactive state signals
+userData.data(); // Signal<User | null>
+userData.loading(); // Signal<boolean>
+userData.error(); // Signal<Error | null>
+userData.isSuccess(); // Signal<boolean>
+userData.isError(); // Signal<boolean>
+
+// Methods
+await userData.refetch(); // Manually refetch data
+userData.invalidate(); // Mark cache as stale
+userData.reset(); // Reset to initial state
+userData.mutate(newData); // Optimistic update
+```
+
+## Collection Management
+
+Manage arrays of entities with ID-based operations, optimized updates, and history support:
+
+```typescript
+import { spCollection } from "ngx-signal-plus";
+
+interface Todo {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+const todos = spCollection<Todo>({
+  idField: "id",
+  initialValue: [],
+  persist: "todos-key",
+  withHistory: true,
+});
+
+// CRUD operations
+todos.add({ id: "1", title: "Learn Angular", completed: false });
+todos.addMany([todo1, todo2]);
+todos.update("1", { completed: true });
+todos.updateMany([{ id: "1", changes: { completed: true } }]);
+todos.remove("1");
+todos.removeMany(["1", "2"]);
+todos.clear();
+
+// Query operations
+todos.findById("1"); // O(1) lookup
+todos.filter((t) => t.completed);
+todos.find((t) => t.completed);
+todos.some((t) => t.completed);
+todos.every((t) => t.completed);
+
+// Transform operations
+todos.sort((a, b) => a.title.localeCompare(b.title));
+todos.map((t) => t.title);
+todos.reduce((acc, t) => acc + (t.completed ? 1 : 0), 0);
+
+// History operations
+todos.undo();
+todos.redo();
+todos.canUndo();
+todos.canRedo();
+
+// Reactive signals
+todos.value(); // Signal<Todo[]>
+todos.count(); // Signal<number>
+todos.isEmpty(); // Signal<boolean>
 ```
 
 ## Transactions and Batching

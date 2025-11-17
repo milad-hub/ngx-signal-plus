@@ -12,6 +12,8 @@ A powerful utility library that enhances Angular Signals with additional feature
 - Built-in undo/redo functionality
 - Form handling with validation
 - Form groups with aggregated state and validation
+- Async state management with loading, error, and retry logic
+- Collection management with ID-based CRUD operations
 - Automatic cleanup and memory management
 - Performance optimizations
 - Transactions and batching for atomic operations
@@ -215,6 +217,94 @@ const persistedForm = spFormGroup(
 );
 ```
 
+### Async State Management
+
+Manage asynchronous operations with built-in loading, error, and data states:
+
+```typescript
+import { spAsync } from "ngx-signal-plus";
+
+const userData = spAsync<User>({
+  fetcher: () => fetch("/api/user").then((r) => r.json()),
+  initialValue: null,
+  retryCount: 3,
+  retryDelay: 1000,
+  cacheTime: 5000,
+  autoFetch: true,
+  onSuccess: (data) => console.log("Loaded:", data),
+  onError: (error) => console.error("Failed:", error),
+});
+
+// Reactive state signals
+userData.data(); // Signal<User | null>
+userData.loading(); // Signal<boolean>
+userData.error(); // Signal<Error | null>
+userData.isSuccess(); // Signal<boolean>
+userData.isError(); // Signal<boolean>
+
+// Methods
+await userData.refetch(); // Manually refetch data
+userData.invalidate(); // Mark cache as stale
+userData.reset(); // Reset to initial state
+userData.mutate(newData); // Optimistic update
+```
+
+### Collection Management
+
+Manage arrays of entities with ID-based operations, optimized updates, and history support:
+
+```typescript
+import { spCollection } from "ngx-signal-plus";
+
+interface Todo {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+const todos = spCollection<Todo>({
+  idField: "id",
+  initialValue: [],
+  persist: "todos-key",
+  withHistory: true,
+});
+
+// CRUD operations
+todos.add({ id: "1", title: "Learn Angular", completed: false });
+todos.addMany([todo1, todo2, todo3]);
+todos.update("1", { completed: true });
+todos.updateMany([
+  { id: "1", changes: { completed: true } },
+  { id: "2", changes: { title: "Updated" } },
+]);
+todos.remove("1");
+todos.removeMany(["1", "2"]);
+todos.clear();
+
+// Query operations
+const todo = todos.findById("1");
+const completed = todos.filter((t) => t.completed);
+const firstCompleted = todos.find((t) => t.completed);
+const hasCompleted = todos.some((t) => t.completed);
+const allCompleted = todos.every((t) => t.completed);
+
+// Transform operations
+const sorted = todos.sort((a, b) => a.title.localeCompare(b.title));
+const titles = todos.map((t) => t.title);
+const totalCompleted = todos.reduce((acc, t) => acc + (t.completed ? 1 : 0), 0);
+
+// History operations
+todos.undo(); // Undo last operation
+todos.redo(); // Redo last undone operation
+todos.canUndo(); // Check if undo is available
+todos.canRedo(); // Check if redo is available
+
+// Reactive signals
+todos.value(); // Signal<Todo[]>
+todos.count(); // Signal<number>
+todos.isEmpty(); // Signal<boolean>
+```
+
 ### Validation and Presets
 
 ```typescript
@@ -362,6 +452,8 @@ What happens during SSR:
 | **Signal Enhancement**      | `enhance`, validation, transformation, persistence, history                                                                                    |
 | **Signal Operators**        | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spSkip`, `spTake`, `spMerge`, `spCombineLatest` |
 | **Form Groups**             | `spFormGroup` - Group multiple controls with aggregated state, validation, and persistence                                                     |
+| **Async State Management**  | `spAsync` - Manage asynchronous operations with loading, error, retry, and caching                                                           |
+| **Collection Management**  | `spCollection` - Manage arrays of entities with ID-based CRUD, queries, transforms, and history                                               |
 | **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals`                                |
 | **Utilities**               | `spValidators`, `spPresets`                                                                                                                    |
 | **State Management**        | `spHistoryManager`, `spStorageManager`                                                                                                         |
