@@ -1,6 +1,14 @@
 import { Signal, WritableSignal } from '@angular/core';
 
 /**
+ * Function signature for async validators
+ * @template T - The type of value being validated
+ * @param value - The value to validate
+ * @returns Promise resolving to true if valid, false if invalid
+ */
+export type AsyncValidator<T = unknown> = (value: T) => Promise<boolean>;
+
+/**
  * @fileoverview Core type definitions for ngx-signal-plus library
  * This file contains all the core interfaces and types used throughout the library.
  * It defines the shape of signals, their configuration options, and utility types.
@@ -143,6 +151,8 @@ export interface BuilderOptions<T> {
   persist?: boolean;
   /** Array of validation functions. All must return true for valid state */
   validators?: Validator<T>[];
+  /** Array of async validation functions with debouncing and cancellation */
+  asyncValidators?: AsyncValidator<T>[];
   /** Transform function for processing values. Applied before validation */
   transform?: Transform<T>;
   /** Array of transform functions. Applied in sequence before validation */
@@ -268,6 +278,12 @@ export interface SignalPlus<T> {
 
   /** Signal indicating if all validators are passing */
   isValid: Signal<boolean>;
+
+  /** Signal indicating if async validation is in progress */
+  isValidating: Signal<boolean>;
+
+  /** Signal containing async validation errors */
+  asyncErrors: Signal<string[]>;
 
   /** Signal indicating if current value differs from initial value */
   isDirty: Signal<boolean>;
