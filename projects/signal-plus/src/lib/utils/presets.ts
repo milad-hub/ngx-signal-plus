@@ -46,6 +46,7 @@
 
 import { SignalBuilder } from '../core/signal-builder';
 import { CounterConfig, FormConfig } from '../models/signal-plus.model';
+import { spValidators } from './async-validators';
 
 /**
  * Collection of predefined signal configurations
@@ -285,4 +286,5 @@ export const validators = {
       <T>(x: T[]) =>
         x.length <= max,
   },
+  async: spValidators.async,
 };

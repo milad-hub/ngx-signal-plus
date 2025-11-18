@@ -452,8 +452,8 @@ What happens during SSR:
 | **Signal Enhancement**      | `enhance`, validation, transformation, persistence, history                                                                                    |
 | **Signal Operators**        | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spSkip`, `spTake`, `spMerge`, `spCombineLatest` |
 | **Form Groups**             | `spFormGroup` - Group multiple controls with aggregated state, validation, and persistence                                                     |
-| **Async State Management**  | `spAsync` - Manage asynchronous operations with loading, error, retry, and caching                                                           |
-| **Collection Management**  | `spCollection` - Manage arrays of entities with ID-based CRUD, queries, transforms, and history                                               |
+| **Async State Management**  | `spAsync` - Manage asynchronous operations with loading, error, retry, and caching                                                             |
+| **Collection Management**   | `spCollection` - Manage arrays of entities with ID-based CRUD, queries, transforms, and history                                                |
 | **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals`                                |
 | **Utilities**               | `spValidators`, `spPresets`                                                                                                                    |
 | **State Management**        | `spHistoryManager`, `spStorageManager`                                                                                                         |

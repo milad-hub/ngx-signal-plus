@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import {
+  AsyncValidator,
   BuilderOptions,
   ErrorHandler,
   SignalPlus,
@@ -73,6 +74,19 @@ export class SignalBuilder<T> {
       this.options.validators = [];
     }
     this.options.validators.push(fn);
+    return this;
+  }
+
+  /**
+   * Adds an async validator function to the signal
+   * @param fn Async function that validates the signal value with debouncing
+   * @returns Builder instance for chaining
+   */
+  validateAsync(fn: AsyncValidator<T>): SignalBuilder<T> {
+    if (!this.options.asyncValidators) {
+      this.options.asyncValidators = [];
+    }
+    this.options.asyncValidators.push(fn);
     return this;
   }
 
@@ -259,6 +273,12 @@ export class SignalBuilder<T> {
     let debounceCancelled = false;
     let isProcessingStorage = false;
 
+    // Async validation state
+    let asyncValidationTimeout: number | undefined | null = null;
+    let currentValidationAbortController: AbortController | null = null;
+    const isValidatingSignal: WritableSignal<boolean> = signal<boolean>(false);
+    const asyncErrorsSignal: WritableSignal<string[]> = signal<string[]>([]);
+
     /**
      * Helper function to enforce history size limit
      * @param histArray The history array to enforce size on
@@ -288,6 +308,149 @@ export class SignalBuilder<T> {
         return redoArray.slice(-this.options.historySize);
       }
       return redoArray;
+    };
+
+    /**
+     * Helper function to run async validation with debouncing and cancellation
+     * @param value The value to validate
+     */
+    const runAsyncValidation = async (value: T): Promise<void> => {
+      // Cancel any existing async validation
+      if (currentValidationAbortController) {
+        currentValidationAbortController.abort();
+      }
+
+      // Clear any existing timeout
+      if (asyncValidationTimeout !== null) {
+        safeClearTimeout(asyncValidationTimeout);
+        asyncValidationTimeout = null;
+      }
+
+      // If no async validators, nothing to do
+      if (
+        !this.options.asyncValidators ||
+        this.options.asyncValidators.length === 0
+      ) {
+        asyncErrorsSignal.set([]);
+        isValidatingSignal.set(false);
+        return;
+      }
+
+      // Create new abort controller for this validation run
+      currentValidationAbortController = new AbortController();
+
+      // Set validating state
+      isValidatingSignal.set(true);
+      asyncErrorsSignal.set([]);
+
+      // Use a small debounce for async validation to avoid excessive API calls
+      const debounceMs = 50;
+
+      asyncValidationTimeout = safeSetTimeout(async () => {
+        try {
+          // Check if this validation was cancelled
+          if (currentValidationAbortController?.signal.aborted) {
+            return;
+          }
+
+          const errors: string[] = [];
+          const asyncValidators = this.options.asyncValidators || [];
+
+          // Run all async validators
+          for (const validator of asyncValidators) {
+            try {
+              // Check if cancelled during validation
+              if (currentValidationAbortController?.signal.aborted) {
+                return;
+              }
+
+              const isValid = await validator(value);
+              if (!isValid) {
+                errors.push('Async validation failed');
+              }
+            } catch (error) {
+              // Validator threw an error, consider it a failure
+              const errorMessage =
+                error instanceof Error
+                  ? error.message
+                  : 'Async validation error';
+              errors.push(errorMessage);
+            }
+          }
+
+          // Only update if not cancelled
+          if (!currentValidationAbortController?.signal.aborted) {
+            asyncErrorsSignal.set(errors);
+            isValidatingSignal.set(false);
+          }
+        } catch (error) {
+          // Only update if not cancelled
+          if (!currentValidationAbortController?.signal.aborted) {
+            const errorMessage =
+              error instanceof Error ? error.message : 'Async validation error';
+            asyncErrorsSignal.set([errorMessage]);
+            isValidatingSignal.set(false);
+          }
+        } finally {
+          asyncValidationTimeout = null;
+        }
+      }, debounceMs);
+
+      // If safeSetTimeout returned undefined (not in browser), run synchronously for testing
+      if (asyncValidationTimeout === undefined) {
+        // Run the validation synchronously for test environments
+        (async () => {
+          try {
+            // Check if this validation was cancelled
+            if (currentValidationAbortController?.signal.aborted) {
+              return;
+            }
+
+            const errors: string[] = [];
+            const asyncValidators = this.options.asyncValidators || [];
+
+            // Run all async validators
+            for (const validator of asyncValidators) {
+              try {
+                // Check if cancelled during validation
+                if (currentValidationAbortController?.signal.aborted) {
+                  return;
+                }
+
+                const isValid = await validator(value);
+                if (!isValid) {
+                  errors.push('Async validation failed');
+                }
+              } catch (error) {
+                // Validator threw an error, consider it a failure
+                const errorMessage =
+                  error instanceof Error
+                    ? error.message
+                    : 'Async validation error';
+                errors.push(errorMessage);
+              }
+            }
+
+            // Only update if not cancelled
+            if (!currentValidationAbortController?.signal.aborted) {
+              asyncErrorsSignal.set(errors);
+              isValidatingSignal.set(false);
+            }
+          } catch (error) {
+            // Only update if not cancelled
+            if (!currentValidationAbortController?.signal.aborted) {
+              const errorMessage =
+                error instanceof Error
+                  ? error.message
+                  : 'Async validation error';
+              asyncErrorsSignal.set([errorMessage]);
+              isValidatingSignal.set(false);
+            }
+          } finally {
+            asyncValidationTimeout = null;
+          }
+        })();
+      }
     };
 
     const serializeWithCircularCheck = (
@@ -452,6 +615,11 @@ export class SignalBuilder<T> {
         } catch (error) {
           this.handleError(error as Error);
         }
+      });
+
+      // Trigger async validation after subscribers are notified
+      runAsyncValidation(value).catch((error) => {
+        this.handleError(error as Error);
       });
     };
 
@@ -779,6 +947,8 @@ export class SignalBuilder<T> {
           return false;
         }
       }),
+      isValidating: computed(() => isValidatingSignal()),
+      asyncErrors: computed(() => asyncErrorsSignal()),
       isDirty: computed(() => {
         try {
           return JSON.stringify(writable()) !== JSON.stringify(initialValue);
@@ -950,6 +1120,20 @@ export class SignalBuilder<T> {
             isProcessingDebounce = false;
             debounceCancelled = false;
           }
+        });
+
+        // Step 4.5: Clear async validation timeout and abort controller
+        safeCleanup('Clear async validation', () => {
+          if (asyncValidationTimeout !== null) {
+            safeClearTimeout(asyncValidationTimeout);
+            asyncValidationTimeout = null;
+          }
+          if (currentValidationAbortController) {
+            currentValidationAbortController.abort();
+            currentValidationAbortController = null;
+          }
+          isValidatingSignal.set(false);
+          asyncErrorsSignal.set([]);
         });
 
         // Step 5: Clear pending value

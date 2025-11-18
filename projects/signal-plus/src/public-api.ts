@@ -28,6 +28,7 @@ export type {
   SignalCollection,
 } from './lib/models/collection.model';
 export type {
+  AsyncValidator,
   BuilderOptions,
   ErrorHandler,
   FormNumberOptions,

@@ -1,3 +1,5 @@
+import { AsyncValidator } from './signal-plus.model';
+
 /**
  * Configuration options for text form inputs
  */
@@ -8,6 +10,8 @@ export interface FormTextOptions {
   maxLength?: number;
   /** Debounce time in milliseconds */
   debounce?: number;
+  /** Array of async validators for server-side validation */
+  asyncValidators?: AsyncValidator<string>[];
 }
 
 /**
@@ -22,4 +26,6 @@ export interface FormNumberOptions {
   debounce?: number;
   /** Initial value */
   initial?: number;
+  /** Array of async validators for server-side validation */
+  asyncValidators?: AsyncValidator<number>[];
 }

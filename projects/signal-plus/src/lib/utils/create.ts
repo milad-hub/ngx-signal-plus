@@ -28,7 +28,7 @@
 
 import { SignalBuilder } from '../core/signal-builder';
 import { FormNumberOptions, FormTextOptions } from '../models/form.model';
-import { SignalPlus } from '../models/signal-plus.model';
+import { AsyncValidator, SignalPlus } from '../models/signal-plus.model';
 import { safeLocalStorageSet } from './platform';
 
 /**
@@ -217,12 +217,22 @@ export const spForm = {
       });
     }
 
+    // Apply async validators
+    if (options?.asyncValidators) {
+      options.asyncValidators.forEach((validator) => {
+        signal.validateAsync(validator);
+      });
+    }
+
     return options?.debounce !== undefined
       ? signal.debounce(options.debounce).build()
       : signal.build();
   },
 
-  email: (initial = '', options?: Pick<FormTextOptions, 'debounce'>) => {
+  email: (
+    initial = '',
+    options?: Pick<FormTextOptions, 'debounce' | 'asyncValidators'>,
+  ) => {
     // Validate input options
     if (options?.debounce !== undefined && options.debounce < 0) {
       throw new RangeError(
@@ -263,6 +273,13 @@ export const spForm = {
     // Add debounce if specified
     if (options?.debounce !== undefined) {
       signal.debounce(options.debounce);
+    }
+
+    // Apply async validators
+    if (options?.asyncValidators) {
+      options.asyncValidators.forEach((validator) => {
+        signal.validateAsync(validator);
+      });
     }
 
     return signal.build();
@@ -343,6 +360,22 @@ export const spForm = {
       const clamped = getValidValue(value as number);
       return clamped === value;
     });
+
+    // Apply async validators
+    if (options?.asyncValidators) {
+      options.asyncValidators.forEach((validator) => {
+        // For debounced signals that might be null, only validate non-null values
+        if (isDebounced) {
+          signal.validateAsync(async (value) => {
+            if (value === null) return true; // Skip validation for null values
+            return validator(value as number);
+          });
+        } else {
+          // For non-debounced signals, cast the validator to handle number type
+          signal.validateAsync(validator as AsyncValidator<number | null>);
+        }
+      });
+    }
 
     // Apply debounce if specified and build
     return isDebounced
