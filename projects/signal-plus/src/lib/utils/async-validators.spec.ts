@@ -172,7 +172,7 @@ describe('spValidators', () => {
 
     it('should work with sync validators', fakeAsync(async () => {
       const signal = sp('')
-        .validate((value) => value.length > 0) 
+        .validate((value) => value.length > 0)
         .validateAsync(
           spValidators.async.custom(async (value: string) => {
             return value.length >= 3;
@@ -181,8 +181,8 @@ describe('spValidators', () => {
         .build();
       signal.setValue('hi');
       tick(100);
-      expect(signal.isValid()).toBe(true); 
-      expect(signal.asyncErrors().length).toBe(1); 
+      expect(signal.isValid()).toBe(true);
+      expect(signal.asyncErrors().length).toBe(1);
       signal.setValue('hello');
       tick(100);
       expect(signal.isValid()).toBe(true);

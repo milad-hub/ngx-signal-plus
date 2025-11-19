@@ -13,6 +13,7 @@ A powerful utility library that enhances Angular Signals with additional feature
 - Form handling with validation
 - Form groups with aggregated state and validation
 - Async state management with loading, error, and retry logic
+- Reactive Queries for server state (TanStack Query style)
 - Collection management with ID-based CRUD operations
 - Automatic cleanup and memory management
 - Performance optimizations
@@ -248,6 +249,49 @@ userData.invalidate(); // Mark cache as stale
 userData.reset(); // Reset to initial state
 userData.mutate(newData); // Optimistic update
 ```
+
+### Reactive Queries (Server State)
+
+```typescript
+import { QueryClient, setGlobalQueryClient, spQuery, spMutation } from 'ngx-signal-plus';
+
+const queryClient = new QueryClient();
+setGlobalQueryClient(queryClient);
+
+// Query: cached, retry, background refetch
+const userQuery = spQuery({
+  queryKey: ['user', '1'],
+  queryFn: async () => fetch('/api/user/1').then((r) => r.json()),
+  staleTime: 5000,
+  cacheTime: 300000,
+  retry: 3,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+});
+
+// Access reactive state
+userQuery.data();
+userQuery.isLoading();
+await userQuery.refetch();
+userQuery.invalidate();
+
+// Mutation: with optimistic update and refetch
+const updateUser = spMutation({
+  mutationFn: async (name: string) => updateUserAPI(name),
+  onMutate: (name) => {
+    queryClient.setQueryData(['user', '1'], (prev) => ({ id: (prev as { id: number } | undefined)?.id ?? 1, name }), true);
+  },
+  onSuccess: () => queryClient.refetchQueries(['user', '1']),
+});
+
+await updateUser.mutate('Jane');
+```
+
+Key capabilities:
+- Query caching and invalidation
+- Background refetch on focus/reconnect/interval
+- Mutations with retry and lifecycle callbacks
+- Optimistic UI updates via `setQueryData`
 
 ### Collection Management
 
