@@ -15,18 +15,10 @@ export { enhance } from './lib/utils/enhance';
 export {
   spSignalBuilder,
   spSignalPlusComponent,
-  spSignalPlusService,
+  spSignalPlusService
 } from './lib/core';
 
 // Models and Types
-export type {
-  AsyncStateOptions,
-  SignalAsync,
-} from './lib/models/async-state.model';
-export type {
-  CollectionOptions,
-  SignalCollection,
-} from './lib/models/collection.model';
 export type {
   AsyncValidator,
   BuilderOptions,
@@ -42,8 +34,16 @@ export type {
   SignalState,
   Transform,
   // Function Types
-  Validator,
+  Validator
 } from './lib/models';
+export type {
+  AsyncStateOptions,
+  SignalAsync
+} from './lib/models/async-state.model';
+export type {
+  CollectionOptions,
+  SignalCollection
+} from './lib/models/collection.model';
 
 // Signal Operators
 export {
@@ -56,7 +56,7 @@ export {
   spMerge,
   spSkip,
   spTake,
-  spThrottleTime,
+  spThrottleTime
 } from './lib/operators';
 
 // Utilities and Presets
@@ -72,13 +72,25 @@ export {
   spIsInBatch,
   spIsInTransaction,
   spIsTransactionActive,
-  spTransaction,
+  spTransaction
 } from './lib/utils/transactions';
 // Form Groups
 export type {
   FormGroupConfig,
   FormGroupOptions,
   FormGroupValidator,
-  SignalFormGroup,
+  SignalFormGroup
 } from './lib/models/form-group.model';
 export { spFormGroup } from './lib/utils/form-group';
+
+// Reactive Queries (React Query style)
+export {
+  createMutation, createQuery, getGlobalQueryClient, QueryClient, setGlobalQueryClient, spMutation, spQuery
+} from './lib/reactive-queries';
+export type {
+  MutationOptions,
+  MutationResult, MutationState,
+  QueryKey, QueryOptions,
+  QueryResult, QueryState
+} from './lib/reactive-queries';
+

@@ -19,6 +19,7 @@
 - [Best Practices](#best-practices)
 - [Advanced Usage](#advanced-usage)
 - [Troubleshooting](#troubleshooting)
+- [Reactive Queries](#reactive-queries)
 
 ## Overview
 
@@ -442,6 +443,89 @@ todos.value(); // Signal<Todo[]>
 todos.count(); // Signal<number>
 todos.isEmpty(); // Signal<boolean>
 ```
+
+## Reactive Queries
+
+### Overview
+
+Query-style server state management with caching, invalidation, background refetching, mutations, and optimistic updates.
+
+### Core APIs
+
+```typescript
+import { QueryClient, setGlobalQueryClient } from 'ngx-signal-plus';
+import { spQuery, spMutation } from 'ngx-signal-plus';
+
+const queryClient = new QueryClient();
+setGlobalQueryClient(queryClient);
+```
+
+#### spQuery
+
+```typescript
+const userQuery = spQuery({
+  queryKey: ['user', '1'],
+  queryFn: async () => fetch('/api/user/1').then((r) => r.json()),
+  staleTime: 5000,
+  cacheTime: 300000,
+  retry: 3,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+  refetchInterval: 10000,
+  refetchIntervalInBackground: false,
+});
+
+userQuery.data();
+userQuery.isLoading();
+userQuery.isFetching();
+await userQuery.refetch();
+userQuery.invalidate();
+```
+
+#### spMutation
+
+```typescript
+const updateUser = spMutation({
+  mutationFn: async (name: string) => updateUserAPI(name),
+  onMutate: (name) => {
+    queryClient.setQueryData(
+      ['user', '1'],
+      (prev) => ({ id: ((prev as { id: number; name: string } | undefined)?.id ?? 1), name }),
+      true,
+    );
+  },
+  onSuccess: () => queryClient.refetchQueries(['user', '1']),
+});
+```
+
+#### QueryClient
+
+```typescript
+queryClient.setQueryData(['todos'], (prev) => ([...(prev as any[] ?? []), { title: 'New' }]), true);
+await queryClient.refetchQueries(['todos']);
+queryClient.getQueryData(['todos']);
+queryClient.getQueryState(['todos']);
+queryClient.isFetching();
+queryClient.isMutating();
+```
+
+### Options
+
+`spQuery` options include `queryKey`, `queryFn`, `staleTime`, `cacheTime`, `retry`, `retryDelay`, `enabled`, `refetchOnWindowFocus`, `refetchOnReconnect`, `refetchInterval`, `refetchIntervalInBackground`, `initialData`, `placeholderData`, `structuralSharing`, `onSuccess`, `onError`, `onSettled`.
+
+`spMutation` options include `mutationFn`, `onMutate`, `onSuccess`, `onError`, `onSettled`, `retry`, `retryDelay`.
+
+### Patterns
+
+- Optimistic updates via `setQueryData`
+- Invalidate queries to mark stale and refetch active observers
+- Background refetch strategies: focus, reconnect, interval
+- Enabled gating with boolean or signal
+
+### Notes
+
+- `refetchOnWindowFocus` and `refetchOnReconnect` rely on `window` events; safe in browser environments
+- Background fetch errors are suppressed in automated flows to avoid unhandled rejections
 
 ## Transactions and Batching
 
