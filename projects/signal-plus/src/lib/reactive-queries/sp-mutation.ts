@@ -2,6 +2,25 @@ import { computed, signal, untracked } from '@angular/core';
 import { MutationOptions, MutationState } from './query-types';
 import { MutationResult } from './interfaces';
 
+/**
+ * Creates a mutation for server-side data updates.
+ *
+ * @template TData - The type of data returned by the mutation
+ * @template TVariables - The type of variables passed to the mutation
+ * @param options - Mutation configuration options
+ * @returns MutationResult with reactive signals (data, isLoading, error, etc.)
+ *
+ * @example
+ * ```typescript
+ * const updateUser = spMutation({
+ *   mutationFn: async (data: UpdateUserData) => updateUserAPI(data),
+ *   onSuccess: () => queryClient.invalidateQueries(['users'])
+ * });
+ *
+ * await updateUser.mutate({ name: 'Jane' });
+ * updateUser.isLoading(); // Signal<boolean>
+ * ```
+ */
 export function spMutation<TData = unknown, TVariables = unknown>(
   options: MutationOptions<TData, TVariables>,
 ): MutationResult<TData, TVariables> {
@@ -146,6 +165,23 @@ export function spMutation<TData = unknown, TVariables = unknown>(
   };
 }
 
+/**
+ * Helper to create a mutation with simpler syntax.
+ *
+ * @template TData - The type of data returned
+ * @template TVariables - The type of variables passed
+ * @param mutationFn - Function that performs the mutation
+ * @param options - Additional configuration (optional)
+ * @returns MutationResult with reactive signals
+ *
+ * @example
+ * ```typescript
+ * const updateUser = createMutation(
+ *   (data: UpdateUserData) => updateUserAPI(data),
+ *   { onSuccess: () => console.log('Updated!') }
+ * );
+ * ```
+ */
 export function createMutation<TData = unknown, TVariables = unknown>(
   mutationFn: (variables: TVariables) => Promise<TData>,
   options?: Omit<MutationOptions<TData, TVariables>, 'mutationFn'>,
@@ -155,3 +191,4 @@ export function createMutation<TData = unknown, TVariables = unknown>(
     ...options,
   });
 }
+

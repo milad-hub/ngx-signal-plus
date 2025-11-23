@@ -13,6 +13,26 @@ import { Query } from './query-cache';
 import { getGlobalQueryClient } from './query-client';
 import { QueryObserver, QueryOptions, QueryState } from './query-types';
 
+/**
+ * Creates a query with automatic caching, refetching, and retry logic.
+ *
+ * @template T - The type of data returned by the query
+ * @param options - Query configuration options
+ * @returns QueryResult with reactive signals (data, isLoading, error, etc.)
+ *
+ * @example
+ * ```typescript
+ * const userQuery = spQuery({
+ *   queryKey: ['user', userId],
+ *   queryFn: async () => fetchUser(userId),
+ *   staleTime: 5000
+ * });
+ *
+ * userQuery.data();      // Signal<User | undefined>
+ * userQuery.isLoading(); // Signal<boolean>
+ * await userQuery.refetch();
+ * ```
+ */
 export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
   const queryClient = getGlobalQueryClient();
 
@@ -148,6 +168,24 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
   };
 }
 
+/**
+ * Helper to create a query with simpler syntax.
+ *
+ * @template T - The type of data returned
+ * @param queryKey - Unique identifier for the query
+ * @param queryFn - Function that fetches the data
+ * @param options - Additional configuration (optional)
+ * @returns QueryResult with reactive signals
+ *
+ * @example
+ * ```typescript
+ * const userQuery = createQuery(
+ *   ['user', userId],
+ *   () => fetchUser(userId),
+ *   { staleTime: 5000 }
+ * );
+ * ```
+ */
 export function createQuery<T>(
   queryKey: string[],
   queryFn: () => Promise<T>,
@@ -159,3 +197,4 @@ export function createQuery<T>(
     ...options,
   });
 }
+
