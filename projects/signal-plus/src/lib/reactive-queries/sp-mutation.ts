@@ -1,18 +1,6 @@
-import { computed, signal, Signal, untracked } from '@angular/core';
+import { computed, signal, untracked } from '@angular/core';
 import { MutationOptions, MutationState } from './query-types';
-
-export interface MutationResult<TData = unknown, TVariables = unknown> {
-  data: Signal<TData | undefined>;
-  error: Signal<Error | null>;
-  isLoading: Signal<boolean>;
-  isSuccess: Signal<boolean>;
-  isError: Signal<boolean>;
-  isIdle: Signal<boolean>;
-  variables: Signal<TVariables | undefined>;
-  mutate: (variables: TVariables) => Promise<TData>;
-  mutateAsync: (variables: TVariables) => Promise<TData>;
-  reset: () => void;
-}
+import { MutationResult } from './interfaces';
 
 export function spMutation<TData = unknown, TVariables = unknown>(
   options: MutationOptions<TData, TVariables>,

@@ -453,8 +453,8 @@ Query-style server state management with caching, invalidation, background refet
 ### Core APIs
 
 ```typescript
-import { QueryClient, setGlobalQueryClient } from 'ngx-signal-plus';
-import { spQuery, spMutation } from 'ngx-signal-plus';
+import { QueryClient, setGlobalQueryClient } from "ngx-signal-plus";
+import { spQuery, spMutation } from "ngx-signal-plus";
 
 const queryClient = new QueryClient();
 setGlobalQueryClient(queryClient);
@@ -464,8 +464,8 @@ setGlobalQueryClient(queryClient);
 
 ```typescript
 const userQuery = spQuery({
-  queryKey: ['user', '1'],
-  queryFn: async () => fetch('/api/user/1').then((r) => r.json()),
+  queryKey: ["user", "1"],
+  queryFn: async () => fetch("/api/user/1").then((r) => r.json()),
   staleTime: 5000,
   cacheTime: 300000,
   retry: 3,
@@ -488,23 +488,19 @@ userQuery.invalidate();
 const updateUser = spMutation({
   mutationFn: async (name: string) => updateUserAPI(name),
   onMutate: (name) => {
-    queryClient.setQueryData(
-      ['user', '1'],
-      (prev) => ({ id: ((prev as { id: number; name: string } | undefined)?.id ?? 1), name }),
-      true,
-    );
+    queryClient.setQueryData(["user", "1"], (prev) => ({ id: (prev as { id: number; name: string } | undefined)?.id ?? 1, name }), true);
   },
-  onSuccess: () => queryClient.refetchQueries(['user', '1']),
+  onSuccess: () => queryClient.refetchQueries(["user", "1"]),
 });
 ```
 
 #### QueryClient
 
 ```typescript
-queryClient.setQueryData(['todos'], (prev) => ([...(prev as any[] ?? []), { title: 'New' }]), true);
-await queryClient.refetchQueries(['todos']);
-queryClient.getQueryData(['todos']);
-queryClient.getQueryState(['todos']);
+queryClient.setQueryData(["todos"], (prev) => [...((prev as any[]) ?? []), { title: "New" }], true);
+await queryClient.refetchQueries(["todos"]);
+queryClient.getQueryData(["todos"]);
+queryClient.getQueryState(["todos"]);
 queryClient.isFetching();
 queryClient.isMutating();
 ```
