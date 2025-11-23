@@ -1,12 +1,14 @@
 import { Signal } from '@angular/core';
 
 export interface QueryKey {
-  key: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  key: any[];
   equals?: (a: unknown, b: unknown) => boolean;
 }
 
 export interface QueryOptions<T = unknown> {
-  queryKey: QueryKey | string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  queryKey: QueryKey | any[];
   queryFn: () => Promise<T>;
   staleTime?: number;
   cacheTime?: number;
