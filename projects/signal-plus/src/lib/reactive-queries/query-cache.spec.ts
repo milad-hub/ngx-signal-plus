@@ -287,3 +287,80 @@ describe('Query', () => {
     expect(() => fetchPromise).not.toThrow();
   });
 });
+
+describe('Query - SSR Safety', () => {
+  it('should handle query creation with refetch options enabled', () => {
+    const options: QueryOptions = {
+      queryKey: ['ssr-test'],
+      queryFn: async () => ({ data: 'test' }),
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    };
+    expect(() => {
+      const query = new Query(['ssr-test'], options);
+      query.destroy();
+    }).not.toThrow();
+  });
+
+  it('should safely handle event listener registration and cleanup', () => {
+    const options: QueryOptions = {
+      queryKey: ['event-listeners'],
+      queryFn: async () => ({ data: 'test' }),
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    };
+
+    const query = new Query(['event-listeners'], options);
+    const observer = {
+      options,
+      onStateUpdate: jasmine.createSpy('onStateUpdate'),
+    };
+    expect(() => {
+      const unsubscribe = query.subscribe(observer);
+      unsubscribe();
+    }).not.toThrow();
+    expect(() => query.destroy()).not.toThrow();
+  });
+
+  it('should handle multiple subscriptions and cleanups safely', () => {
+    const options: QueryOptions = {
+      queryKey: ['multiple-subs'],
+      queryFn: async () => ({ data: 'test' }),
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    };
+    const query = new Query(['multiple-subs'], options);
+    const observer1 = {
+      options,
+      onStateUpdate: jasmine.createSpy('onStateUpdate1'),
+    };
+    const observer2 = {
+      options,
+      onStateUpdate: jasmine.createSpy('onStateUpdate2'),
+    };
+    const unsub1 = query.subscribe(observer1);
+    const unsub2 = query.subscribe(observer2);
+    expect(() => {
+      unsub1();
+      unsub2();
+      query.destroy();
+    }).not.toThrow();
+  });
+
+  it('should handle destroy without crashing when window events are configured', () => {
+    const options: QueryOptions = {
+      queryKey: ['destroy-test'],
+      queryFn: async () => ({ data: 'test' }),
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    };
+    const query = new Query(['destroy-test'], options);
+    const observer = {
+      options,
+      onStateUpdate: jasmine.createSpy('onStateUpdate'),
+    };
+    query.subscribe(observer);
+    expect(() => query.destroy()).not.toThrow();
+    expect(() => query.destroy()).not.toThrow();
+  });
+});

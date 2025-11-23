@@ -1,3 +1,4 @@
+import { isBrowser } from '../utils/platform';
 import { hashQueryKey } from './query-key';
 import {
   QueryKey,
@@ -316,11 +317,11 @@ export class Query<T = unknown> {
   }
 
   private scheduleRefetch(): void {
-    if (this.options.refetchOnWindowFocus && typeof window !== 'undefined') {
+    if (this.options.refetchOnWindowFocus && isBrowser()) {
       window.addEventListener('focus', this.handleFocus);
     }
 
-    if (this.options.refetchOnReconnect && typeof window !== 'undefined') {
+    if (this.options.refetchOnReconnect && isBrowser()) {
       window.addEventListener('online', this.handleReconnect);
     }
   }
@@ -431,7 +432,7 @@ export class Query<T = unknown> {
       this.abortController.abort();
     }
 
-    if (typeof window !== 'undefined') {
+    if (isBrowser()) {
       window.removeEventListener('focus', this.handleFocus);
       window.removeEventListener('online', this.handleReconnect);
     }
