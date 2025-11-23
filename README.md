@@ -253,15 +253,15 @@ userData.mutate(newData); // Optimistic update
 ### Reactive Queries (Server State)
 
 ```typescript
-import { QueryClient, setGlobalQueryClient, spQuery, spMutation } from 'ngx-signal-plus';
+import { QueryClient, setGlobalQueryClient, spQuery, spMutation } from "ngx-signal-plus";
 
 const queryClient = new QueryClient();
 setGlobalQueryClient(queryClient);
 
 // Query: cached, retry, background refetch
 const userQuery = spQuery({
-  queryKey: ['user', '1'],
-  queryFn: async () => fetch('/api/user/1').then((r) => r.json()),
+  queryKey: ["user", "1"],
+  queryFn: async () => fetch("/api/user/1").then((r) => r.json()),
   staleTime: 5000,
   cacheTime: 300000,
   retry: 3,
@@ -279,15 +279,16 @@ userQuery.invalidate();
 const updateUser = spMutation({
   mutationFn: async (name: string) => updateUserAPI(name),
   onMutate: (name) => {
-    queryClient.setQueryData(['user', '1'], (prev) => ({ id: (prev as { id: number } | undefined)?.id ?? 1, name }), true);
+    queryClient.setQueryData(["user", "1"], (prev) => ({ id: (prev as { id: number } | undefined)?.id ?? 1, name }), true);
   },
-  onSuccess: () => queryClient.refetchQueries(['user', '1']),
+  onSuccess: () => queryClient.refetchQueries(["user", "1"]),
 });
 
-await updateUser.mutate('Jane');
+await updateUser.mutate("Jane");
 ```
 
 Key capabilities:
+
 - Query caching and invalidation
 - Background refetch on focus/reconnect/interval
 - Mutations with retry and lifecycle callbacks

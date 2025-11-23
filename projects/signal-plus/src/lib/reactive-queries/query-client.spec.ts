@@ -123,7 +123,9 @@ describe('QueryClient', () => {
     });
     queryClient.setQueryData(
       key,
-      (old: { value: number } | undefined) => ({ value: (((old?.value) ?? 0) + 1) }),
+      (old: { value: number } | undefined) => ({
+        value: (old?.value ?? 0) + 1,
+      }),
       false,
     );
     const state = queryClient.getQueryState(key);

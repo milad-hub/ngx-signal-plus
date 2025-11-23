@@ -253,15 +253,15 @@ userData.mutate(newData); // Optimistic update
 ### Reactive Queries
 
 ```typescript
-import { QueryClient, setGlobalQueryClient } from 'ngx-signal-plus';
-import { spQuery, spMutation } from 'ngx-signal-plus';
+import { QueryClient, setGlobalQueryClient } from "ngx-signal-plus";
+import { spQuery, spMutation } from "ngx-signal-plus";
 
 const qc = new QueryClient();
 setGlobalQueryClient(qc);
 
 const todosQuery = spQuery({
-  queryKey: ['todos'],
-  queryFn: async () => fetch('/api/todos').then((r) => r.json()),
+  queryKey: ["todos"],
+  queryFn: async () => fetch("/api/todos").then((r) => r.json()),
   staleTime: 5000,
   refetchOnWindowFocus: true,
 });
@@ -269,13 +269,14 @@ const todosQuery = spQuery({
 const addTodo = spMutation({
   mutationFn: async (title: string) => postTodo(title),
   onMutate: (title) => {
-    qc.setQueryData(['todos'], (prev) => ([...(prev as { title: string }[] | undefined) ?? [], { title }]), true);
+    qc.setQueryData(["todos"], (prev) => [...((prev as { title: string }[] | undefined) ?? []), { title }], true);
   },
-  onSuccess: () => qc.refetchQueries(['todos']),
+  onSuccess: () => qc.refetchQueries(["todos"]),
 });
 ```
 
 Highlights:
+
 - Cache-aware queries with invalidation and refetch
 - Mutations with optimistic updates
 - Interval/focus/reconnect refetch strategies

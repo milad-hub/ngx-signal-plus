@@ -135,7 +135,10 @@ describe('Reactive Queries Integration', () => {
       onMutate: (newName: string) => {
         queryClient.setQueryData(
           ['user', '1'],
-          (prev: { id: number; name: string } | undefined) => ({ id: (prev?.id ?? 1), name: newName }),
+          (prev: { id: number; name: string } | undefined) => ({
+            id: prev?.id ?? 1,
+            name: newName,
+          }),
           true,
         );
       },

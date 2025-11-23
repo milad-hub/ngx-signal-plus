@@ -1,30 +1,28 @@
 import {
   computed,
+  DestroyRef,
   effect,
   EffectRef,
+  inject,
   signal,
   Signal,
   untracked,
 } from '@angular/core';
+import { QueryResult } from './interfaces';
 import { Query } from './query-cache';
 import { getGlobalQueryClient } from './query-client';
 import { QueryObserver, QueryOptions, QueryState } from './query-types';
 
-export interface QueryResult<T = unknown> {
-  data: Signal<T | undefined>;
-  error: Signal<Error | null>;
-  isLoading: Signal<boolean>;
-  isFetching: Signal<boolean>;
-  isStale: Signal<boolean>;
-  isSuccess: Signal<boolean>;
-  isError: Signal<boolean>;
-  isIdle: Signal<boolean>;
-  refetch: () => Promise<T>;
-  invalidate: () => void;
-}
-
 export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
   const queryClient = getGlobalQueryClient();
+
+  let destroyRef: DestroyRef | null = null;
+  try {
+    destroyRef = inject(DestroyRef, { optional: true });
+  } catch {
+    // Not in injection context - cleanup will be manual if needed
+  }
+
   const queryKey = Array.isArray(options.queryKey)
     ? options.queryKey
     : options.queryKey.key;
@@ -118,9 +116,6 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
   }
 
   const cleanup = () => {
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('beforeunload', cleanup);
-    }
     if (enabledEffect) {
       enabledEffect.destroy();
     }
@@ -131,8 +126,8 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
     unsubscribe?.();
   };
 
-  if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', cleanup);
+  if (destroyRef) {
+    destroyRef.onDestroy(cleanup);
   }
 
   return {
