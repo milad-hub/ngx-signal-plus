@@ -1,6 +1,22 @@
 import { Query, QueryCache } from './query-cache';
 import { QueryOptions, QueryState } from './query-types';
 
+/**
+ * Central manager for queries with caching, refetching, and invalidation.
+ *
+ * @example
+ * ```typescript
+ * const queryClient = new QueryClient({
+ *   defaultOptions: { staleTime: 5000, retry: 3 }
+ * });
+ * setGlobalQueryClient(queryClient);
+ *
+ * // Get/set cache
+ * const user = queryClient.getQueryData(['user', id]);
+ * queryClient.setQueryData(['user', id], newUser);
+ * queryClient.invalidateQueries(['user', id]);
+ * ```
+ */
 export class QueryClient {
   private queryCache: QueryCache;
   private mutationCache = new Map<string, unknown>();
@@ -14,6 +30,11 @@ export class QueryClient {
     structuralSharing: true,
   };
 
+  /**
+   * Creates a new QueryClient.
+   *
+   * @param options - Configuration with default query options
+   */
   constructor(options: { defaultOptions?: Partial<QueryOptions> } = {}) {
     this.queryCache = new QueryCache();
     if (options.defaultOptions) {
@@ -25,11 +46,26 @@ export class QueryClient {
     this.queryCache.scheduleGC();
   }
 
+  /**
+   * Gets cached data for a query.
+   *
+   * @template T - Data type
+   * @param queryKey - Query identifier
+   * @returns Cached data or undefined
+   */
   getQueryData<T>(queryKey: string[]): T | undefined {
     const query = this.queryCache.get<T>(queryKey);
     return query?.getState().data;
   }
 
+  /**
+   * Sets or updates cached data for a query.
+   *
+   * @template T - Data type
+   * @param queryKey - Query identifier
+   * @param updater - New data or updater function
+   * @param markStale - Mark as stale after updating (default: false)
+   */
   setQueryData<T>(
     queryKey: string[],
     updater: T | ((old: T | undefined) => T),
@@ -48,6 +84,11 @@ export class QueryClient {
     query.setOptimisticData(updater, markStale);
   }
 
+  /**
+   * Marks queries as stale and triggers refetch.
+   *
+   * @param queryKey - Query to invalidate (omit for all queries)
+   */
   invalidateQueries(queryKey?: string[]): void {
     if (queryKey) {
       this.queryCache.invalidate(queryKey);
@@ -56,6 +97,12 @@ export class QueryClient {
     }
   }
 
+  /**
+   * Refetches queries immediately.
+   *
+   * @param queryKey - Query to refetch (omit for all active queries)
+   * @returns Promise that resolves when refetch completes
+   */
   refetchQueries(queryKey?: string[]): Promise<void> {
     const promises: Promise<unknown>[] = [];
     if (queryKey) {
@@ -95,6 +142,14 @@ export class QueryClient {
     this.defaultOptions = { ...this.defaultOptions, ...options };
   }
 
+  /**
+   * Fetches a query and returns the data.
+   *
+   * @template T - Data type
+   * @param queryKey - Query identifier
+   * @param options - Query options with queryFn
+   * @returns Promise with the data
+   */
   fetchQuery<T>(queryKey: string[], options: QueryOptions<T>): Promise<T> {
     const mergedOptions: QueryOptions<T> = {
       ...(this.defaultOptions as Partial<QueryOptions<T>>),
@@ -110,6 +165,14 @@ export class QueryClient {
     return query.fetch();
   }
 
+  /**
+   * Prefetches a query and caches it.
+   *
+   * @template T - Data type
+   * @param queryKey - Query identifier
+   * @param options - Query options with queryFn
+   * @returns Promise that resolves when complete
+   */
   prefetchQuery<T>(
     queryKey: string[],
     options: QueryOptions<T>,
@@ -129,6 +192,13 @@ export class QueryClient {
     }
   }
 
+  /**
+   * Gets the current state of a query.
+   *
+   * @template T - Data type
+   * @param queryKey - Query identifier
+   * @returns Query state or undefined
+   */
   getQueryState<T>(queryKey: string[]): QueryState<T> | undefined {
     const query = this.queryCache.get<T>(queryKey);
     return query?.getState();
@@ -150,6 +220,11 @@ export class QueryClient {
 
 let globalQueryClient: QueryClient | null = null;
 
+/**
+ * Gets the global QueryClient, creating one if needed.
+ *
+ * @returns The global QueryClient instance
+ */
 export function getGlobalQueryClient(): QueryClient {
   if (!globalQueryClient) {
     globalQueryClient = new QueryClient();
@@ -157,6 +232,20 @@ export function getGlobalQueryClient(): QueryClient {
   return globalQueryClient;
 }
 
+/**
+ * Sets the global QueryClient instance.
+ *
+ * @param client - QueryClient to use globally
+ *
+ * @example
+ * ```typescript
+ * const queryClient = new QueryClient({
+ *   defaultOptions: { staleTime: 5000, retry: 3 }
+ * });
+ * setGlobalQueryClient(queryClient);
+ * ```
+ */
 export function setGlobalQueryClient(client: QueryClient): void {
   globalQueryClient = client;
 }
+
