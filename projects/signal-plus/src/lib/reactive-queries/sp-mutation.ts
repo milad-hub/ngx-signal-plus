@@ -1,6 +1,6 @@
-import { computed, signal, untracked } from '@angular/core';
-import { MutationOptions, MutationState } from './query-types';
+import { computed, DestroyRef, inject, signal, untracked } from '@angular/core';
 import { MutationResult } from './interfaces';
+import { MutationOptions, MutationState } from './query-types';
 
 /**
  * Creates a mutation for server-side data updates.
@@ -24,6 +24,13 @@ import { MutationResult } from './interfaces';
 export function spMutation<TData = unknown, TVariables = unknown>(
   options: MutationOptions<TData, TVariables>,
 ): MutationResult<TData, TVariables> {
+  let destroyRef: DestroyRef | null = null;
+  try {
+    destroyRef = inject(DestroyRef, { optional: true });
+  } catch {
+    // Not in injection context - cleanup will be manual via reset()
+  }
+
   const dataSignal = signal<TData | undefined>(undefined);
   const errorSignal = signal<Error | null>(null);
   const isLoadingSignal = signal(false);
@@ -31,6 +38,7 @@ export function spMutation<TData = unknown, TVariables = unknown>(
   const isErrorSignal = signal(false);
   const isIdleSignal = signal(true);
   const variablesSignal = signal<TVariables | undefined>(undefined);
+  let isDestroyed = false;
 
   let currentMutation: Promise<TData> | null = null;
 
@@ -49,6 +57,10 @@ export function spMutation<TData = unknown, TVariables = unknown>(
   };
 
   const executeMutation = async (variables: TVariables): Promise<TData> => {
+    if (isDestroyed) {
+      throw new Error('Mutation was destroyed');
+    }
+
     updateState({
       isLoading: true,
       isSuccess: false,
@@ -151,6 +163,13 @@ export function spMutation<TData = unknown, TVariables = unknown>(
     });
   };
 
+  if (destroyRef) {
+    destroyRef.onDestroy(() => {
+      isDestroyed = true;
+      currentMutation = null;
+    });
+  }
+
   return {
     data: computed(() => dataSignal()),
     error: computed(() => errorSignal()),
@@ -191,4 +210,3 @@ export function createMutation<TData = unknown, TVariables = unknown>(
     ...options,
   });
 }
-

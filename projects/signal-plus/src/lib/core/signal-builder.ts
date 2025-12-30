@@ -346,9 +346,8 @@ export class SignalBuilder<T> {
       // Use a small debounce for async validation to avoid excessive API calls
       const debounceMs = 50;
 
-      asyncValidationTimeout = safeSetTimeout(async () => {
+      const executeAsyncValidation = async (): Promise<void> => {
         try {
-          // Check if this validation was cancelled
           if (currentValidationAbortController?.signal.aborted) {
             return;
           }
@@ -356,20 +355,17 @@ export class SignalBuilder<T> {
           const errors: string[] = [];
           const asyncValidators = this.options.asyncValidators || [];
 
-          // Run all async validators
           for (const validator of asyncValidators) {
-            try {
-              // Check if cancelled during validation
-              if (currentValidationAbortController?.signal.aborted) {
-                return;
-              }
+            if (currentValidationAbortController?.signal.aborted) {
+              return;
+            }
 
+            try {
               const isValid = await validator(value);
               if (!isValid) {
                 errors.push('Async validation failed');
               }
             } catch (error) {
-              // Validator threw an error, consider it a failure
               const errorMessage =
                 error instanceof Error
                   ? error.message
@@ -378,13 +374,11 @@ export class SignalBuilder<T> {
             }
           }
 
-          // Only update if not cancelled
           if (!currentValidationAbortController?.signal.aborted) {
             asyncErrorsSignal.set(errors);
             isValidatingSignal.set(false);
           }
         } catch (error) {
-          // Only update if not cancelled
           if (!currentValidationAbortController?.signal.aborted) {
             const errorMessage =
               error instanceof Error ? error.message : 'Async validation error';
@@ -394,62 +388,16 @@ export class SignalBuilder<T> {
         } finally {
           asyncValidationTimeout = null;
         }
-      }, debounceMs);
+      };
+
+      asyncValidationTimeout = safeSetTimeout(
+        executeAsyncValidation,
+        debounceMs,
+      );
 
       // If safeSetTimeout returned undefined (not in browser), run synchronously for testing
       if (asyncValidationTimeout === undefined) {
-        // Run the validation synchronously for test environments
-        (async () => {
-          try {
-            // Check if this validation was cancelled
-            if (currentValidationAbortController?.signal.aborted) {
-              return;
-            }
-
-            const errors: string[] = [];
-            const asyncValidators = this.options.asyncValidators || [];
-
-            // Run all async validators
-            for (const validator of asyncValidators) {
-              try {
-                // Check if cancelled during validation
-                if (currentValidationAbortController?.signal.aborted) {
-                  return;
-                }
-
-                const isValid = await validator(value);
-                if (!isValid) {
-                  errors.push('Async validation failed');
-                }
-              } catch (error) {
-                // Validator threw an error, consider it a failure
-                const errorMessage =
-                  error instanceof Error
-                    ? error.message
-                    : 'Async validation error';
-                errors.push(errorMessage);
-              }
-            }
-
-            // Only update if not cancelled
-            if (!currentValidationAbortController?.signal.aborted) {
-              asyncErrorsSignal.set(errors);
-              isValidatingSignal.set(false);
-            }
-          } catch (error) {
-            // Only update if not cancelled
-            if (!currentValidationAbortController?.signal.aborted) {
-              const errorMessage =
-                error instanceof Error
-                  ? error.message
-                  : 'Async validation error';
-              asyncErrorsSignal.set([errorMessage]);
-              isValidatingSignal.set(false);
-            }
-          } finally {
-            asyncValidationTimeout = null;
-          }
-        })();
+        executeAsyncValidation();
       }
     };
 

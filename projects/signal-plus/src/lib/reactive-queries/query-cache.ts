@@ -57,6 +57,9 @@ export class QueryCache {
   }
 
   scheduleGC(): void {
+    if (!isBrowser()) {
+      return;
+    }
     if (this.gcTimeout) {
       clearTimeout(this.gcTimeout);
     }
@@ -329,7 +332,11 @@ export class Query<T = unknown> {
   private scheduleRefetchInterval(): void {
     this.cancelRefetchInterval();
 
-    if (this.options.refetchInterval && this.options.refetchInterval > 0) {
+    if (
+      this.options.refetchInterval &&
+      this.options.refetchInterval > 0 &&
+      isBrowser()
+    ) {
       this.refetchInterval = setInterval(() => {
         if (
           this.options.refetchIntervalInBackground ||

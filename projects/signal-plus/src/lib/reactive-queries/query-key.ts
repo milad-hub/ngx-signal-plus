@@ -19,10 +19,9 @@ export function hashQueryKey(queryKey: QueryKey | any[]): string {
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isQueryKeyEqual(
-  a: QueryKey | any[],
-  b: QueryKey | any[],
+  a: QueryKey | unknown[],
+  b: QueryKey | unknown[],
 ): boolean {
   const keyA = Array.isArray(a) ? a : a.key;
   const keyB = Array.isArray(b) ? b : b.key;

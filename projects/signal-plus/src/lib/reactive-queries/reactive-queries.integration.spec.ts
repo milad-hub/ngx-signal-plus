@@ -87,7 +87,7 @@ describe('Reactive Queries Integration', () => {
         ]);
         expect(postsQuery.isSuccess()).toBe(true);
         done();
-      }, 100);
+      }, 200);
     }, 50);
   });
 

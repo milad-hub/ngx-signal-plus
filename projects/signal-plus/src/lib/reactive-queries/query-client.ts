@@ -248,4 +248,3 @@ export function getGlobalQueryClient(): QueryClient {
 export function setGlobalQueryClient(client: QueryClient): void {
   globalQueryClient = client;
 }
-
