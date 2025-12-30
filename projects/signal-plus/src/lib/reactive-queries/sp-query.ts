@@ -130,7 +130,7 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
             unsubscribe = query.subscribe(observer);
             isCurrentlySubscribed = true;
           }
-        }, 10);
+        }, 100);
       }
     }
   }
@@ -197,4 +197,3 @@ export function createQuery<T>(
     ...options,
   });
 }
-

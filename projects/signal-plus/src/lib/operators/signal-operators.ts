@@ -59,6 +59,7 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
+import { isBrowser } from '../utils/platform';
 
 /**
  * Type definition for signal operators that can transform signal types
@@ -119,7 +120,7 @@ export function merge<T>(...signals: Signal<T>[]): Signal<T> {
   const lastChangedIndex = signal<number>(0);
   const output = signal<T>(signals[0]());
 
-  if (typeof window !== 'undefined') {
+  if (isBrowser()) {
     const injector = inject(Injector);
     runInInjectionContext(injector, () => {
       signals.forEach((s, index) => {

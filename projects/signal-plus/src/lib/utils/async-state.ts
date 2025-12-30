@@ -1,5 +1,6 @@
 import { computed, signal } from '@angular/core';
 import { AsyncStateOptions, SignalAsync } from '../models/async-state.model';
+import { isBrowser } from './platform';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,11 +98,9 @@ export function spAsync<T>(options: AsyncStateOptions<T>): SignalAsync<T> {
     }
   }
 
-  if (options.autoFetch) {
+  if (options.autoFetch && isBrowser()) {
     setTimeout(() => {
-      refetch().catch(() => {
-        // Error handled in executeFetch
-      });
+      refetch().catch(() => undefined);
     }, 0);
   }
 
