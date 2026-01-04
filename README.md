@@ -116,6 +116,27 @@ const enhanced = enhance(signal(0))
   .build();
 ```
 
+### Computed Signal Enhancement
+
+Create computed signals with persistence, history, and validation:
+
+```typescript
+import { spComputed } from "ngx-signal-plus";
+import { signal } from "@angular/core";
+
+const firstName = signal("John");
+const lastName = signal("Doe");
+
+// Computed signal with history and persistence
+const fullName = spComputed(() => `${firstName()} ${lastName()}`, { persist: "user-fullname", historySize: 5 });
+
+fullName.value; // 'John Doe'
+firstName.set("Jane");
+fullName.value; // 'Jane Doe' (auto-updates)
+fullName.undo(); // 'John Doe'
+fullName.isValid(); // true
+```
+
 ### Signal Operators
 
 ```typescript
@@ -493,7 +514,7 @@ What happens during SSR:
 
 | Category                    | Features                                                                                                                                       |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Signal Creation**         | `sp`, `spCounter`, `spToggle`, `spForm`                                                                                                        |
+| **Signal Creation**         | `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`                                                                                          |
 | **Signal Enhancement**      | `enhance`, validation, transformation, persistence, history                                                                                    |
 | **Signal Operators**        | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spSkip`, `spTake`, `spMerge`, `spCombineLatest` |
 | **Form Groups**             | `spFormGroup` - Group multiple controls with aggregated state, validation, and persistence                                                     |

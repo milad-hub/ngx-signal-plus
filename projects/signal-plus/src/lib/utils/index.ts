@@ -11,6 +11,7 @@ export {
 // Utilities
 export { spAsync } from './async-state';
 export { spCollection } from './collection';
+export { spComputed } from './computed';
 export { enhance as spEnhance } from './enhance';
 export { spFormGroup } from './form-group';
 export {

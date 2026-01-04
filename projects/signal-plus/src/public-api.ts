@@ -60,7 +60,7 @@ export {
 } from './lib/operators';
 
 // Utilities and Presets
-export { spAsync, spCollection, spPresets, spValidators } from './lib/utils';
+export { spAsync, spCollection, spComputed, spPresets, spValidators } from './lib/utils';
 
 // State Management
 export { spHistoryManager, spStorageManager } from './lib/managers';
