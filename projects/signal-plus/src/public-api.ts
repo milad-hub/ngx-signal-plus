@@ -62,6 +62,17 @@ export {
 // Utilities and Presets
 export { spAsync, spCollection, spComputed, spPresets, spValidators } from './lib/utils';
 
+// Middleware/Plugin System
+export {
+  spAnalyticsMiddleware,
+  spClearMiddleware,
+  spGetMiddlewareCount,
+  spLoggerMiddleware,
+  spRemoveMiddleware,
+  spUseMiddleware,
+} from './lib/utils';
+export type { MiddlewareContext, SignalMiddleware } from './lib/utils';
+
 // State Management
 export { spHistoryManager, spStorageManager } from './lib/managers';
 
