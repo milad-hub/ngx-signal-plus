@@ -15,6 +15,17 @@ export { spComputed } from './computed';
 export { enhance as spEnhance } from './enhance';
 export { spFormGroup } from './form-group';
 export {
+  spAnalyticsMiddleware,
+  spClearMiddleware,
+  spGetMiddlewareCount,
+  spLoggerMiddleware,
+  spRemoveMiddleware,
+  spRunMiddleware,
+  spRunMiddlewareError,
+  spUseMiddleware,
+} from './middleware';
+export type { MiddlewareContext, SignalMiddleware } from './middleware';
+export {
   hasLocalStorage,
   isBrowser,
   safeAddEventListener,

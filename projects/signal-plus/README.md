@@ -382,6 +382,31 @@ const darkMode = spPresets.toggle({
 });
 ```
 
+### Middleware/Plugin System
+
+Intercept signal operations for logging, analytics, and error tracking:
+
+```typescript
+import { spUseMiddleware, spLoggerMiddleware, spAnalyticsMiddleware } from "ngx-signal-plus";
+
+// Built-in logger middleware
+spUseMiddleware(spLoggerMiddleware("[DEBUG]"));
+
+// Custom analytics middleware
+spUseMiddleware(
+  spAnalyticsMiddleware((event) => {
+    analytics.track("signal_change", event);
+  }),
+);
+
+// Custom middleware
+spUseMiddleware({
+  name: "error-tracker",
+  onSet: (ctx) => console.log(`${ctx.signalName}: ${ctx.oldValue} -> ${ctx.newValue}`),
+  onError: (error) => Sentry.captureException(error),
+});
+```
+
 ### State Management
 
 ```typescript
@@ -509,6 +534,7 @@ What happens during SSR:
 | **Collection Management**   | `spCollection` - Manage arrays of entities with ID-based CRUD, queries, transforms, and history                                                |
 | **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals`                                |
 | **Utilities**               | `spValidators`, `spPresets`                                                                                                                    |
+| **Middleware/Plugins**      | `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`                                                         |
 | **State Management**        | `spHistoryManager`, `spStorageManager`                                                                                                         |
 | **Components**              | `spSignalPlusComponent`, `spSignalPlusService`, `spSignalBuilder`                                                                              |
 
