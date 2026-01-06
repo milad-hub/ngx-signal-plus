@@ -36,6 +36,8 @@ export {
   safeSetTimeout,
 } from './platform';
 export { presets as spPresets, validators as spValidators } from './presets';
+export { spSchema, spSchemaWithErrors } from './schema';
+export type { SafeParseLike, SchemaLike } from './schema';
 export {
   spBatch,
   spGetModifiedSignals,
