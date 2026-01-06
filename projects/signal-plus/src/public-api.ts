@@ -61,6 +61,8 @@ export {
 
 // Utilities and Presets
 export { spAsync, spCollection, spComputed, spPresets, spValidators } from './lib/utils';
+export { spSchema, spSchemaWithErrors } from './lib/utils';
+export type { SafeParseLike, SchemaLike } from './lib/utils';
 
 // Middleware/Plugin System
 export {

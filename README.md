@@ -395,6 +395,23 @@ const darkMode = spPresets.toggle({
 });
 ```
 
+### Schema Validation (Zod/Yup/Joi)
+
+Use any schema validation library with signals:
+
+```typescript
+import { sp, spSchema } from "ngx-signal-plus";
+import { z } from "zod";
+
+const userSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  age: z.number().min(18),
+});
+
+const user = sp({ name: "", email: "", age: 0 }).validate(spSchema(userSchema)).build();
+```
+
 ### Middleware/Plugin System
 
 Intercept signal operations for logging, analytics, and error tracking:
@@ -546,7 +563,7 @@ What happens during SSR:
 | **Async State Management**  | `spAsync` - Manage asynchronous operations with loading, error, retry, and caching                                                             |
 | **Collection Management**   | `spCollection` - Manage arrays of entities with ID-based CRUD, queries, transforms, and history                                                |
 | **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals`                                |
-| **Utilities**               | `spValidators`, `spPresets`                                                                                                                    |
+| **Utilities**               | `spValidators`, `spPresets`, `spSchema`                                                                                                        |
 | **Middleware/Plugins**      | `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`                                                         |
 | **State Management**        | `spHistoryManager`, `spStorageManager`                                                                                                         |
 | **Components**              | `spSignalPlusComponent`, `spSignalPlusService`, `spSignalBuilder`                                                                              |
