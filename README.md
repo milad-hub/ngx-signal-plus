@@ -400,7 +400,7 @@ const darkMode = spPresets.toggle({
 Use any schema validation library with signals:
 
 ```typescript
-import { sp, spSchema } from "ngx-signal-plus";
+import { sp, spSchema, spSchemaValidator } from "ngx-signal-plus";
 import { z } from "zod";
 
 const userSchema = z.object({
@@ -409,7 +409,16 @@ const userSchema = z.object({
   age: z.number().min(18),
 });
 
+// Basic boolean validation with SignalBuilder
 const user = sp({ name: "", email: "", age: 0 }).validate(spSchema(userSchema)).build();
+
+// Advanced: Get detailed error messages
+const validator = spSchemaValidator(userSchema);
+const result = validator.validateWithErrors({ name: "", email: "invalid", age: 10 });
+// result: { valid: false, errors: ["name: String must contain at least 1 character(s)", "email: Invalid email", "age: Number must be greater than or equal to 18"] }
+
+// Use with SignalBuilder for boolean validation
+const validatedSignal = sp({ name: "", email: "", age: 0 }).validate(validator.validate).build();
 ```
 
 ### Middleware/Plugin System
@@ -563,7 +572,7 @@ What happens during SSR:
 | **Async State Management**  | `spAsync` - Manage asynchronous operations with loading, error, retry, and caching                                                             |
 | **Collection Management**   | `spCollection` - Manage arrays of entities with ID-based CRUD, queries, transforms, and history                                                |
 | **Transactions & Batching** | `spTransaction`, `spBatch`, `spIsTransactionActive`, `spIsInTransaction`, `spIsInBatch`, `spGetModifiedSignals`                                |
-| **Utilities**               | `spValidators`, `spPresets`, `spSchema`                                                                                                        |
+| **Utilities**               | `spValidators`, `spPresets`, `spSchema`, `spSchemaValidator`                                                                                   |
 | **Middleware/Plugins**      | `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`                                                         |
 | **State Management**        | `spHistoryManager`, `spStorageManager`                                                                                                         |
 | **Components**              | `spSignalPlusComponent`, `spSignalPlusService`, `spSignalBuilder`                                                                              |
