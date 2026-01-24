@@ -886,6 +886,118 @@ const password = sp("")
 | Object   | `required`, `hasKeys`, `schema`                                 |
 | Custom   | Create custom validators with `spValidators.create()`           |
 
+### Schema Validation (Zod/Yup/Joi Integration)
+
+Use external schema validation libraries like Zod, Yup, or Joi with signals. The library provides flexible utilities that work with any schema that implements `parse()` or `safeParse()` methods.
+
+#### Basic Usage with `spSchema`
+
+```typescript
+import { sp, spSchema } from "ngx-signal-plus";
+import { z } from "zod";
+
+const userSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  age: z.number().min(18),
+});
+
+// Use spSchema to create a boolean validator for SignalBuilder
+const user = sp({ name: "", email: "", age: 0 }).validate(spSchema(userSchema)).build();
+
+user.isValid(); // false
+user.setValue({ name: "John", email: "john@example.com", age: 25 });
+user.isValid(); // true
+```
+
+#### Advanced Usage with `spSchemaValidator`
+
+For detailed error messages, use `spSchemaValidator`:
+
+```typescript
+import { spSchemaValidator, SchemaValidationResult } from "ngx-signal-plus";
+import { z } from "zod";
+
+const userSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  age: z.number().min(18),
+});
+
+const validator = spSchemaValidator(userSchema);
+
+// Boolean validation (for SignalBuilder.validate())
+const isValid = validator.validate({ name: "John", email: "john@example.com", age: 25 }); // true
+
+// Detailed validation with error messages
+const result: SchemaValidationResult = validator.validateWithErrors({
+  name: "",
+  email: "invalid",
+  age: 10,
+});
+// result: {
+//   valid: false,
+//   errors: [
+//     "name: String must contain at least 1 character(s)",
+//     "email: Invalid email",
+//     "age: Number must be greater than or equal to 18"
+//   ]
+// }
+
+// Use with SignalBuilder
+const validatedSignal = sp({ name: "", email: "", age: 0 }).validate(validator.validate).build();
+```
+
+#### Schema Validation Types
+
+```typescript
+// Result of validateWithErrors
+interface SchemaValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+// Compatible schema interfaces
+interface SchemaLike<T> {
+  parse(value: T): T;
+}
+
+interface SafeParseLike<T> {
+  safeParse(value: T): { success: boolean; error?: ZodError };
+}
+
+// Zod error structure
+interface ZodErrorIssue {
+  message: string;
+  path?: (string | number)[];
+  code?: string;
+}
+
+interface ZodError {
+  message: string;
+  issues?: ZodErrorIssue[];
+  errors?: ZodErrorIssue[];
+}
+```
+
+#### Error Path Formatting
+
+Error messages include field paths for nested objects:
+
+```typescript
+const nestedSchema = z.object({
+  user: z.object({
+    profile: z.object({
+      name: z.string().min(1),
+    }),
+  }),
+});
+
+const validator = spSchemaValidator(nestedSchema);
+const result = validator.validateWithErrors({ user: { profile: { name: "" } } });
+// errors: ["user.profile.name: String must contain at least 1 character(s)"]
+```
+
 ### Presets
 
 The `spPresets` namespace provides ready-to-use configurations for common scenarios:

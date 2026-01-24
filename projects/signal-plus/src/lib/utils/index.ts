@@ -5,7 +5,7 @@
 // Managers
 export {
   HistoryManager as spHistoryManager,
-  StorageManager as spStorageManager,
+  StorageManager as spStorageManager
 } from '../managers';
 
 // Utilities
@@ -22,7 +22,7 @@ export {
   spRemoveMiddleware,
   spRunMiddleware,
   spRunMiddlewareError,
-  spUseMiddleware,
+  spUseMiddleware
 } from './middleware';
 export type { MiddlewareContext, SignalMiddleware } from './middleware';
 export {
@@ -33,16 +33,23 @@ export {
   safeLocalStorageGet,
   safeLocalStorageRemove,
   safeLocalStorageSet,
-  safeSetTimeout,
+  safeSetTimeout
 } from './platform';
 export { presets as spPresets, validators as spValidators } from './presets';
-export { spSchema, spSchemaWithErrors } from './schema';
-export type { SafeParseLike, SchemaLike } from './schema';
+export { spSchema, spSchemaValidator, spSchemaWithErrors } from './schema';
+export type {
+  SafeParseLike,
+  SchemaLike,
+  SchemaValidationResult,
+  ZodError,
+  ZodErrorIssue,
+  ZodLike
+} from './schema';
 export {
   spBatch,
   spGetModifiedSignals,
   spIsInBatch,
   spIsInTransaction,
   spIsTransactionActive,
-  spTransaction,
+  spTransaction
 } from './transactions';

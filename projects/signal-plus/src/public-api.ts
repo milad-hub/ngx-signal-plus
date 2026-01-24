@@ -15,7 +15,7 @@ export { enhance } from './lib/utils/enhance';
 export {
   spSignalBuilder,
   spSignalPlusComponent,
-  spSignalPlusService,
+  spSignalPlusService
 } from './lib/core';
 
 // Models and Types
@@ -34,15 +34,15 @@ export type {
   SignalState,
   Transform,
   // Function Types
-  Validator,
+  Validator
 } from './lib/models';
 export type {
   AsyncStateOptions,
-  SignalAsync,
+  SignalAsync
 } from './lib/models/async-state.model';
 export type {
   CollectionOptions,
-  SignalCollection,
+  SignalCollection
 } from './lib/models/collection.model';
 
 // Signal Operators
@@ -56,13 +56,12 @@ export {
   spMerge,
   spSkip,
   spTake,
-  spThrottleTime,
+  spThrottleTime
 } from './lib/operators';
 
 // Utilities and Presets
-export { spAsync, spCollection, spComputed, spPresets, spValidators } from './lib/utils';
-export { spSchema, spSchemaWithErrors } from './lib/utils';
-export type { SafeParseLike, SchemaLike } from './lib/utils';
+export { spAsync, spCollection, spComputed, spPresets, spSchema, spSchemaValidator, spSchemaWithErrors, spValidators } from './lib/utils';
+export type { SafeParseLike, SchemaLike, SchemaValidationResult, ZodError, ZodErrorIssue, ZodLike } from './lib/utils';
 
 // Middleware/Plugin System
 export {
@@ -71,7 +70,7 @@ export {
   spGetMiddlewareCount,
   spLoggerMiddleware,
   spRemoveMiddleware,
-  spUseMiddleware,
+  spUseMiddleware
 } from './lib/utils';
 export type { MiddlewareContext, SignalMiddleware } from './lib/utils';
 
@@ -85,14 +84,14 @@ export {
   spIsInBatch,
   spIsInTransaction,
   spIsTransactionActive,
-  spTransaction,
+  spTransaction
 } from './lib/utils/transactions';
 // Form Groups
 export type {
   FormGroupConfig,
   FormGroupOptions,
   FormGroupValidator,
-  SignalFormGroup,
+  SignalFormGroup
 } from './lib/models/form-group.model';
 export { spFormGroup } from './lib/utils/form-group';
 
@@ -104,7 +103,7 @@ export {
   QueryClient,
   setGlobalQueryClient,
   spMutation,
-  spQuery,
+  spQuery
 } from './lib/reactive-queries';
 export type {
   MutationOptions,
@@ -113,5 +112,5 @@ export type {
   QueryKey,
   QueryOptions,
   QueryResult,
-  QueryState,
+  QueryState
 } from './lib/reactive-queries';
