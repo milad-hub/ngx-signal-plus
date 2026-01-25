@@ -53,3 +53,4 @@ export {
   spIsTransactionActive,
   spTransaction
 } from './transactions';
+export { SpError, SP_ERRORS, spCreateError, formatSpError } from './errors';

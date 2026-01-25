@@ -29,6 +29,8 @@
 import { SignalBuilder } from '../core/signal-builder';
 import { FormNumberOptions, FormTextOptions } from '../models/form.model';
 import { AsyncValidator, SignalPlus } from '../models/signal-plus.model';
+import { SpErrorCode } from '../models/errors.model';
+import { spCreateError } from './errors';
 import { safeLocalStorageSet } from './platform';
 
 /**
@@ -77,7 +79,7 @@ import { safeLocalStorageSet } from './platform';
  */
 export function sp<T>(initialValue: T): SignalBuilder<T> {
   if (initialValue === undefined) {
-    throw new Error('Initial value cannot be undefined');
+    throw spCreateError(SpErrorCode.INIT_001);
   }
   return new SignalBuilder<T>(initialValue);
 }

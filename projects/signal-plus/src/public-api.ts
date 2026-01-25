@@ -86,6 +86,10 @@ export {
   spIsTransactionActive,
   spTransaction
 } from './lib/utils/transactions';
+
+// Error Utilities
+export { SpError, SP_ERRORS, spCreateError, formatSpError } from './lib/utils/errors';
+export type { SpErrorCode, SpErrorContext, SpErrorInfo } from './lib/models/errors.model';
 // Form Groups
 export type {
   FormGroupConfig,
