@@ -29,6 +29,8 @@ import {
   BatchContext,
   TransactionContext,
 } from '../models/transactions.models';
+import { SpErrorCode } from '../models/errors.model';
+import { spCreateError } from './errors';
 
 /**
  * Enhanced error class for transaction failures with detailed metadata
@@ -302,7 +304,7 @@ export function spTransaction<T>(fn: () => T): T {
 
   // Prevent nested transactions
   if (txState.active) {
-    throw new Error('Nested transactions are not allowed');
+    throw spCreateError(SpErrorCode.TRX_001);
   }
 
   // Initialize transaction state

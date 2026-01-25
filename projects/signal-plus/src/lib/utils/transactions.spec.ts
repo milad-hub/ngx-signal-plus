@@ -282,9 +282,8 @@ describe('Transactions and Batching', () => {
         nestedError = e as Error;
       }
       expect(nestedError).not.toBeNull();
-      expect(nestedError?.message).toBe(
-        'Transaction failed: Nested transactions are not allowed',
-      );
+      expect(nestedError?.message).toContain('[SP-TRX_001]');
+      expect(nestedError?.message).toContain('Nested transactions are not allowed');
       expect(testSignal1.value).toBe(1);
     });
 
