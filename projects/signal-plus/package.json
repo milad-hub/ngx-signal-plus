@@ -5,13 +5,22 @@
   "keywords": [
     "angular",
     "signals",
+    "angular signals",
     "angular-signals",
+    "angular 16",
     "signal-state",
     "state management",
+    "angular state management",
     "reactive",
     "operators",
     "persistence",
-    "validation"
+    "validation",
+    "signal validation",
+    "signal persistence",
+    "undo redo angular",
+    "tanstack query angular",
+    "reactive queries",
+    "middleware"
   ],
   "author": {
     "name": "Milad",

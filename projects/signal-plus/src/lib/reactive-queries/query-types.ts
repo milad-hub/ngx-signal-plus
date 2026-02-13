@@ -1,8 +1,15 @@
 import { Signal } from '@angular/core';
 
 /**
- * Represents a query key that can be used for caching and identification.
- * Query keys can be arrays of any values and optionally include a custom equality function.
+ * Represents a query key used for cache identity.
+ *
+ * @remarks
+ * You can pass this object form or pass an array key directly.
+ *
+ * @example
+ * ```typescript
+ * const key: QueryKey = { key: ['user', userId] };
+ * ```
  */
 export interface QueryKey {
   /** The array of values that uniquely identify this query */
@@ -13,9 +20,18 @@ export interface QueryKey {
 }
 
 /**
- * Configuration options for creating a query.
+ * Configuration options for `spQuery`.
  *
- * @template T - The type of data returned by the query function
+ * @template T - Query result data type
+ *
+ * @example
+ * ```typescript
+ * const options: QueryOptions<User> = {
+ *   queryKey: ['user', id],
+ *   queryFn: () => fetchUser(id),
+ *   staleTime: 5000,
+ * };
+ * ```
  */
 export interface QueryOptions<T = unknown> {
   /** Unique identifier for the query */
@@ -72,10 +88,18 @@ export interface QueryOptions<T = unknown> {
 }
 
 /**
- * Configuration options for creating a mutation.
+ * Configuration options for `spMutation`.
  *
- * @template TData - The type of data returned by the mutation
- * @template TVariables - The type of variables passed to the mutation
+ * @template TData - Mutation result data type
+ * @template TVariables - Mutation variables type
+ *
+ * @example
+ * ```typescript
+ * const options: MutationOptions<User, UpdateUserInput> = {
+ *   mutationFn: (input) => updateUser(input),
+ *   onSuccess: (data) => console.log(data.id),
+ * };
+ * ```
  */
 export interface MutationOptions<TData = unknown, TVariables = unknown> {
   /** Function that performs the mutation */
@@ -105,9 +129,27 @@ export interface MutationOptions<TData = unknown, TVariables = unknown> {
 }
 
 /**
- * Represents the current state of a query.
+ * Reactive state snapshot for a query.
  *
- * @template T - The type of data in the query
+ * @template T - Query data type
+ *
+ * @example
+ * ```typescript
+ * const state: QueryState<User> = {
+ *   data: undefined,
+ *   error: null,
+ *   isLoading: true,
+ *   isFetching: true,
+ *   isStale: true,
+ *   isSuccess: false,
+ *   isError: false,
+ *   isIdle: false,
+ *   dataUpdatedAt: 0,
+ *   errorUpdatedAt: 0,
+ *   fetchCount: 1,
+ *   failureCount: 0,
+ * };
+ * ```
  */
 export interface QueryState<T = unknown> {
   /** The data returned by the query, or undefined if not yet loaded */
@@ -148,9 +190,25 @@ export interface QueryState<T = unknown> {
 }
 
 /**
- * Represents the current state of a mutation.
+ * Reactive state snapshot for a mutation.
  *
- * @template TData - The type of data returned by the mutation
+ * @template TData - Mutation result data type
+ *
+ * @example
+ * ```typescript
+ * const state: MutationState<User> = {
+ *   data: undefined,
+ *   error: null,
+ *   isIdle: true,
+ *   isLoading: false,
+ *   isSuccess: false,
+ *   isError: false,
+ *   variables: undefined,
+ *   submittedAt: 0,
+ *   dataUpdatedAt: 0,
+ *   errorUpdatedAt: 0,
+ * };
+ * ```
  */
 export interface MutationState<TData = unknown> {
   /** The data returned by the mutation, or undefined if not yet completed */
@@ -185,9 +243,17 @@ export interface MutationState<TData = unknown> {
 }
 
 /**
- * Observer interface for subscribing to query state changes.
+ * Observer contract for query state updates.
  *
- * @template T - The type of data in the query
+ * @template T - Query data type
+ *
+ * @example
+ * ```typescript
+ * const observer: QueryObserver<User> = {
+ *   options,
+ *   onStateUpdate: (state) => console.log(state.isFetching),
+ * };
+ * ```
  */
 export interface QueryObserver<T = unknown> {
   /** Callback invoked when query state changes */
@@ -198,10 +264,18 @@ export interface QueryObserver<T = unknown> {
 }
 
 /**
- * Observer interface for subscribing to mutation state changes.
+ * Observer contract for mutation state updates.
  *
- * @template TData - The type of data returned by the mutation
- * @template TVariables - The type of variables passed to the mutation
+ * @template TData - Mutation result data type
+ * @template TVariables - Mutation variables type
+ *
+ * @example
+ * ```typescript
+ * const observer: MutationObserver<User, UpdateUserInput> = {
+ *   options,
+ *   onStateUpdate: (state) => console.log(state.isLoading),
+ * };
+ * ```
  */
 export interface MutationObserver<TData = unknown, TVariables = unknown> {
   /** Callback invoked when mutation state changes */
@@ -212,11 +286,21 @@ export interface MutationObserver<TData = unknown, TVariables = unknown> {
 }
 
 /**
- * Status of a query operation.
+ * Query lifecycle status values.
+ *
+ * @example
+ * ```typescript
+ * const status: QueryStatus = 'success';
+ * ```
  */
 export type QueryStatus = 'idle' | 'loading' | 'success' | 'error';
 
 /**
- * Status of a mutation operation.
+ * Mutation lifecycle status values.
+ *
+ * @example
+ * ```typescript
+ * const status: MutationStatus = 'loading';
+ * ```
  */
 export type MutationStatus = 'idle' | 'loading' | 'success' | 'error';
