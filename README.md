@@ -30,8 +30,6 @@ projects/signal-plus/
   docs/API.md
   README.md          (npm-facing)
 README.md            (this file, contributor-facing)
-tmp/
-  FEATURE_ROADMAP.md
 ```
 
 ## Development Setup
@@ -71,7 +69,6 @@ These are enforced working rules for this repository:
 - Root `README.md` (this file): repository/GitHub contributor guidance.
 - `projects/signal-plus/README.md`: npm consumer documentation.
 - `projects/signal-plus/docs/API.md`: full API reference.
-- `tmp/FEATURE_ROADMAP.md`: roadmap and implementation standards.
 
 ## Release Notes
 
