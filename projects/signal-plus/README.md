@@ -6,7 +6,6 @@
 
 Bring validation, persistence, undo/redo, and reactive queries to Angular Signals on Angular 16+.
 
-- Interactive playground: https://stackblitz.com/github/milad-hub/ngx-signal-plus
 - Full API docs: https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md
 - Repository README (contributors): https://github.com/milad-hub/ngx-signal-plus/blob/main/README.md
 
