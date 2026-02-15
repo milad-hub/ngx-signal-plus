@@ -2,7 +2,7 @@
 
 [![Angular 16-21](https://img.shields.io/badge/Angular-16--21-dd0031)](https://angular.dev/)
 [![npm version](https://img.shields.io/npm/v/ngx-signal-plus.svg)](https://www.npmjs.com/package/ngx-signal-plus)
-![Coverage](https://img.shields.io/badge/coverage-89.14%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-90.44%25-brightgreen)
 
 Bring validation, persistence, undo/redo, and reactive queries to Angular Signals on Angular 16+.
 
@@ -77,6 +77,11 @@ export class CounterComponent {
 - Schema validation: `spSchema`, `spSchemaValidator`
 - Middleware: `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`
 
+## Foundations Updates
+
+- `spComputed()` now exposes a read-only surface via `ReadonlySignalPlus<T>`.
+- `SignalPlus<T>` now includes `errors: Signal<string[]>` for consistent validation error access.
+
 ## Comparisons
 
 ### ngx-signal-plus vs Angular native signals
@@ -102,6 +107,7 @@ export class CounterComponent {
 - Akita is a store-centric architecture built around RxJS stores/queries.
 - ngx-signal-plus is signal-first and utility-first, designed for composable local/global signal state without store boilerplate.
 - Akita is no longer actively evolving like modern signal-first tools: the npm package is old (8.0.1, last published years ago), and the GitHub repository is archived.
+
 ## Documentation
 
 - API documentation: https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md

@@ -4,6 +4,20 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.5.0]
+
+### Added
+
+- `ReadonlySignalPlus<T>` type and public export for read-only signal contracts.
+- `errors: Signal<string[]>` on `SignalPlus<T>` for consistent synchronous validation error access.
+- Support for validator return type `boolean | string` so validators can provide explicit error messages.
+
+### Changed
+
+- `spComputed()` now returns `ReadonlySignalPlus<T>` and no longer exposes mutable APIs (`set`, `setValue`, `update`, `pipe`).
+- Refactored core `SignalBuilder` internals by extracting shared logic from `build()` into focused helpers (cloning, history sizing, circular-safe serialization, validation error collection) for maintainability.
+- Updated API docs and README notes to align with Phase 1 behavior and typing.
+
 ## [2.4.2]
 
 ### Added

@@ -26,6 +26,7 @@ export type {
   FormNumberOptions,
   // Form Types
   FormTextOptions,
+  ReadonlySignalPlus,
   // State Types
   SignalHistory,
   SignalOptions,

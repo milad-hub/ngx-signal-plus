@@ -46,6 +46,29 @@ describe('spComputed', () => {
             });
             expect(computed.value).toBe(10);
             expect(computed.isValid()).toBe(true);
+            expect(computed.errors()).toEqual([]);
+        });
+    });
+
+    it('should expose validation errors', () => {
+        TestBed.runInInjectionContext(() => {
+            const source = signal(0);
+            const computed = spComputed(() => source(), {
+                validate: (v) => v > 0,
+            });
+            expect(computed.isValid()).toBe(false);
+            expect(computed.errors()).toEqual(['Validation failed']);
+        });
+    });
+
+    it('should not expose mutable APIs', () => {
+        TestBed.runInInjectionContext(() => {
+            const source = signal(1);
+            const computed = spComputed(() => source());
+            expect('setValue' in computed).toBe(false);
+            expect('set' in computed).toBe(false);
+            expect('update' in computed).toBe(false);
+            expect('pipe' in computed).toBe(false);
         });
     });
 

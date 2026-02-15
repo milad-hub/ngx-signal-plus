@@ -244,20 +244,7 @@ export class SignalBuilder<T> {
     const transform: Transform<T> =
       this.options.transform || ((value: T) => value);
 
-    // Helper to conditionally clone only complex objects
-    const conditionalClone = (value: T): T => {
-      const type = typeof value;
-      if (
-        type === 'string' ||
-        type === 'number' ||
-        type === 'boolean' ||
-        value === null ||
-        value === undefined
-      ) {
-        return value;
-      }
-      return structuredClone(value);
-    };
+    const conditionalClone = (value: T): T => this.cloneIfNeeded(value);
 
     // Create signal with initial value (untransformed)
     const writable: WritableSignal<T> = signal<T>(
@@ -279,36 +266,11 @@ export class SignalBuilder<T> {
     const isValidatingSignal: WritableSignal<boolean> = signal<boolean>(false);
     const asyncErrorsSignal: WritableSignal<string[]> = signal<string[]>([]);
 
-    /**
-     * Helper function to enforce history size limit
-     * @param histArray The history array to enforce size on
-     * @returns The history array with size limit applied
-     */
-    const enforceHistorySize = (histArray: T[]): T[] => {
-      if (
-        this.options.historySize &&
-        histArray.length > this.options.historySize
-      ) {
-        return histArray.slice(-this.options.historySize);
-      }
-      return histArray;
-    };
+    const enforceHistorySize = (histArray: T[]): T[] =>
+      this.limitByHistorySize(histArray, this.options.historySize);
 
-    /**
-     * Helper function to enforce redo stack size limit
-     * @param redoArray The redo stack array to enforce size on
-     * @returns The redo stack array with size limit applied
-     */
-    const enforceRedoStackSize = (redoArray: T[]): T[] => {
-      // Use the same size limit as history for consistency
-      if (
-        this.options.historySize &&
-        redoArray.length > this.options.historySize
-      ) {
-        return redoArray.slice(-this.options.historySize);
-      }
-      return redoArray;
-    };
+    const enforceRedoStackSize = (redoArray: T[]): T[] =>
+      this.limitByHistorySize(redoArray, this.options.historySize);
 
     /**
      * Helper function to run async validation with debouncing and cancellation
@@ -406,45 +368,7 @@ export class SignalBuilder<T> {
       data: any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fallbackData?: any,
-    ): string => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const safeStringify = (obj: any): string => {
-        const seen = new WeakSet();
-        return JSON.stringify(obj, (key, value) => {
-          if (value !== null && typeof value === 'object') {
-            if (seen.has(value)) {
-              return '[Circular Reference]';
-            }
-            seen.add(value);
-          }
-          return value;
-        });
-      };
-
-      try {
-        return JSON.stringify(data);
-      } catch (error) {
-        if (error instanceof TypeError && error.message.includes('circular')) {
-          return safeStringify(data);
-        }
-
-        if (fallbackData !== undefined) {
-          try {
-            return JSON.stringify(fallbackData);
-          } catch (fallbackError) {
-            if (
-              fallbackError instanceof TypeError &&
-              fallbackError.message.includes('circular')
-            ) {
-              return safeStringify(fallbackData);
-            }
-            throw fallbackError;
-          }
-        }
-
-        throw error;
-      }
-    };
+    ): string => this.serializeWithCircularCheck(data, fallbackData);
 
     // Initialize history with initial value
     if (this.options.enableHistory) {
@@ -571,6 +495,12 @@ export class SignalBuilder<T> {
       });
     };
 
+    const getValidationErrors = (value: T): string[] =>
+      this.collectValidationErrors(
+        this.options.validators as Validator<T>[],
+        value,
+      );
+
     const subscribe: (callback: (value: T) => void) => () => void = (
       callback: (value: T) => void,
     ): (() => void) => {
@@ -625,22 +555,11 @@ export class SignalBuilder<T> {
 
         // Then validate the transformed value
         if (!skipValidation) {
-          const validators = this.options.validators as Validator<T>[];
-          if (validators.length > 0) {
-            // Check validators in sequence and stop on first failure
-            for (const validator of validators) {
-              try {
-                const result = validator(transformedValue);
-                if (!result) {
-                  const error = new Error('Validation failed');
-                  this.handleError(error);
-                  throw error;
-                }
-              } catch (error) {
-                this.handleError(error as Error);
-                throw error;
-              }
-            }
+          const validationErrors = getValidationErrors(transformedValue);
+          if (validationErrors.length > 0) {
+            const error = new Error(validationErrors[0]);
+            this.handleError(error);
+            throw error;
           }
         }
 
@@ -862,38 +781,11 @@ export class SignalBuilder<T> {
         }
       },
       validate: () => {
-        try {
-          const validators: Validator<T>[] = this.options
-            .validators as Validator<T>[];
-          return validators.every((validator: Validator<T>) => {
-            try {
-              return validator(writable());
-            } catch (error) {
-              this.handleError(error as Error);
-              return false;
-            }
-          });
-        } catch (error) {
-          this.handleError(error as Error);
-          return false;
-        }
+        return getValidationErrors(writable()).length === 0;
       },
+      errors: computed(() => getValidationErrors(writable())),
       isValid: computed(() => {
-        try {
-          const validators: Validator<T>[] = this.options
-            .validators as Validator<T>[];
-          return validators.every((validator: Validator<T>) => {
-            try {
-              return validator(writable());
-            } catch (error) {
-              this.handleError(error as Error);
-              return false;
-            }
-          });
-        } catch (error) {
-          this.handleError(error as Error);
-          return false;
-        }
+        return getValidationErrors(writable()).length === 0;
       }),
       isValidating: computed(() => isValidatingSignal()),
       asyncErrors: computed(() => asyncErrorsSignal()),
@@ -1218,6 +1110,104 @@ export class SignalBuilder<T> {
     };
 
     return signalInstance;
+  }
+
+  private cloneIfNeeded<V>(value: V): V {
+    const type = typeof value;
+    if (
+      type === 'string' ||
+      type === 'number' ||
+      type === 'boolean' ||
+      value === null ||
+      value === undefined
+    ) {
+      return value;
+    }
+    return structuredClone(value);
+  }
+
+  private limitByHistorySize<V>(values: V[], historySize?: number): V[] {
+    if (historySize && values.length > historySize) {
+      return values.slice(-historySize);
+    }
+    return values;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private serializeWithCircularCheck(data: any, fallbackData?: any): string {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const safeStringify = (obj: any): string => {
+      const seen = new WeakSet();
+      return JSON.stringify(obj, (key, value) => {
+        if (value !== null && typeof value === 'object') {
+          if (seen.has(value)) {
+            return '[Circular Reference]';
+          }
+          seen.add(value);
+        }
+        return value;
+      });
+    };
+
+    try {
+      return JSON.stringify(data);
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('circular')) {
+        return safeStringify(data);
+      }
+
+      if (fallbackData !== undefined) {
+        try {
+          return JSON.stringify(fallbackData);
+        } catch (fallbackError) {
+          if (
+            fallbackError instanceof TypeError &&
+            fallbackError.message.includes('circular')
+          ) {
+            return safeStringify(fallbackData);
+          }
+          throw fallbackError;
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  private collectValidationErrors<V>(
+    validators: Validator<V>[] | undefined,
+    value: V,
+  ): string[] {
+    try {
+      if (!validators || validators.length === 0) {
+        return [];
+      }
+
+      const errors: string[] = [];
+      for (const validator of validators) {
+        try {
+          const result = validator(value);
+          if (result === true) {
+            continue;
+          }
+          if (typeof result === 'string') {
+            errors.push(result);
+            continue;
+          }
+          errors.push('Validation failed');
+          break;
+        } catch (error) {
+          this.handleError(error as Error);
+          errors.push(error instanceof Error ? error.message : 'Validation failed');
+          break;
+        }
+      }
+
+      return errors;
+    } catch (error) {
+      this.handleError(error as Error);
+      return ['Validation failed'];
+    }
   }
 
   /**

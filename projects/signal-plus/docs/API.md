@@ -156,6 +156,7 @@ interface SignalPlus<T> {
   reset(): void;
   validate(): boolean;
   isValid: Signal<boolean>;
+  errors: Signal<string[]>;
   isValidating: Signal<boolean>;
   asyncErrors: Signal<string[]>;
   isDirty: Signal<boolean>;
@@ -231,7 +232,9 @@ const combined = spCombineLatest([a, b]);
 
 ### `spComputed(fn, options?)`
 
-Creates a derived SignalPlus value with optional validation, transform, persistence, and history tracking.
+Creates a derived `ReadonlySignalPlus<T>` value with optional validation, transform, persistence, and history tracking.
+
+Validation note: `options.validate` can return `true`, `false`, or a string message. String results are surfaced through `errors: Signal<string[]>`.
 
 ```ts
 import { signal } from '@angular/core';
@@ -249,7 +252,7 @@ const fullName = spComputed(() => `${first()} ${last()}`, {
 console.log(fullName.value);
 ```
 
-Note: `pipe()` is intentionally not supported for `spComputed` and throws.
+`spComputed()` does not expose mutable APIs such as `set`, `setValue`, `update`, or `pipe`.
 
 ## Form Groups
 
@@ -658,7 +661,7 @@ The library guards browser-specific behavior internally (`localStorage`, `window
 
 The package also exports all primary types for strong typing:
 
-- Core: `SignalPlus`, `BuilderOptions`, `SignalOptions`, `SignalHistory`, `SignalState`, `Validator`, `Transform`, `ErrorHandler`, `AsyncValidator`
+- Core: `ReadonlySignalPlus`, `SignalPlus`, `BuilderOptions`, `SignalOptions`, `SignalHistory`, `SignalState`, `Validator`, `Transform`, `ErrorHandler`, `AsyncValidator`
 - Forms: `FormTextOptions`, `FormNumberOptions`, `FormGroupOptions`, `FormGroupConfig`, `SignalFormGroup`, `FormGroupValidator`
 - Async/Collection: `AsyncStateOptions`, `SignalAsync`, `CollectionOptions`, `SignalCollection`
 - Middleware: `MiddlewareContext`, `SignalMiddleware`
