@@ -82,6 +82,7 @@ describe('SignalBuilder', () => {
       expect(() => signal.setValue(-1)).toThrow();
       expect(signal.value).toEqual(0);
       expect(signal.isValid()).toBe(true);
+      expect(signal.errors()).toEqual([]);
     });
 
     it('should apply transformations in order', () => {
@@ -91,6 +92,24 @@ describe('SignalBuilder', () => {
         .build();
       signal.setValue(5);
       expect(signal.value).toEqual(11);
+    });
+
+    it('should expose string validation errors for current value', () => {
+      const signal: SignalPlus<number> = new SignalBuilder(-1)
+        .validate((x) => (x >= 0 ? true : 'Value must be non-negative'))
+        .build();
+
+      expect(signal.isValid()).toBe(false);
+      expect(signal.errors()).toEqual(['Value must be non-negative']);
+    });
+
+    it('should expose generic validation errors for boolean validators', () => {
+      const signal: SignalPlus<number> = new SignalBuilder(3)
+        .validate((x) => x % 2 === 0)
+        .build();
+
+      expect(signal.isValid()).toBe(false);
+      expect(signal.errors()).toEqual(['Validation failed']);
     });
   });
 

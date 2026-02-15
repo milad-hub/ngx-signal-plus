@@ -191,16 +191,16 @@ export function memoized<T>(compute: () => T, deps: Signal<any>[]): Signal<T> {
  */
 export function validatedSignal<T>(
   initialValue: T,
-  validator: (value: T) => boolean,
+  validator: (value: T) => boolean | string,
 ) {
   const value: WritableSignal<T> = signal<T>(initialValue);
-  const isValid: Signal<boolean> = computed(() => validator(value()));
+  const isValid: Signal<boolean> = computed(() => validator(value()) === true);
 
   return {
     value,
     isValid,
     set: (newValue: T) => {
-      if (validator(newValue)) {
+      if (validator(newValue) === true) {
         value.set(newValue);
         return true;
       }

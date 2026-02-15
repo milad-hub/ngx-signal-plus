@@ -35,11 +35,12 @@ export type AsyncValidator<T = unknown> = (value: T) => Promise<boolean>;
  * Function type for validating signal values
  * @typeParam T - The type of value being validated
  * @param value - The value to validate
- * @returns boolean - True if valid, false otherwise
+ * @returns boolean | string - True if valid, false/string when invalid
  *
  * @remarks
  * Validators are pure functions that check value constraints.
- * Multiple validators can be chained, all must pass for validity.
+ * Return `true` for valid values, `false` for generic failures,
+ * or a string for a specific error message.
  *
  * @example
  * ```typescript
@@ -51,7 +52,7 @@ export type AsyncValidator<T = unknown> = (value: T) => Promise<boolean>;
  *   user.name.length > 0 && user.age >= 18;
  * ```
  */
-export type Validator<T> = (value: T) => boolean;
+export type Validator<T> = (value: T) => boolean | string;
 
 /**
  * Function type for transforming signal values
@@ -187,7 +188,7 @@ export interface SignalOptions<T> {
   /** Enable persistent storage */
   persist?: boolean;
   /** Array of validation functions */
-  validators?: ((value: T) => boolean)[];
+  validators?: Validator<T>[];
   /** Transform function for processing values */
   transform?: (value: T) => T;
   /** Debounce time in milliseconds */
@@ -224,7 +225,7 @@ export interface SignalOptions<T> {
  * if (!counter.isValid()) counter.reset();
  * ```
  */
-export interface SignalPlus<T> {
+export interface ReadonlySignalPlus<T> {
   /** Current value of the signal. Updates trigger reactivity */
   value: T;
 
@@ -241,36 +242,6 @@ export interface SignalPlus<T> {
   writable: WritableSignal<T>;
 
   /**
-   * Sets a new value directly
-   * @param value - The new value to set
-   * @throws {Error} If validation fails
-   * @remarks Value is transformed before validation
-   */
-  set(value: T): void;
-
-  /**
-   * Sets a new value directly (alias for set)
-   * @param value - The new value to set
-   * @throws {Error} If validation fails
-   * @remarks Value is transformed before validation
-   */
-  setValue(value: T): void;
-
-  /**
-   * Updates value using a transform function
-   * @param fn - Function that receives current value and returns new value
-   * @throws {Error} If validation fails
-   * @remarks Transform is applied before validation
-   */
-  update(fn: (current: T) => T): void;
-
-  /**
-   * Resets to initial or default value
-   * @remarks Clears history if history tracking is enabled
-   */
-  reset(): void;
-
-  /**
    * Runs all validators and returns result
    * @returns boolean indicating if all validators passed
    */
@@ -278,6 +249,9 @@ export interface SignalPlus<T> {
 
   /** Signal indicating if all validators are passing */
   isValid: Signal<boolean>;
+
+  /** Signal containing validation error messages */
+  errors: Signal<string[]>;
 
   /** Signal indicating if async validation is in progress */
   isValidating: Signal<boolean>;
@@ -339,21 +313,6 @@ export interface SignalPlus<T> {
   subscribe(callback: (value: T) => void): () => void;
 
   /**
-   * Applies transformation operators
-   * @param operators - Signal operators to apply
-   * @returns New SignalPlus instance with transformed value
-   * @example
-   * ```typescript
-   * signal.pipe(
-   *   map(x => x * 2),
-   *   filter(x => x > 0)
-   * )
-   * ```
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  pipe<R>(...operators: any[]): SignalPlus<R>;
-
-  /**
    * Explicitly destroys the signal and cleans up all resources
    *
    * @remarks
@@ -403,6 +362,53 @@ export interface SignalPlus<T> {
    * @param historyArray - The history array to set
    */
   _setHistoryImmediate?(historyArray: T[]): void;
+}
+
+export interface SignalPlus<T> extends ReadonlySignalPlus<T> {
+  /**
+   * Sets a new value directly
+   * @param value - The new value to set
+   * @throws {Error} If validation fails
+   * @remarks Value is transformed before validation
+   */
+  set(value: T): void;
+
+  /**
+   * Sets a new value directly (alias for set)
+   * @param value - The new value to set
+   * @throws {Error} If validation fails
+   * @remarks Value is transformed before validation
+   */
+  setValue(value: T): void;
+
+  /**
+   * Updates value using a transform function
+   * @param fn - Function that receives current value and returns new value
+   * @throws {Error} If validation fails
+   * @remarks Transform is applied before validation
+   */
+  update(fn: (current: T) => T): void;
+
+  /**
+   * Resets to initial or default value
+   * @remarks Clears history if history tracking is enabled
+   */
+  reset(): void;
+
+  /**
+   * Applies transformation operators
+   * @param operators - Signal operators to apply
+   * @returns New SignalPlus instance with transformed value
+   * @example
+   * ```typescript
+   * signal.pipe(
+   *   map(x => x * 2),
+   *   filter(x => x > 0)
+   * )
+   * ```
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pipe<R>(...operators: any[]): SignalPlus<R>;
 }
 
 /**
@@ -486,7 +492,7 @@ export interface SimpleSignalOptions<T> {
   /** Storage key for persistence. Required for persistent signals */
   key?: string;
   /** Single validation function. For multiple validators, use BuilderOptions */
-  validator?: (value: T) => boolean;
+  validator?: Validator<T>;
   /** Debounce time in milliseconds. Must be >= 0 if provided */
   debounce?: number;
   /** Error handler function. Called when validation or updates fail */
@@ -567,7 +573,7 @@ export interface FormConfig<T = any> {
   /** Initial form value */
   initial: T;
   /** Validation function for form value */
-  validator?: (value: T) => boolean;
+  validator?: Validator<T>;
   /** Debounce time in milliseconds */
   debounce?: number;
   /** Storage key for persistence */

@@ -70,6 +70,11 @@ These are enforced working rules for this repository:
 - `projects/signal-plus/README.md`: npm consumer documentation.
 - `projects/signal-plus/docs/API.md`: full API reference.
 
+## Current API Notes
+
+- `spComputed()` is modeled as `ReadonlySignalPlus<T>` (read-only computed surface).
+- `SignalPlus<T>` includes `errors: Signal<string[]>` for validation error access.
+
 ## Release Notes
 
 - Changelog: `projects/signal-plus/CHANGELOG.md`

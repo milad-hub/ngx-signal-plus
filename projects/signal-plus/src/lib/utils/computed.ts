@@ -6,7 +6,7 @@ import {
     untracked,
     WritableSignal,
 } from '@angular/core';
-import { SignalPlus } from '../models/signal-plus.model';
+import { ReadonlySignalPlus } from '../models/signal-plus.model';
 import {
     isBrowser,
     safeLocalStorageGet,
@@ -19,15 +19,15 @@ import {
 export interface SpComputedOptions<T> {
     persist?: string;
     historySize?: number;
-    validate?: (value: T) => boolean;
+    validate?: (value: T) => boolean | string;
     transform?: (value: T) => T;
 }
 
 /**
  * Creates an enhanced computed signal that supports persistence, history, and validation.
  *
- * Unlike Angular's built-in `computed()`, `spComputed` returns a `SignalPlus`-like object
- * that allows features like persistence, history tracking, and validation for derived values.
+ * Unlike Angular's built-in `computed()`, `spComputed` returns a read-only SignalPlus shape
+ * that allows persistence, history tracking, and validation for derived values.
  *
  * @template T - The type of the computed value
  * @param fn - A function that computes the value from source signals
@@ -53,7 +53,7 @@ export interface SpComputedOptions<T> {
 export function spComputed<T>(
     fn: () => T,
     options: SpComputedOptions<T> = {},
-): SignalPlus<T> {
+): ReadonlySignalPlus<T> {
     const { persist, historySize = 10, validate, transform } = options;
 
     const applyTransform = (value: T): T =>
@@ -63,7 +63,6 @@ export function spComputed<T>(
     const internalSignal: WritableSignal<T> = signal<T>(initialValue);
     const historySignal: WritableSignal<T[]> = signal<T[]>([initialValue]);
     const redoStackSignal: WritableSignal<T[]> = signal<T[]>([]);
-    const errorsSignal: WritableSignal<string[]> = signal<string[]>([]);
 
     let previousValue: T = initialValue;
     const storedInitialValue: T = initialValue;
@@ -95,11 +94,6 @@ export function spComputed<T>(
                 const newHistory = [...currentHistory, newValue].slice(-historySize);
                 historySignal.set(newHistory);
                 redoStackSignal.set([]);
-
-                if (validate) {
-                    const isValid = validate(newValue);
-                    errorsSignal.set(isValid ? [] : ['Validation failed']);
-                }
 
                 if (persist && isBrowser()) {
                     safeLocalStorageSet(persist, JSON.stringify(newValue));
@@ -142,17 +136,21 @@ export function spComputed<T>(
         }
     };
 
-    const processValue = (value: T): void => {
-        const transformedValue = applyTransform(value);
-        previousValue = internalSignal();
-        internalSignal.set(transformedValue);
-        historySignal.update((h) => [...h, transformedValue].slice(-historySize));
-        redoStackSignal.set([]);
+    const getValidationErrors = (value: T): string[] => {
+        if (!validate) {
+            return [];
+        }
+
+        const result = validate(value);
+        if (result === true) {
+            return [];
+        }
+
+        return typeof result === 'string' ? [result] : ['Validation failed'];
     };
 
     const isValidSignal: Signal<boolean> = computed(() => {
-        if (!validate) return true;
-        return validate(internalSignal());
+        return getValidationErrors(internalSignal()).length === 0;
     });
 
     const isDirtySignal: Signal<boolean> = computed(() => {
@@ -177,26 +175,11 @@ export function spComputed<T>(
         },
         signal: computed(() => internalSignal()),
         writable: internalSignal,
-        set: processValue,
-        setValue: processValue,
-        update: (updateFn: (current: T) => T) => {
-            const newValue = applyTransform(updateFn(internalSignal()));
-            previousValue = internalSignal();
-            internalSignal.set(newValue);
-            historySignal.update((h) => [...h, newValue].slice(-historySize));
-            redoStackSignal.set([]);
-        },
-        reset: () => {
-            previousValue = internalSignal();
-            internalSignal.set(storedInitialValue);
-            historySignal.set([storedInitialValue]);
-            redoStackSignal.set([]);
-        },
         validate: () => {
-            if (!validate) return true;
-            return validate(internalSignal());
+            return getValidationErrors(internalSignal()).length === 0;
         },
         isValid: isValidSignal,
+        errors: computed(() => getValidationErrors(internalSignal())),
         isValidating: computed(() => false),
         asyncErrors: computed(() => []),
         isDirty: isDirtySignal,
@@ -209,9 +192,6 @@ export function spComputed<T>(
                 callback(internalSignal());
             });
             return () => effectRef.destroy();
-        },
-        pipe: <R>(): SignalPlus<R> => {
-            throw new Error('pipe is not supported for spComputed');
         },
         destroy: () => {
             historySignal.set([]);
