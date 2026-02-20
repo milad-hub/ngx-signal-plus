@@ -4,6 +4,21 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.6.0]
+
+### Added
+
+- Developer-experience signal composition helpers: `spCombine`, `spAll`, and `spAny`.
+- Debug utilities via `spDebug` with runtime state export and activation controls.
+- `SignalBuilder.debug(label)` for opt-in signal update tracking.
+- `spEffect()` utility with `condition` and `debounce` options and lifecycle controls (`pause`, `resume`, `destroy`).
+- New developer-experience model types: `DebugSignalState`, `SpEffectOptions`, and `SpEffectController`.
+
+### Changed
+
+- Public API surface updated to export new developer-experience utilities and types.
+- API/README documentation updated to include the new utilities and usage examples.
+
 ## [2.5.0]
 
 ### Added
@@ -16,7 +31,7 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 
 - `spComputed()` now returns `ReadonlySignalPlus<T>` and no longer exposes mutable APIs (`set`, `setValue`, `update`, `pipe`).
 - Refactored core `SignalBuilder` internals by extracting shared logic from `build()` into focused helpers (cloning, history sizing, circular-safe serialization, validation error collection) for maintainability.
-- Updated API docs and README notes to align with Phase 1 behavior and typing.
+- Updated API docs and README notes to align with the latest behavior and typing.
 
 ## [2.4.2]
 
