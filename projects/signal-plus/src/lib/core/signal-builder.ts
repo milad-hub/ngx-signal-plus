@@ -21,6 +21,7 @@ import {
   safeLocalStorageSet,
   safeSetTimeout,
 } from '../utils/platform';
+import { spDebug } from '../utils/debug';
 
 /**
  * @fileoverview Builder class for creating enhanced Angular signals
@@ -146,6 +147,16 @@ export class SignalBuilder<T> {
       this.options.errorHandlers = [];
     }
     this.options.errorHandlers.push(handler);
+    return this;
+  }
+
+  /**
+   * Enables debug tracking for this signal instance.
+   * @param label Human-readable identifier used by spDebug state exports
+   * @returns Builder instance for chaining
+   */
+  debug(label: string): SignalBuilder<T> {
+    this.options.debugLabel = label;
     return this;
   }
 
@@ -481,6 +492,11 @@ export class SignalBuilder<T> {
 
     const notifySubscribers: (value: T) => void = (value: T) => {
       if (isCleanedUp) return;
+
+      if (this.options.debugLabel) {
+        spDebug.recordUpdate(this.options.debugLabel, value);
+      }
+
       subscribers.forEach((callback: (value: T) => void) => {
         try {
           callback(value);
@@ -635,6 +651,10 @@ export class SignalBuilder<T> {
 
     // Set initial value without applying transforms
     writable.set(initialValue);
+
+    if (this.options.debugLabel) {
+      spDebug.trackSignal(this.options.debugLabel, writable());
+    }
 
     const processValue: (value: T) => void = (value: T) => {
       // Prevent setValue after destroy

@@ -10,9 +10,12 @@ export {
 
 // Utilities
 export { spAsync } from './async-state';
+export { spAll, spAny, spCombine } from './combine';
 export { spCollection } from './collection';
 export { spComputed } from './computed';
+export { spDebug } from './debug';
 export { enhance as spEnhance } from './enhance';
+export { spEffect } from './effect';
 export { spFormGroup } from './form-group';
 export {
   spAnalyticsMiddleware,

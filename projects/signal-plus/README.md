@@ -70,6 +70,7 @@ export class CounterComponent {
 - Signal creation: `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`
 - Signal enhancement: `enhance`
 - Operators: `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`
+- Developer experience: `spCombine`, `spAll`, `spAny`, `spEffect`, `spDebug`, `sp().debug(label)`
 - Forms and groups: `spForm`, `spFormGroup`
 - Async helpers: `spAsync`, `spCollection`
 - Reactive queries: `spQuery`, `spMutation`, `QueryClient`, `setGlobalQueryClient`

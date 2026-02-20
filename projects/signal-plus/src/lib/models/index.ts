@@ -4,6 +4,7 @@
 
 export * from './async-state.model';
 export * from './collection.model';
+export * from './developer-experience.model';
 export * from './errors.model';
 export * from './form-group.model';
 export * from './form.model';

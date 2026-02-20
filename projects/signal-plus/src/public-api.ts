@@ -22,6 +22,7 @@ export {
 export type {
   AsyncValidator,
   BuilderOptions,
+  DebugSignalState,
   ErrorHandler,
   FormNumberOptions,
   // Form Types
@@ -33,6 +34,8 @@ export type {
   // Core Types
   SignalPlus,
   SignalState,
+  SpEffectController,
+  SpEffectOptions,
   Transform,
   // Function Types
   Validator
@@ -61,7 +64,7 @@ export {
 } from './lib/operators';
 
 // Utilities and Presets
-export { spAsync, spCollection, spComputed, spPresets, spSchema, spSchemaValidator, spSchemaWithErrors, spValidators } from './lib/utils';
+export { spAll, spAny, spAsync, spCollection, spCombine, spComputed, spDebug, spEffect, spPresets, spSchema, spSchemaValidator, spSchemaWithErrors, spValidators } from './lib/utils';
 export type { SafeParseLike, SchemaLike, SchemaValidationResult, ZodError, ZodErrorIssue, ZodLike } from './lib/utils';
 
 // Middleware/Plugin System

@@ -11,6 +11,7 @@ This file documents the full public API exported by `projects/signal-plus/src/pu
 - [SignalBuilder (exported as `spSignalBuilder`)](#signalbuilder-exported-as-spsignalbuilder)
 - [SignalPlus Interface (runtime behavior)](#signalplus-interface-runtime-behavior)
 - [Operators](#operators)
+- [Developer Experience Utilities](#developer-experience-utilities)
 - [Computed Enhancement](#computed-enhancement)
 - [Form Groups](#form-groups)
 - [Async State](#async-state)
@@ -137,7 +138,7 @@ Common builder methods:
 - `transform`, `map`, `filter`
 - `debounce`, `distinct`
 - `persist`, `withHistory`
-- `onError`, `build`
+- `onError`, `debug`, `build`
 
 ## SignalPlus Interface (runtime behavior)
 
@@ -226,6 +227,62 @@ const b = signal(2);
 
 const merged = spMerge(a, b);
 const combined = spCombineLatest([a, b]);
+```
+
+## Developer Experience Utilities
+
+### `spCombine`, `spAll`, `spAny`
+
+Provides signal-composition helpers for combining values and evaluating boolean signal groups.
+
+```ts
+import { signal } from '@angular/core';
+import { spAll, spAny, spCombine } from 'ngx-signal-plus';
+
+const first = signal('John');
+const last = signal('Doe');
+const fullName = spCombine([first, last], (f, l) => `${f} ${l}`);
+
+const isAdult = signal(true);
+const hasEmail = signal(false);
+const allValid = spAll([isAdult, hasEmail]);
+const anyValid = spAny([isAdult, hasEmail]);
+
+console.log(fullName(), allValid(), anyValid());
+```
+
+### `spDebug` and builder `.debug(label)`
+
+Tracks signal updates and exports current debug state.
+
+```ts
+import { sp, spDebug } from 'ngx-signal-plus';
+
+const counter = sp(0).debug('counter').build();
+counter.setValue(1);
+counter.setValue(2);
+
+console.log(spDebug.getActiveSignals());
+console.log(spDebug.exportState());
+```
+
+### `spEffect(callback, options?)`
+
+Creates controllable effects with optional condition and debounce handling.
+
+```ts
+import { signal } from '@angular/core';
+import { spEffect } from 'ngx-signal-plus';
+
+const count = signal(0);
+const controller = spEffect(
+  () => console.log('count changed', count()),
+  { condition: () => count() > 0, debounce: 200 },
+);
+
+controller.pause();
+controller.resume();
+controller.destroy();
 ```
 
 ## Computed Enhancement
@@ -662,6 +719,7 @@ The library guards browser-specific behavior internally (`localStorage`, `window
 The package also exports all primary types for strong typing:
 
 - Core: `ReadonlySignalPlus`, `SignalPlus`, `BuilderOptions`, `SignalOptions`, `SignalHistory`, `SignalState`, `Validator`, `Transform`, `ErrorHandler`, `AsyncValidator`
+- Developer Experience: `DebugSignalState`, `SpEffectOptions`, `SpEffectController`
 - Forms: `FormTextOptions`, `FormNumberOptions`, `FormGroupOptions`, `FormGroupConfig`, `SignalFormGroup`, `FormGroupValidator`
 - Async/Collection: `AsyncStateOptions`, `SignalAsync`, `CollectionOptions`, `SignalCollection`
 - Middleware: `MiddlewareContext`, `SignalMiddleware`

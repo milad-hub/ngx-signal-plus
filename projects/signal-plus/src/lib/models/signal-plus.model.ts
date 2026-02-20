@@ -168,6 +168,8 @@ export interface BuilderOptions<T> {
   historySize?: number;
   /** Enable automatic resource cleanup on destroy */
   autoCleanup?: boolean;
+  /** Optional debug label used by spDebug tooling */
+  debugLabel?: string;
   /** Primary error handler function. Called first on errors */
   onError?: ErrorHandler;
   /** Additional error handlers. Called after primary handler */
