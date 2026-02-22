@@ -239,4 +239,39 @@ describe('spMutation', () => {
         done();
       });
   });
+  it('should apply optimistic updates and keep optimistic value on success', (done) => {
+    queryClient.setQueryData(['todos'], [{ id: 1, title: 'old' }]);
+
+    const mutation = spMutation<{ id: number; title: string }, { title: string }>({
+      mutationFn: async (vars) => ({ id: 1, title: vars.title }),
+      optimisticUpdate: {
+        queryKey: ['todos'],
+        updater: (_current, vars) => [{ id: 1, title: vars.title }],
+      },
+    });
+
+    mutation.mutate({ title: 'new' }).then(() => {
+      expect(queryClient.getQueryData(['todos'])).toEqual([{ id: 1, title: 'new' }]);
+      done();
+    });
+  });
+
+  it('should rollback optimistic updates on error', (done) => {
+    queryClient.setQueryData(['todos'], [{ id: 1, title: 'old' }]);
+
+    const mutation = spMutation<{ id: number; title: string }, { title: string }>({
+      mutationFn: async () => {
+        throw new Error('failure');
+      },
+      optimisticUpdate: {
+        queryKey: ['todos'],
+        updater: (_current, vars) => [{ id: 1, title: vars.title }],
+      },
+    });
+
+    mutation.mutate({ title: 'new' }).catch(() => {
+      expect(queryClient.getQueryData(['todos'])).toEqual([{ id: 1, title: 'old' }]);
+      done();
+    });
+  });
 });

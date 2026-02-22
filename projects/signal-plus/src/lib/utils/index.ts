@@ -14,6 +14,7 @@ export { spAll, spAny, spCombine } from './combine';
 export { spCollection } from './collection';
 export { spComputed } from './computed';
 export { spDebug } from './debug';
+export { spMonitor } from './monitor';
 export { enhance as spEnhance } from './enhance';
 export { spEffect } from './effect';
 export { spFormGroup } from './form-group';
@@ -57,3 +58,4 @@ export {
   spTransaction
 } from './transactions';
 export { SpError, SP_ERRORS, spCreateError, formatSpError } from './errors';
+

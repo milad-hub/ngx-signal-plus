@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { QueryClient, setGlobalQueryClient } from './query-client';
-import { createQuery, spQuery } from './sp-query';
+import { createDependentQuery, createQuery, spQuery } from './sp-query';
 
 describe('spQuery', () => {
   let queryClient: QueryClient;
@@ -287,6 +287,24 @@ describe('spQuery', () => {
         expect(calls).toBeGreaterThanOrEqual(2);
         done();
       }, 60);
+    }, 50);
+  });
+  it('should support dependent queries with signal dependencies', (done) => {
+    const userId = signal<number | null>(null);
+    const query = createDependentQuery(
+      ['dependent-user'],
+      async () => ({ id: userId() }),
+      [userId],
+    );
+
+    setTimeout(() => {
+      expect(query.data()).toBeUndefined();
+      userId.set(10);
+
+      setTimeout(() => {
+        expect(query.data()).toEqual({ id: 10 });
+        done();
+      }, 50);
     }, 50);
   });
 });

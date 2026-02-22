@@ -1,4 +1,5 @@
 import { Signal, WritableSignal } from '@angular/core';
+import { SpMonitorOptions } from './developer-experience.model';
 
 /**
  * Function signature for async validators
@@ -170,6 +171,8 @@ export interface BuilderOptions<T> {
   autoCleanup?: boolean;
   /** Optional debug label used by spDebug tooling */
   debugLabel?: string;
+  /** Optional monitoring configuration used by spMonitor tooling */
+  monitorOptions?: SpMonitorOptions;
   /** Primary error handler function. Called first on errors */
   onError?: ErrorHandler;
   /** Additional error handlers. Called after primary handler */
@@ -581,3 +584,4 @@ export interface FormConfig<T = any> {
   /** Storage key for persistence */
   key?: string;
 }
+

@@ -23,6 +23,7 @@ export type {
   AsyncValidator,
   BuilderOptions,
   DebugSignalState,
+  SignalPerformanceState,
   ErrorHandler,
   FormNumberOptions,
   // Form Types
@@ -36,6 +37,7 @@ export type {
   SignalState,
   SpEffectController,
   SpEffectOptions,
+  SpMonitorOptions,
   Transform,
   // Function Types
   Validator
@@ -64,7 +66,7 @@ export {
 } from './lib/operators';
 
 // Utilities and Presets
-export { spAll, spAny, spAsync, spCollection, spCombine, spComputed, spDebug, spEffect, spPresets, spSchema, spSchemaValidator, spSchemaWithErrors, spValidators } from './lib/utils';
+export { spAll, spAny, spAsync, spCollection, spCombine, spComputed, spDebug, spEffect, spMonitor, spPresets, spSchema, spSchemaValidator, spSchemaWithErrors, spValidators } from './lib/utils';
 export type { SafeParseLike, SchemaLike, SchemaValidationResult, ZodError, ZodErrorIssue, ZodLike } from './lib/utils';
 
 // Middleware/Plugin System
@@ -105,11 +107,14 @@ export { spFormGroup } from './lib/utils/form-group';
 
 // Reactive Queries (React Query style)
 export {
+  createDependentQuery,
+  createInfiniteQuery,
   createMutation,
   createQuery,
   getGlobalQueryClient,
   QueryClient,
   setGlobalQueryClient,
+  spInfiniteQuery,
   spMutation,
   spQuery
 } from './lib/reactive-queries';
@@ -117,8 +122,12 @@ export type {
   MutationOptions,
   MutationResult,
   MutationState,
+  InfiniteQueryOptions,
+  InfiniteQueryResult,
   QueryKey,
   QueryOptions,
   QueryResult,
   QueryState
 } from './lib/reactive-queries';
+
+

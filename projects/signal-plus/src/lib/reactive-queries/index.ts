@@ -5,3 +5,6 @@ export * from './query-types';
 export * from './sp-mutation';
 export * from './sp-query';
 export * from './interfaces';
+
+export * from './sp-infinite-query';
+

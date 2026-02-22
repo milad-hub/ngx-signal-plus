@@ -1,5 +1,6 @@
 import { computed, DestroyRef, inject, signal, untracked } from '@angular/core';
 import { MutationResult } from './interfaces';
+import { getGlobalQueryClient } from './query-client';
 import { MutationOptions, MutationState } from './query-types';
 
 /**
@@ -30,6 +31,8 @@ export function spMutation<TData = unknown, TVariables = unknown>(
   } catch {
     // Not in injection context - cleanup will be manual via reset()
   }
+
+  const queryClient = getGlobalQueryClient();
 
   const dataSignal = signal<TData | undefined>(undefined);
   const errorSignal = signal<Error | null>(null);
@@ -74,6 +77,17 @@ export function spMutation<TData = unknown, TVariables = unknown>(
     let attempt = 0;
     let lastError: Error | null = null;
 
+    let optimisticPreviousData: unknown;
+    const optimistic = options.optimisticUpdate;
+
+    if (optimistic) {
+      optimisticPreviousData = queryClient.getQueryData(optimistic.queryKey);
+      queryClient.setQueryData(
+        optimistic.queryKey,
+        (oldValue) => optimistic.updater(oldValue, variables),
+      );
+    }
+
     if (options.onMutate) {
       await options.onMutate(variables);
     }
@@ -98,6 +112,10 @@ export function spMutation<TData = unknown, TVariables = unknown>(
           options.onSettled(result, null, variables);
         }
 
+        if (optimistic?.invalidateOnSettled) {
+          queryClient.invalidateQueries(optimistic.queryKey);
+        }
+
         return result;
       } catch (error) {
         lastError = error as Error;
@@ -109,6 +127,12 @@ export function spMutation<TData = unknown, TVariables = unknown>(
             : attempt <= retry;
 
         if (!shouldRetry) {
+          if (optimistic && optimistic.rollbackOnError !== false) {
+            queryClient.setQueryData(
+              optimistic.queryKey,
+              optimisticPreviousData as never,
+            );
+          }
           updateState({
             error: lastError,
             isLoading: false,
@@ -123,6 +147,10 @@ export function spMutation<TData = unknown, TVariables = unknown>(
 
           if (options.onSettled) {
             options.onSettled(undefined, lastError, variables);
+          }
+
+          if (optimistic?.invalidateOnSettled) {
+            queryClient.invalidateQueries(optimistic.queryKey);
           }
 
           throw lastError;
@@ -210,3 +238,4 @@ export function createMutation<TData = unknown, TVariables = unknown>(
     ...options,
   });
 }
+

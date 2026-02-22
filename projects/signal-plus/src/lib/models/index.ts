@@ -10,3 +10,5 @@ export * from './form-group.model';
 export * from './form.model';
 export * from './schema.model';
 export * from './signal-plus.model';
+export * from './query.model';
+
