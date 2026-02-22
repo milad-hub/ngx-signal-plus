@@ -2,7 +2,7 @@
 
 [![Angular 16-21](https://img.shields.io/badge/Angular-16--21-dd0031)](https://angular.dev/)
 [![npm version](https://img.shields.io/npm/v/ngx-signal-plus.svg)](https://www.npmjs.com/package/ngx-signal-plus)
-![Coverage](https://img.shields.io/badge/coverage-90.44%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-90.92%25-brightgreen)
 
 Bring validation, persistence, undo/redo, and reactive queries to Angular Signals on Angular 16+.
 
@@ -70,10 +70,10 @@ export class CounterComponent {
 - Signal creation: `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`
 - Signal enhancement: `enhance`
 - Operators: `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`
-- Developer experience: `spCombine`, `spAll`, `spAny`, `spEffect`, `spDebug`, `sp().debug(label)`
+- Developer experience: `spCombine`, `spAll`, `spAny`, `spEffect`, `spDebug`, `spMonitor`, `sp().debug(label)`
 - Forms and groups: `spForm`, `spFormGroup`
 - Async helpers: `spAsync`, `spCollection`
-- Reactive queries: `spQuery`, `spMutation`, `QueryClient`, `setGlobalQueryClient`
+- Reactive queries: `spQuery`, `createDependentQuery`, `spInfiniteQuery`, `spMutation`, `QueryClient`, `setGlobalQueryClient`, `getGlobalQueryClient`
 - Transactions: `spTransaction`, `spBatch`
 - Schema validation: `spSchema`, `spSchemaValidator`
 - Middleware: `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`
@@ -118,3 +118,6 @@ export class CounterComponent {
 ## License
 
 MIT
+
+
+

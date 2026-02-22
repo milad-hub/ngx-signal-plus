@@ -266,6 +266,20 @@ console.log(spDebug.getActiveSignals());
 console.log(spDebug.exportState());
 ```
 
+### `spMonitor`
+
+Collects opt-in signal performance metrics for update frequency and execution cost tracking.
+
+```ts
+import { spMonitor } from 'ngx-signal-plus';
+
+spMonitor.trackSignal('counter');
+spMonitor.recordUpdate('counter', 4.2);
+
+console.log(spMonitor.getHotSignals());
+console.log(spMonitor.getSlowSignals(2));
+console.log(spMonitor.exportMetrics('json'));
+```
 ### `spEffect(callback, options?)`
 
 Creates controllable effects with optional condition and debounce handling.
@@ -546,6 +560,74 @@ const qc = getGlobalQueryClient();
 qc.invalidateQueries(['users']);
 ```
 
+### `createDependentQuery`
+
+Creates a query that automatically enables only when dependency signals are all truthy.
+
+```ts
+import { signal } from '@angular/core';
+import { createDependentQuery } from 'ngx-signal-plus';
+
+const userId = signal<string | null>(null);
+
+const profileQuery = createDependentQuery(
+  ['profile', userId],
+  () => fetch(`/api/profile/${userId()}`).then((r) => r.json()),
+  [userId],
+  { staleTime: 5000 },
+);
+```
+
+### `spInfiniteQuery` / `createInfiniteQuery`
+
+Handles paginated and infinite-scroll patterns with page tracking and next-page fetching.
+
+```ts
+import { spInfiniteQuery } from 'ngx-signal-plus';
+
+const feed = spInfiniteQuery<number[], number>({
+  queryKey: ['feed'],
+  queryFn: (page) => fetch(`/api/feed?page=${page}`).then((r) => r.json()),
+  initialPageParam: 1,
+  getNextPageParam: (_lastPage, allPages) => allPages.length + 1,
+});
+
+await feed.fetchNextPage();
+console.log(feed.pages(), feed.hasNextPage());
+```
+
+### Optimistic mutation updates
+
+Updates cached query data immediately, then rolls back automatically if the mutation fails.
+
+```ts
+import { spMutation } from 'ngx-signal-plus';
+
+const addTodo = spMutation({
+  mutationFn: (title: string) =>
+    fetch('/api/todos', { method: 'POST', body: JSON.stringify({ title }) }).then((r) => r.json()),
+  optimisticUpdate: {
+    queryKey: ['todos'],
+    updater: (current: { title: string }[] = [], title) => [...current, { title }],
+    rollbackOnError: true,
+    invalidateOnSettled: true,
+  },
+});
+```
+
+### Query prefetching
+
+Warms the cache ahead of navigation or user intent to reduce loading states on next screen.
+
+```ts
+import { getGlobalQueryClient } from 'ngx-signal-plus';
+
+const qc = getGlobalQueryClient();
+await qc.prefetchQuery(['users'], {
+  queryKey: ['users'],
+  queryFn: () => fetch('/api/users').then((r) => r.json()),
+});
+```
 ## Schema Validation Helpers
 
 ### `spSchema`
@@ -720,12 +802,14 @@ The package also exports all primary types for strong typing:
 
 - Core: `ReadonlySignalPlus`, `SignalPlus`, `BuilderOptions`, `SignalOptions`, `SignalHistory`, `SignalState`, `Validator`, `Transform`, `ErrorHandler`, `AsyncValidator`
 - Developer Experience: `DebugSignalState`, `SpEffectOptions`, `SpEffectController`
+- Monitoring: `SpMonitorOptions`, `SignalPerformanceState`
 - Forms: `FormTextOptions`, `FormNumberOptions`, `FormGroupOptions`, `FormGroupConfig`, `SignalFormGroup`, `FormGroupValidator`
 - Async/Collection: `AsyncStateOptions`, `SignalAsync`, `CollectionOptions`, `SignalCollection`
 - Middleware: `MiddlewareContext`, `SignalMiddleware`
 - Schema: `SchemaLike`, `SafeParseLike`, `SchemaValidationResult`, `ZodError`, `ZodErrorIssue`, `ZodLike`
-- Queries: `QueryKey`, `QueryOptions`, `QueryState`, `QueryResult`, `MutationOptions`, `MutationState`, `MutationResult`
+- Queries: `QueryKey`, `QueryOptions`, `QueryState`, `QueryResult`, `MutationOptions`, `MutationState`, `MutationResult`, `InfiniteQueryOptions`, `InfiniteQueryResult`
 - Errors: `SpErrorCode`, `SpErrorContext`, `SpErrorInfo`
+
 
 
 

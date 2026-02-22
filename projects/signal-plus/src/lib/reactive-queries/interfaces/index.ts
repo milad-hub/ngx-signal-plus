@@ -6,3 +6,6 @@
 
 export type { QueryResult } from './query-result.interface';
 export type { MutationResult } from './mutation-result.interface';
+
+export type { InfiniteQueryResult } from './infinite-query-result.interface';
+

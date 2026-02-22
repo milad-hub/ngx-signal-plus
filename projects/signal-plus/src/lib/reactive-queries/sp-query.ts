@@ -197,3 +197,24 @@ export function createQuery<T>(
     ...options,
   });
 }
+
+export function createDependentQuery<T>(
+  queryKey: string[],
+  queryFn: () => Promise<T>,
+  dependencies: Signal<unknown>[],
+  options?: Omit<QueryOptions<T>, 'queryKey' | 'queryFn' | 'enabled'>,
+): QueryResult<T> {
+  const enabled = computed(() =>
+    dependencies.every((dependency) => {
+      const value = dependency();
+      return value !== undefined && value !== null && value !== false;
+    }),
+  );
+
+  return spQuery({
+    queryKey,
+    queryFn,
+    ...options,
+    enabled,
+  });
+}

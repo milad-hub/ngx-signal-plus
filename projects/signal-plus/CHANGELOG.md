@@ -4,6 +4,21 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.7.0]
+
+### Added
+
+- `spInfiniteQuery()` and `createInfiniteQuery()` for paginated and infinite-scroll query flows.
+- `createDependentQuery()` for dependency-driven query activation.
+- `spMonitor` utility for opt-in signal performance metrics (`getHotSignals`, `getSlowSignals`, `exportMetrics`).
+- `InfiniteQueryOptions` and `InfiniteQueryResult` public types.
+- `SpMonitorOptions` and `SignalPerformanceState` public types.
+
+### Changed
+
+- `spMutation()` now supports first-class optimistic cache updates via `optimisticUpdate` with rollback/invalidation controls.
+- API and README documentation updated for query enhancements and monitoring APIs.
+
 ## [2.6.0]
 
 ### Added
@@ -214,4 +229,6 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 ### Changed
 
 - Initial release stabilization (versioning/docs/keyword updates).
+
+
 
