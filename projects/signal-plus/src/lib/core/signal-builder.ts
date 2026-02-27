@@ -22,6 +22,10 @@ import {
   safeSetTimeout,
 } from '../utils/platform';
 import { spDebug } from '../utils/debug';
+import { spMonitor } from '../utils/monitor';
+import { MiddlewareContext } from '../models/middleware.model';
+import { SpMonitorOptions } from '../models/developer-experience.model';
+import { spRunMiddleware, spRunMiddlewareError } from '../utils/middleware';
 
 /**
  * @fileoverview Builder class for creating enhanced Angular signals
@@ -46,6 +50,7 @@ import { spDebug } from '../utils/debug';
  */
 export class SignalBuilder<T> {
   private readonly options: BuilderOptions<T>;
+  private static monitorCounter = 0;
 
   /**
    * Creates a new SignalBuilder instance
@@ -160,6 +165,11 @@ export class SignalBuilder<T> {
     return this;
   }
 
+  monitor(options: SpMonitorOptions = {}): SignalBuilder<T> {
+    this.options.monitorOptions = { ...options };
+    return this;
+  }
+
   /**
    * Transforms signal value to a different type
    * @param fn Transform function from T to R
@@ -191,6 +201,9 @@ export class SignalBuilder<T> {
     newBuilder.options.storageKey = this.options.storageKey;
     newBuilder.options.debounceTime = this.options.debounceTime;
     newBuilder.options.autoCleanup = this.options.autoCleanup;
+    newBuilder.options.monitorOptions = this.options.monitorOptions
+      ? { ...this.options.monitorOptions }
+      : undefined;
 
     return newBuilder;
   }
@@ -282,6 +295,27 @@ export class SignalBuilder<T> {
 
     const enforceRedoStackSize = (redoArray: T[]): T[] =>
       this.limitByHistorySize(redoArray, this.options.historySize);
+    const monitorOptions = this.options.monitorOptions;
+    const monitorEnabled = Boolean(
+      monitorOptions &&
+        ((monitorOptions.trackUpdates ?? true) || monitorOptions.trackPerformance),
+    );
+    const trackPerformance = Boolean(monitorOptions?.trackPerformance);
+    const signalName =
+      monitorOptions?.label ||
+      this.options.debugLabel ||
+      this.options.storageKey ||
+      `signal-${SignalBuilder.monitorCounter++}`;
+
+    const createMiddlewareContext = (
+      oldValue: T,
+      newValue: T,
+    ): MiddlewareContext<T> => ({
+      signalName,
+      oldValue,
+      newValue,
+      timestamp: Date.now(),
+    });
 
     /**
      * Helper function to run async validation with debouncing and cancellation
@@ -597,12 +631,18 @@ export class SignalBuilder<T> {
 
         // Only update if value has changed
         if (hasChanged) {
-          previousValue = conditionalClone(writable());
+          const oldValue = conditionalClone(writable());
+          spRunMiddleware(
+            createMiddlewareContext(oldValue, conditionalClone(transformedValue)),
+          );
+
+          const monitorStart =
+            monitorEnabled && trackPerformance ? performance.now() : 0;
+
+          previousValue = oldValue;
           writable.set(transformedValue);
 
-          // Update history if enabled and value has changed
           if (this.options.enableHistory && !isProcessingDebounce) {
-            // Clear redo stack when new value is set
             redoStack = [];
             const currentHistory: T[] = history();
             const newHistory = [
@@ -610,11 +650,9 @@ export class SignalBuilder<T> {
               conditionalClone(transformedValue),
             ];
 
-            // Enforce history size limit using helper function
             history.set(enforceHistorySize(newHistory));
           }
 
-          // Handle storage
           if (this.options.storageKey && isBrowser()) {
             try {
               isProcessingStorage = true;
@@ -638,7 +676,11 @@ export class SignalBuilder<T> {
             }
           }
 
-          // Only notify subscribers if not cleaned up
+          if (monitorEnabled) {
+            const duration = trackPerformance ? performance.now() - monitorStart : 0;
+            spMonitor.recordUpdate(signalName, duration);
+          }
+
           if (!isCleanedUp) {
             notifySubscribers(transformedValue);
           }
@@ -654,6 +696,9 @@ export class SignalBuilder<T> {
 
     if (this.options.debugLabel) {
       spDebug.trackSignal(this.options.debugLabel, writable());
+    }
+    if (monitorEnabled) {
+      spMonitor.trackSignal(signalName);
     }
 
     const processValue: (value: T) => void = (value: T) => {
@@ -701,11 +746,15 @@ export class SignalBuilder<T> {
           updateValue(value);
         }
       } catch (error) {
+        spRunMiddlewareError(
+          error as Error,
+          createMiddlewareContext(conditionalClone(writable()), conditionalClone(value)),
+        );
         this.handleError(error as Error);
         throw error;
       }
-    };
 
+    };
     const signalInstance: SignalPlus<T> = {
       get value() {
         return writable();
@@ -721,13 +770,19 @@ export class SignalBuilder<T> {
       set: processValue,
       setValue: processValue,
       update: (fn: (current: T) => T) => {
+        let newValue: T;
         try {
-          const newValue: T = fn(writable());
-          processValue(newValue);
+          newValue = fn(writable());
         } catch (error) {
+          spRunMiddlewareError(
+            error as Error,
+            createMiddlewareContext(conditionalClone(writable()), conditionalClone(writable())),
+          );
           this.handleError(error as Error);
           throw error;
         }
+
+        processValue(newValue);
       },
       reset: () => {
         try {

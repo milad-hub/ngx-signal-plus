@@ -28,7 +28,7 @@ export {
   spRunMiddlewareError,
   spUseMiddleware
 } from './middleware';
-export type { MiddlewareContext, SignalMiddleware } from './middleware';
+export type { MiddlewareContext, SignalMiddleware } from '../models/middleware.model';
 export {
   hasLocalStorage,
   isBrowser,
@@ -58,4 +58,3 @@ export {
   spTransaction
 } from './transactions';
 export { SpError, SP_ERRORS, spCreateError, formatSpError } from './errors';
-

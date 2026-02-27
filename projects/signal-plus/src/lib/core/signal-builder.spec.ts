@@ -2,6 +2,8 @@ import { computed, PLATFORM_ID, Signal } from '@angular/core';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { SignalPlus } from '../models/signal-plus.model';
 import { SignalBuilder } from './signal-builder';
+import { spMonitor } from '../utils/monitor';
+import { spClearMiddleware, spUseMiddleware } from '../utils/middleware';
 
 describe('SignalBuilder', () => {
   let builder: SignalBuilder<number>;
@@ -3775,5 +3777,102 @@ describe('SignalBuilder', () => {
       tick(100);
       expect(values2).toEqual([0, 10]);
     }));
+  });
+
+  describe('monitor and middleware integration', () => {
+    beforeEach(() => {
+      spMonitor.clear();
+      spClearMiddleware();
+    });
+
+    afterEach(() => {
+      spMonitor.clear();
+      spClearMiddleware();
+    });
+
+    it('should record monitor updates for set and update paths', () => {
+      const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+        new SignalBuilder(0)
+          .monitor({ label: 'phase1-counter', trackUpdates: true })
+          .build(),
+      );
+
+      signal.setValue(1);
+      signal.update((current) => current + 1);
+
+      const metrics = spMonitor.exportMetrics('object') as Array<{
+        name: string;
+        updates: number;
+      }>;
+      const metric = metrics.find((entry) => entry.name === 'phase1-counter');
+
+      expect(metric).toBeDefined();
+      expect(metric?.updates).toBe(2);
+    });
+
+    it('should execute middleware on set and update runtime paths', () => {
+      const contexts: Array<{ oldValue: number; newValue: number }> = [];
+      spUseMiddleware<number>({
+        name: 'phase1-middleware-runtime',
+        onSet: (context) => {
+          contexts.push({ oldValue: context.oldValue, newValue: context.newValue });
+        },
+      });
+
+      const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+        new SignalBuilder(0).build(),
+      );
+
+      signal.setValue(2);
+      signal.update((current) => current + 3);
+
+      expect(contexts).toEqual([
+        { oldValue: 0, newValue: 2 },
+        { oldValue: 2, newValue: 5 },
+      ]);
+    });
+
+    it('should execute middleware error hooks for validation failures', () => {
+      const errors: Error[] = [];
+      spUseMiddleware<number>({
+        name: 'phase1-middleware-errors',
+        onError: (error) => {
+          errors.push(error);
+        },
+      });
+
+      const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+        new SignalBuilder(1)
+          .validate((value) => value > 0)
+          .build(),
+      );
+
+      expect(() => signal.setValue(0)).toThrow();
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].message).toContain('Validation');
+    });
+
+    it('should execute middleware error hooks for update callback errors', () => {
+      const errors: Error[] = [];
+      spUseMiddleware<number>({
+        name: 'phase1-middleware-update-errors',
+        onError: (error) => {
+          errors.push(error);
+        },
+      });
+
+      const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
+        new SignalBuilder(1).build(),
+      );
+
+      expect(() =>
+        signal.update(() => {
+          throw new Error('update callback failed');
+        }),
+      ).toThrowError('update callback failed');
+
+      expect(errors.length).toBe(1);
+      expect(errors[0].message).toBe('update callback failed');
+    });
   });
 });

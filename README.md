@@ -74,6 +74,8 @@ These are enforced working rules for this repository:
 
 - `spComputed()` is modeled as `ReadonlySignalPlus<T>` (read-only computed surface).
 - `SignalPlus<T>` includes `errors: Signal<string[]>` for validation error access.
+- `SignalBuilder.monitor(options)` enables opt-in update/performance tracking via `spMonitor`.
+- Registered middleware executes in standard `set`/`setValue`/`update` runtime paths.
 
 ## Release Notes
 

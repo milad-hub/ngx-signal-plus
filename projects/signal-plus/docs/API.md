@@ -125,6 +125,7 @@ import { spSignalBuilder } from 'ngx-signal-plus';
 
 const s = new spSignalBuilder(0)
   .validate((n) => n >= 0)
+  .monitor({ label: 'counter', trackUpdates: true })
   .debounce(100)
   .onError(console.error)
   .build();
@@ -138,7 +139,7 @@ Common builder methods:
 - `transform`, `map`, `filter`
 - `debounce`, `distinct`
 - `persist`, `withHistory`
-- `onError`, `debug`, `build`
+- `onError`, `debug`, `monitor`, `build`
 
 ## SignalPlus Interface (runtime behavior)
 
@@ -399,7 +400,7 @@ console.log(todos.count(), todos.isEmpty());
 
 ### Register middleware (`spUseMiddleware`)
 
-Registers middleware hooks that run during signal updates for cross-cutting concerns.
+Registers middleware hooks that run during signal updates for cross-cutting concerns. Registered middleware is executed by built signals in normal `set`, `setValue`, and `update` paths.
 
 ```ts
 import { spUseMiddleware, spLoggerMiddleware } from 'ngx-signal-plus';
@@ -809,6 +810,7 @@ The package also exports all primary types for strong typing:
 - Schema: `SchemaLike`, `SafeParseLike`, `SchemaValidationResult`, `ZodError`, `ZodErrorIssue`, `ZodLike`
 - Queries: `QueryKey`, `QueryOptions`, `QueryState`, `QueryResult`, `MutationOptions`, `MutationState`, `MutationResult`, `InfiniteQueryOptions`, `InfiniteQueryResult`
 - Errors: `SpErrorCode`, `SpErrorContext`, `SpErrorInfo`
+
 
 
 
