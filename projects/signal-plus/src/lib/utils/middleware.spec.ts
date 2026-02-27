@@ -1,5 +1,7 @@
 import {
     MiddlewareContext,
+} from '../models/middleware.model';
+import {
     spAnalyticsMiddleware,
     spClearMiddleware,
     spGetMiddlewareCount,

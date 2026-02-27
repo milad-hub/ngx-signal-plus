@@ -78,7 +78,7 @@ export {
   spRemoveMiddleware,
   spUseMiddleware
 } from './lib/utils';
-export type { MiddlewareContext, SignalMiddleware } from './lib/utils';
+export type { MiddlewareContext, SignalMiddleware } from './lib/models';
 
 // State Management
 export { spHistoryManager, spStorageManager } from './lib/managers';
@@ -129,5 +129,3 @@ export type {
   QueryResult,
   QueryState
 } from './lib/reactive-queries';
-
-

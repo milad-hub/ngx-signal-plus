@@ -4,7 +4,21 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
-## [2.7.0]
+## [2.8.0]
+
+### Added
+
+- `SignalBuilder.monitor(options)` for builder-level monitoring configuration.
+- Runtime monitor integration in built signals so `set`, `setValue`, and `update` record metrics through `spMonitor`.
+- Middleware runtime integration in built signals for `set`/`setValue`/`update` paths.
+- Middleware error hook execution (`onError`) for validation failures and update callback errors.
+- New middleware model types in `models/`: `MiddlewareContext` and `SignalMiddleware`.
+- Integration tests covering monitor and middleware runtime behavior in `signal-builder.spec.ts`.
+
+### Changed
+
+- Middleware interfaces/types were moved from utility implementation to `models/` and re-exported through package type exports.
+- API and README documentation updated for builder monitoring and runtime middleware execution behavior.`r`n`r`n## [2.7.0]
 
 ### Added
 
@@ -229,6 +243,8 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 ### Changed
 
 - Initial release stabilization (versioning/docs/keyword updates).
+
+
 
 
 
