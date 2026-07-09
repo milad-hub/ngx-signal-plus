@@ -29,9 +29,6 @@ export function spEffect(
 
       timeoutId = safeSetTimeout(() => {
         timeoutId = null;
-        if (paused()) {
-          return;
-        }
         if (options.condition && !options.condition()) {
           return;
         }

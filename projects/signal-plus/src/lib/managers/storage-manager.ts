@@ -186,12 +186,7 @@ export class StorageManager {
       return;
     }
 
-    try {
-      const storageKey: string = this.PREFIX + key;
-      safeLocalStorageRemove(storageKey);
-    } catch (error) {
-      console.error(`Failed to remove from localStorage: ${error}`);
-    }
+    safeLocalStorageRemove(this.PREFIX + key);
   }
 
   /**

@@ -281,8 +281,18 @@ export class SignalBuilder<T> {
     let redoStack: T[] = [];
     let pendingValue: T | null = null;
     let isProcessingDebounce = false;
-    let debounceCancelled = false;
     let isProcessingStorage = false;
+
+    // Single cancellation point for a pending debounced update: clears the
+    // timer and resets all debounce state so no site can partially reset it.
+    const clearPendingDebounce = (): void => {
+      if (debounceTimeout !== null) {
+        safeClearTimeout(debounceTimeout);
+        debounceTimeout = null;
+      }
+      pendingValue = null;
+      isProcessingDebounce = false;
+    };
 
     // Async validation state
     let asyncValidationTimeout: number | undefined | null = null;
@@ -333,11 +343,10 @@ export class SignalBuilder<T> {
         asyncValidationTimeout = null;
       }
 
-      // If no async validators, nothing to do
-      if (
-        !this.options.asyncValidators ||
-        this.options.asyncValidators.length === 0
-      ) {
+      // If no async validators, nothing to do. Snapshot the array so a later
+      // mutation of the options object cannot affect the deferred run below.
+      const asyncValidators = this.options.asyncValidators;
+      if (!asyncValidators || asyncValidators.length === 0) {
         asyncErrorsSignal.set([]);
         isValidatingSignal.set(false);
         return;
@@ -360,7 +369,6 @@ export class SignalBuilder<T> {
           }
 
           const errors: string[] = [];
-          const asyncValidators = this.options.asyncValidators || [];
 
           for (const validator of asyncValidators) {
             if (currentValidationAbortController?.signal.aborted) {
@@ -422,44 +430,40 @@ export class SignalBuilder<T> {
 
     // Load initial value from storage if available
     if (this.options.storageKey && isBrowser()) {
-      try {
-        const stored = safeLocalStorageGet(this.options.storageKey);
-        if (stored) {
-          try {
-            let parsedValue: T;
-            let parsedHistory: T[] | undefined;
+      const stored = safeLocalStorageGet(this.options.storageKey);
+      if (stored) {
+        try {
+          let parsedValue: T;
+          let parsedHistory: T[] | undefined;
 
-            const parsedData = JSON.parse(stored);
-            if (
-              parsedData &&
-              typeof parsedData === 'object' &&
-              'value' in parsedData
-            ) {
-              parsedValue = parsedData.value;
-              parsedHistory = parsedData.history;
-            } else {
-              parsedValue = parsedData;
-            }
-
-            writable.set(parsedValue);
-            previousValue = parsedValue;
-            initialValue = parsedValue;
-
-            if (this.options.enableHistory && parsedHistory) {
-              history.set(
-                enforceHistorySize(
-                  parsedHistory.map((v) => conditionalClone(v)),
-                ),
-              );
-            } else if (this.options.enableHistory) {
-              history.set([conditionalClone(parsedValue)]);
-            }
-          } catch (error) {
-            this.handleError(error as Error);
+          const parsedData = JSON.parse(stored);
+          if (
+            parsedData &&
+            typeof parsedData === 'object' &&
+            'value' in parsedData
+          ) {
+            parsedValue = parsedData.value;
+            parsedHistory = parsedData.history;
+          } else {
+            parsedValue = parsedData;
           }
+
+          writable.set(parsedValue);
+          previousValue = parsedValue;
+          initialValue = parsedValue;
+
+          if (this.options.enableHistory && parsedHistory) {
+            history.set(
+              enforceHistorySize(
+                parsedHistory.map((v) => conditionalClone(v)),
+              ),
+            );
+          } else if (this.options.enableHistory) {
+            history.set([conditionalClone(parsedValue)]);
+          }
+        } catch (error) {
+          this.handleError(error as Error);
         }
-      } catch (error) {
-        this.handleError(error as Error);
       }
     }
 
@@ -487,11 +491,7 @@ export class SignalBuilder<T> {
           }
 
           if (isProcessingDebounce && debounceTimeout !== null) {
-            debounceCancelled = true;
-            safeClearTimeout(debounceTimeout);
-            debounceTimeout = null;
-            pendingValue = null;
-            isProcessingDebounce = false;
+            clearPendingDebounce();
           }
 
           writable.set(parsedValue);
@@ -574,15 +574,7 @@ export class SignalBuilder<T> {
             storageListenerCleanup = undefined;
           }
 
-          // Clear any pending debounce timeout
-          if (debounceTimeout !== null) {
-            safeClearTimeout(debounceTimeout);
-            debounceTimeout = null;
-            debounceCancelled = true; // Mark as cancelled during cleanup
-          }
-
-          // Clear pending value
-          pendingValue = null;
+          clearPendingDebounce();
         }
       };
     };
@@ -709,7 +701,6 @@ export class SignalBuilder<T> {
 
       // Clear existing debounce timeout
       if (debounceTimeout !== null) {
-        debounceCancelled = true;
         safeClearTimeout(debounceTimeout);
         debounceTimeout = null;
       }
@@ -718,22 +709,17 @@ export class SignalBuilder<T> {
         // Handle debounce
         if (this.options.debounceTime && this.options.debounceTime > 0) {
           isProcessingDebounce = true;
-          debounceCancelled = false;
           pendingValue = value;
           debounceTimeout = safeSetTimeout(() => {
             try {
-              if (debounceCancelled) {
-                pendingValue = null;
-                return;
-              }
-
-              const finalValue = pendingValue;
+              // Every cancellation path clears this timer synchronously, so a
+              // firing callback always has a legitimate pending value (which
+              // may itself be null for nullable T).
+              const finalValue = pendingValue as T;
               pendingValue = null;
               isProcessingDebounce = false;
 
-              if (finalValue !== null) {
-                updateValue(finalValue);
-              }
+              updateValue(finalValue);
             } catch (error) {
               this.handleError(error as Error);
               throw error;
@@ -787,11 +773,7 @@ export class SignalBuilder<T> {
       reset: () => {
         try {
           // Clear any pending debounce timeout to prevent race conditions
-          if (debounceTimeout !== null) {
-            safeClearTimeout(debounceTimeout);
-            debounceTimeout = null;
-            pendingValue = null;
-          }
+          clearPendingDebounce();
 
           // Reset to initial untransformed value and apply transform
           const resetValue: T =
@@ -888,11 +870,7 @@ export class SignalBuilder<T> {
         if (!this.options.enableHistory || history().length <= 1) return;
 
         // Clear any pending debounce timeout to prevent race conditions
-        if (debounceTimeout !== null) {
-          safeClearTimeout(debounceTimeout);
-          debounceTimeout = null;
-          pendingValue = null;
-        }
+        clearPendingDebounce();
 
         // Get current value
         const currentValue: T = writable();
@@ -917,11 +895,7 @@ export class SignalBuilder<T> {
         if (!this.options.enableHistory || redoStack.length === 0) return;
 
         // Clear any pending debounce timeout to prevent race conditions
-        if (debounceTimeout !== null) {
-          safeClearTimeout(debounceTimeout);
-          debounceTimeout = null;
-          pendingValue = null;
-        }
+        clearPendingDebounce();
 
         // Get the value to redo
         const valueToRedo: T = redoStack.pop() as T;
@@ -1027,15 +1001,7 @@ export class SignalBuilder<T> {
         });
 
         // Step 4: Clear any pending debounce timeout
-        safeCleanup('Clear debounce timeout', () => {
-          if (debounceTimeout !== null) {
-            safeClearTimeout(debounceTimeout);
-            debounceTimeout = null;
-            pendingValue = null;
-            isProcessingDebounce = false;
-            debounceCancelled = false;
-          }
-        });
+        safeCleanup('Clear debounce timeout', clearPendingDebounce);
 
         // Step 4.5: Clear async validation timeout and abort controller
         safeCleanup('Clear async validation', () => {
@@ -1059,13 +1025,7 @@ export class SignalBuilder<T> {
         // Step 6: Clear history and redo stack (if enabled)
         safeCleanup('Clear history and redo stack', () => {
           if (this.options.enableHistory) {
-            try {
-              history.set([]);
-            } catch (error) {
-              // If history.set fails, try to clear redoStack anyway
-              redoStack = [];
-              throw error;
-            }
+            history.set([]);
           }
           redoStack = [];
         });
@@ -1129,21 +1089,11 @@ export class SignalBuilder<T> {
       },
       _clearPendingOperations: () => {
         // Clear any pending debounce timeout without destroying the signal
-        if (debounceTimeout !== null) {
-          safeClearTimeout(debounceTimeout);
-          debounceTimeout = null;
-        }
-
-        // Clear pending value
-        pendingValue = null;
+        clearPendingDebounce();
       },
       _setValueImmediate: (value: T) => {
         // First clear any pending operations
-        if (debounceTimeout !== null) {
-          safeClearTimeout(debounceTimeout);
-          debounceTimeout = null;
-        }
-        pendingValue = null;
+        clearPendingDebounce();
 
         // Apply transformations
         let transformedValue: T = value;

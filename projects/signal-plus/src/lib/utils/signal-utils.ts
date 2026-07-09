@@ -315,9 +315,6 @@ export function debouncedSignal<T>(initialValue: T, delay: number) {
 export function throttledSignal<T>(initialValue: T, delay: number) {
   const value: WritableSignal<T> = signal<T>(initialValue);
   let lastRun = 0;
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let pending: T | null = null;
 
   return {
     value: computed(() => value()),
@@ -329,11 +326,7 @@ export function throttledSignal<T>(initialValue: T, delay: number) {
       }
     },
     cancel: () => {
-      if (timeout !== null) {
-        clearTimeout(timeout);
-        timeout = null;
-        pending = null;
-      }
+      // Leading-edge throttle: no trailing call is ever pending, so there is nothing to cancel.
     },
   };
 }

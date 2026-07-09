@@ -92,7 +92,7 @@ export function spMutation<TData = unknown, TVariables = unknown>(
       await options.onMutate(variables);
     }
 
-    while (attempt <= (typeof retry === 'number' ? retry : Infinity)) {
+    for (;;) {
       try {
         const result = await options.mutationFn(variables);
 
@@ -163,8 +163,6 @@ export function spMutation<TData = unknown, TVariables = unknown>(
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
-
-    throw lastError!;
   };
 
   const mutate = (variables: TVariables): Promise<TData> => {

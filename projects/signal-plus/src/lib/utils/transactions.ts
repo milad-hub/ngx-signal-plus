@@ -250,16 +250,9 @@ function rollbackChanges(): boolean {
         if (signal._setValueImmediate) {
           signal._setValueImmediate(originalValue);
         } else {
-          // Fallback to original setValue method
-          const originalSetValue = txState.patchedSignals.get(signal);
-
-          if (originalSetValue) {
-            // Apply the original value using the original method
-            originalSetValue.call(signal, originalValue);
-          } else {
-            // Last resort fallback (shouldn't happen)
-            signal.setValue(originalValue);
-          }
+          // Transaction mode is disabled during rollback, so the patched
+          // setValue delegates straight to the original implementation.
+          signal.setValue(originalValue);
         }
 
         // Restore history state if it was captured

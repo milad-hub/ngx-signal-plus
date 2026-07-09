@@ -36,11 +36,10 @@ export function spInfiniteQuery<TData, TPageParam>(
   const setPages = (pages: TData[]) => {
     untracked(() => {
       pagesSignal.set(pages);
-      const lastPage = pages.length > 0 ? pages[pages.length - 1] : undefined;
+      const lastPage = pages[pages.length - 1];
       hasNextPageSignal.set(
-        lastPage !== undefined
-          ? options.getNextPageParam(lastPage, pages) !== undefined
-          : true,
+        lastPage === undefined ||
+          options.getNextPageParam(lastPage, pages) !== undefined,
       );
     });
   };
