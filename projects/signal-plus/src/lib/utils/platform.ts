@@ -47,9 +47,23 @@
  *   : 'default';
  * ```
  */
+let simulateServer = false;
+
+/**
+ * Forces isBrowser() to report a server environment.
+ * Internal testing hook — not exported from the public API.
+ *
+ * @internal
+ */
+export function _setServerModeForTesting(enabled: boolean): void {
+  simulateServer = enabled;
+}
+
 export function isBrowser(): boolean {
   return (
-    typeof window !== 'undefined' && typeof window.document !== 'undefined'
+    !simulateServer &&
+    typeof window !== 'undefined' &&
+    typeof window.document !== 'undefined'
   );
 }
 

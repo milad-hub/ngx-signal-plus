@@ -254,7 +254,7 @@ export function spFormGroup<T extends Record<string, any>>(
       }
 
       if (dirtyState.has(control)) {
-        return dirtyState.get(control) || false;
+        return true;
       }
 
       const currentVal = currentValue[key];

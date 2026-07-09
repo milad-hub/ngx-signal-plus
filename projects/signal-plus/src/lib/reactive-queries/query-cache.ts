@@ -149,10 +149,8 @@ export class Query<T = unknown> {
       return this.fetchPromise;
     }
 
-    if (this.abortController) {
-      this.abortController.abort();
-    }
-    this.abortController = new AbortController();
+    const abortController = new AbortController();
+    this.abortController = abortController;
 
     this.state = {
       ...this.state,
@@ -164,30 +162,41 @@ export class Query<T = unknown> {
     };
     this.notify();
 
-    this.fetchPromise = this.executeFetch();
+    const fetchPromise = this.executeFetch(abortController.signal);
+    this.fetchPromise = fetchPromise;
 
     try {
-      const data = await this.fetchPromise;
-      this.setData(data);
+      const data = await fetchPromise;
+      if (this.fetchPromise === fetchPromise) {
+        this.setData(data);
+      }
       return data;
     } catch (error) {
-      this.setError(error as Error);
+      if (this.fetchPromise === fetchPromise) {
+        this.setError(error as Error);
+      }
       throw error;
     } finally {
-      this.fetchPromise = null;
-      this.abortController = null;
+      // Only clear state that still belongs to this fetch; a cancel() followed
+      // by a refetch() may have replaced both fields with a newer fetch's.
+      if (this.fetchPromise === fetchPromise) {
+        this.fetchPromise = null;
+      }
+      if (this.abortController === abortController) {
+        this.abortController = null;
+      }
     }
   }
 
-  private async executeFetch(): Promise<T> {
+  private async executeFetch(signal: AbortSignal): Promise<T> {
     const { queryFn, retry = 0, retryDelay = 10 } = this.options;
 
     let attempt = 0;
     let lastError: Error;
 
-    while (attempt <= (typeof retry === 'number' ? retry : Infinity)) {
+    for (;;) {
       try {
-        if (this.abortController?.signal.aborted) {
+        if (signal.aborted) {
           throw new Error('Query aborted');
         }
 
@@ -211,7 +220,7 @@ export class Query<T = unknown> {
             ? retry(attempt, lastError)
             : attempt <= retry;
 
-        if (!shouldRetry || this.abortController?.signal.aborted) {
+        if (!shouldRetry || signal.aborted) {
           throw lastError;
         }
 
@@ -223,8 +232,6 @@ export class Query<T = unknown> {
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
-
-    throw lastError!;
   }
 
   private setData(data: T): void {
@@ -303,8 +310,9 @@ export class Query<T = unknown> {
 
   cancel(): void {
     if (this.abortController) {
+      // The in-flight retry loop holds this signal and observes the abort;
+      // the owning fetch() clears the reference in its finally block.
       this.abortController.abort();
-      this.abortController = null;
     }
     if (this.fetchPromise) {
       this.fetchPromise = null;

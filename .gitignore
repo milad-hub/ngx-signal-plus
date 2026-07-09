@@ -8,6 +8,7 @@
 
 # Node
 /node_modules
+/package-lock.json
 npm-debug.log
 yarn-error.log
 
@@ -33,6 +34,7 @@ yarn-error.log
 .sass-cache/
 /connect.lock
 /coverage
+/graphify-out
 /libpeerconnection.log
 testem.log
 /typings

@@ -20,7 +20,7 @@ export function spCollection<T extends Record<keyof T, unknown>>(
   let itemsMap = new Map<T[keyof T], T>();
   let itemsArray: T[] = [];
 
-  function initializeItems(initialItems: T[] = []) {
+  function initializeItems(initialItems: T[]) {
     itemsMap = new Map();
     itemsArray = [];
     for (const item of initialItems) {
@@ -222,28 +222,22 @@ export function spCollection<T extends Record<keyof T, unknown>>(
     if (!historyManager || !historyManager.canUndo) {
       return false;
     }
-    const previous = historyManager.undo();
-    if (previous !== undefined && Array.isArray(previous)) {
-      initializeItems(previous);
-      valueSignal.set([...itemsArray]);
-      saveToStorage();
-      return true;
-    }
-    return false;
+    const previous = historyManager.undo() as T[];
+    initializeItems(previous);
+    valueSignal.set([...itemsArray]);
+    saveToStorage();
+    return true;
   }
 
   function redoOperation(): boolean {
     if (!historyManager || !historyManager.canRedo) {
       return false;
     }
-    const next = historyManager.redo();
-    if (next !== undefined && Array.isArray(next)) {
-      initializeItems(next);
-      valueSignal.set([...itemsArray]);
-      saveToStorage();
-      return true;
-    }
-    return false;
+    const next = historyManager.redo() as T[];
+    initializeItems(next);
+    valueSignal.set([...itemsArray]);
+    saveToStorage();
+    return true;
   }
 
   function canUndoOperation(): boolean {
