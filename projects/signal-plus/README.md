@@ -17,42 +17,46 @@ npm install ngx-signal-plus
 
 ## Requirements
 
-- Angular `>=16.0.0 <=21.0.0`
-- TypeScript `>=5.0.0`
+- Angular 16 through 21
+- A TypeScript version supported by your Angular version
 
 ## Why this library?
 
-| Capability | Angular native | ngx-signal-plus |
-| --- | --- | --- |
-| Signal validation and validation helpers | Limited | `sp().validate()`, presets, schema helpers |
-| localStorage persistence | Manual | `sp().persist()` |
-| Undo/redo history | Manual | `sp().withHistory()` |
-| Transaction rollback | Manual | `spTransaction()` |
-| Middleware/interceptors | No built-in | `spUseMiddleware()` |
-| Query cache/retry/invalidation | `resource/httpResource` (basic) | `spQuery()`, `spMutation()`, `QueryClient` |
-| Collection CRUD helpers | Manual | `spCollection()` |
+| Capability                               | Angular native                  | ngx-signal-plus                            |
+| ---------------------------------------- | ------------------------------- | ------------------------------------------ |
+| Signal validation and validation helpers | Limited                         | `sp().validate()`, presets, schema helpers |
+| localStorage persistence                 | Manual                          | `sp().persist()`                           |
+| Undo/redo history                        | Manual                          | `sp().withHistory()`                       |
+| Transaction rollback                     | Manual                          | `spTransaction()`                          |
+| Middleware/interceptors                  | No built-in                     | `spUseMiddleware()`                        |
+| Query cache/retry/invalidation           | `resource/httpResource` (basic) | `spQuery()`, `spMutation()`, `QueryClient` |
+| Collection CRUD helpers                  | Manual                          | `spCollection()`                           |
 
 ## Quick Start
 
 ```typescript
+import { NgIf } from "@angular/common";
 import { Component, computed } from "@angular/core";
 import { sp } from "ngx-signal-plus";
 
 @Component({
   standalone: true,
   selector: "app-counter",
+  imports: [NgIf],
   template: `
     <p>Count: {{ counter.value }}</p>
     <p>Doubled: {{ doubled() }}</p>
     <button (click)="inc()">+</button>
     <button (click)="dec()">-</button>
-    @if (counter.history().length > 1) {
-      <button (click)="counter.undo()">Undo</button>
-    }
+    <button *ngIf="counter.history().length > 1" (click)="counter.undo()">Undo</button>
   `,
 })
 export class CounterComponent {
-  counter = sp(0).persist("counter").withHistory(10).validate((n) => n >= 0).build();
+  counter = sp(0)
+    .persist("counter")
+    .withHistory(10)
+    .validate((n) => n >= 0)
+    .build();
   doubled = computed(() => this.counter.value * 2);
 
   inc() {
@@ -78,38 +82,31 @@ export class CounterComponent {
 - Schema validation: `spSchema`, `spSchemaValidator`
 - Middleware: `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`
 
-## Foundations Updates
-
-- `spComputed()` now exposes a read-only surface via `ReadonlySignalPlus<T>`.
-- `SignalPlus<T>` now includes `errors: Signal<string[]>` for consistent validation error access.
-- Builder monitoring is available via `sp().monitor(options)` and records updates through `spMonitor`.
-- Registered middleware now runs in normal `set`/`setValue`/`update` runtime paths for built signals.
-
 ## Comparisons
 
 ### ngx-signal-plus vs Angular native signals
 
-- Angular provides core signal primitives (signal, computed, effect) and now also resource/httpResource for async patterns.
+- Angular provides core signal primitives (`signal`, `computed`, `effect`). Newer Angular versions also provide `resource` and `httpResource`; availability and stability depend on the Angular major.
 - ngx-signal-plus focuses on higher-level utilities on top of signals: validation, persistence, undo/redo, middleware, transactions, collections, and query-style helpers.
-- Angular resource and httpResource are still marked experimental in Angular docs.
+- ngx-signal-plus supports Angular 16, where the resource APIs are unavailable.
 
 ### ngx-signal-plus vs NgRx Signals (@ngrx/signals)
 
 - NgRx Signals is a full state-management approach centered on Signal Store architecture (store features, methods/hooks, and structured app state patterns).
 - ngx-signal-plus is intentionally lighter: composable utilities that keep you close to native Angular signal usage without adopting a full store architecture.
-- @ngrx/signals is actively maintained (current npm line is 20.x).
+- NgRx Signals is the better fit when an application wants the Signal Store architecture.
 
 ### ngx-signal-plus vs TanStack Query (Angular)
 
 - TanStack Query is a dedicated server-state library (fetching, cache lifecycle, invalidation, retries, mutations).
-- The Angular adapter package is @tanstack/angular-query-experimental, and TanStack currently labels it experimental.
+- The Angular adapter is published as `@tanstack/angular-query-experimental`.
 - ngx-signal-plus includes query-style capabilities inside one package that also covers local signal utilities.
 
 ### ngx-signal-plus vs Akita
 
 - Akita is a store-centric architecture built around RxJS stores/queries.
 - ngx-signal-plus is signal-first and utility-first, designed for composable local/global signal state without store boilerplate.
-- Akita is no longer actively evolving like modern signal-first tools: the npm package is old (8.0.1, last published years ago), and the GitHub repository is archived.
+- Akita's GitHub repository is archived; existing Akita applications may still prefer its established store/query model.
 
 ## Documentation
 
@@ -120,8 +117,3 @@ export class CounterComponent {
 ## License
 
 MIT
-
-
-
-
-
