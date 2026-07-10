@@ -29,8 +29,8 @@ This file documents the full public API exported by `projects/signal-plus/src/pu
 
 ## Requirements
 
-- Angular `>=16`
-- TypeScript `>=5`
+- Angular 16 through 21
+- A TypeScript version supported by your Angular version
 
 ## Install
 
@@ -45,7 +45,7 @@ npm install ngx-signal-plus
 Creates a configurable signal builder for any value type, with validation, transforms, persistence, and history support.
 
 ```ts
-import { sp } from 'ngx-signal-plus';
+import { sp } from "ngx-signal-plus";
 
 const price = sp(10)
   .validate((v) => v >= 0)
@@ -62,7 +62,7 @@ console.log(price.value); // 12.5
 Creates a number-focused signal with optional min/max constraints and built-in history behavior.
 
 ```ts
-import { spCounter } from 'ngx-signal-plus';
+import { spCounter } from "ngx-signal-plus";
 
 const counter = spCounter(0, { min: 0, max: 5 });
 counter.update((v) => v + 1);
@@ -74,9 +74,9 @@ console.log(counter.value);
 Creates a boolean signal optimized for toggle state, with optional local persistence via a storage key.
 
 ```ts
-import { spToggle } from 'ngx-signal-plus';
+import { spToggle } from "ngx-signal-plus";
 
-const darkMode = spToggle(false, 'theme-mode');
+const darkMode = spToggle(false, "theme-mode");
 darkMode.update((v) => !v);
 console.log(darkMode.value);
 ```
@@ -86,10 +86,10 @@ console.log(darkMode.value);
 Provides ready-made form-oriented signal factories for text, email, and number input patterns.
 
 ```ts
-import { spForm } from 'ngx-signal-plus';
+import { spForm } from "ngx-signal-plus";
 
-const name = spForm.text('', { minLength: 3, maxLength: 20, debounce: 250 });
-const email = spForm.email('', { debounce: 250 });
+const name = spForm.text("", { minLength: 3, maxLength: 20, debounce: 250 });
+const email = spForm.email("", { debounce: 250 });
 const age = spForm.number({ initial: 18, min: 0, max: 120, debounce: 200 });
 
 console.log(name.value, name.isValid());
@@ -104,15 +104,11 @@ console.log(age.value, age.isValid());
 Wraps an existing Angular signal with the SignalBuilder API so you can add advanced behavior incrementally.
 
 ```ts
-import { signal } from '@angular/core';
-import { enhance } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { enhance } from "ngx-signal-plus";
 
 const base = signal(1);
-const enhanced = enhance(base)
-  .persist('enhanced-number')
-  .distinct()
-  .withHistory(5)
-  .build();
+const enhanced = enhance(base).persist("enhanced-number").distinct().withHistory(5).build();
 
 enhanced.setValue(2);
 console.log(enhanced.value);
@@ -121,11 +117,11 @@ console.log(enhanced.value);
 ## SignalBuilder (exported as `spSignalBuilder`)
 
 ```ts
-import { spSignalBuilder } from 'ngx-signal-plus';
+import { spSignalBuilder } from "ngx-signal-plus";
 
 const s = new spSignalBuilder(0)
   .validate((n) => n >= 0)
-  .monitor({ label: 'counter', trackUpdates: true })
+  .monitor({ label: "counter", trackUpdates: true })
   .debounce(100)
   .onError(console.error)
   .build();
@@ -179,12 +175,12 @@ interface SignalPlus<T> {
 Applies projection and predicate-style filtering to signal streams in a pipe-friendly way.
 
 ```ts
-import { signal } from '@angular/core';
-import { spMap, spFilter } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { spMap, spFilter } from "ngx-signal-plus";
 
 const n = signal(2);
-const mapped = n.pipe(spMap((v) => v * 10));
-const filtered = n.pipe(spFilter((v) => v > 0));
+const mapped = spMap((v: number) => v * 10)(n);
+const filtered = spFilter((v: number) => v > 0)(n);
 ```
 
 ### `spDebounceTime`, `spThrottleTime`, `spDelay`
@@ -192,13 +188,13 @@ const filtered = n.pipe(spFilter((v) => v > 0));
 Adds time-based control over signal emissions for smoothing bursts or deferring updates.
 
 ```ts
-import { signal } from '@angular/core';
-import { spDebounceTime, spThrottleTime, spDelay } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { spDebounceTime, spThrottleTime, spDelay } from "ngx-signal-plus";
 
-const input = signal('');
-const debounced = input.pipe(spDebounceTime(300));
-const throttled = input.pipe(spThrottleTime(100));
-const delayed = input.pipe(spDelay(200));
+const input = signal("");
+const debounced = spDebounceTime<string>(300)(input);
+const throttled = spThrottleTime<string>(100)(input);
+const delayed = spDelay<string>(200)(input);
 ```
 
 ### `spDistinctUntilChanged`, `spSkip`, `spTake`
@@ -206,13 +202,13 @@ const delayed = input.pipe(spDelay(200));
 Helps reduce noise by removing duplicates and limiting which emissions are passed through.
 
 ```ts
-import { signal } from '@angular/core';
-import { spDistinctUntilChanged, spSkip, spTake } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { spDistinctUntilChanged, spSkip, spTake } from "ngx-signal-plus";
 
 const source = signal([1, 2, 3, 4]);
-const distinct = source.pipe(spDistinctUntilChanged());
-const skipped = source.pipe(spSkip(1));
-const taken = source.pipe(spTake(2));
+const distinct = spDistinctUntilChanged<number[]>()(source);
+const skipped = spSkip<number[]>(1)(source);
+const taken = spTake<number[]>(2)(source);
 ```
 
 ### `spMerge`, `spCombineLatest`
@@ -220,8 +216,8 @@ const taken = source.pipe(spTake(2));
 Combines multiple signals either by forwarding latest changes or by synchronizing latest values.
 
 ```ts
-import { signal } from '@angular/core';
-import { spMerge, spCombineLatest } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { spMerge, spCombineLatest } from "ngx-signal-plus";
 
 const a = signal(1);
 const b = signal(2);
@@ -237,11 +233,11 @@ const combined = spCombineLatest([a, b]);
 Provides signal-composition helpers for combining values and evaluating boolean signal groups.
 
 ```ts
-import { signal } from '@angular/core';
-import { spAll, spAny, spCombine } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { spAll, spAny, spCombine } from "ngx-signal-plus";
 
-const first = signal('John');
-const last = signal('Doe');
+const first = signal("John");
+const last = signal("Doe");
 const fullName = spCombine([first, last], (f, l) => `${f} ${l}`);
 
 const isAdult = signal(true);
@@ -257,9 +253,9 @@ console.log(fullName(), allValid(), anyValid());
 Tracks signal updates and exports current debug state.
 
 ```ts
-import { sp, spDebug } from 'ngx-signal-plus';
+import { sp, spDebug } from "ngx-signal-plus";
 
-const counter = sp(0).debug('counter').build();
+const counter = sp(0).debug("counter").build();
 counter.setValue(1);
 counter.setValue(2);
 
@@ -272,28 +268,26 @@ console.log(spDebug.exportState());
 Collects opt-in signal performance metrics for update frequency and execution cost tracking.
 
 ```ts
-import { spMonitor } from 'ngx-signal-plus';
+import { spMonitor } from "ngx-signal-plus";
 
-spMonitor.trackSignal('counter');
-spMonitor.recordUpdate('counter', 4.2);
+spMonitor.trackSignal("counter");
+spMonitor.recordUpdate("counter", 4.2);
 
 console.log(spMonitor.getHotSignals());
 console.log(spMonitor.getSlowSignals(2));
-console.log(spMonitor.exportMetrics('json'));
+console.log(spMonitor.exportMetrics("json"));
 ```
+
 ### `spEffect(callback, options?)`
 
 Creates controllable effects with optional condition and debounce handling.
 
 ```ts
-import { signal } from '@angular/core';
-import { spEffect } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { spEffect } from "ngx-signal-plus";
 
 const count = signal(0);
-const controller = spEffect(
-  () => console.log('count changed', count()),
-  { condition: () => count() > 0, debounce: 200 },
-);
+const controller = spEffect(() => console.log("count changed", count()), { condition: () => count() > 0, debounce: 200 });
 
 controller.pause();
 controller.resume();
@@ -309,14 +303,14 @@ Creates a derived `ReadonlySignalPlus<T>` value with optional validation, transf
 Validation note: `options.validate` can return `true`, `false`, or a string message. String results are surfaced through `errors: Signal<string[]>`.
 
 ```ts
-import { signal } from '@angular/core';
-import { spComputed } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { spComputed } from "ngx-signal-plus";
 
-const first = signal('John');
-const last = signal('Doe');
+const first = signal("John");
+const last = signal("Doe");
 
 const fullName = spComputed(() => `${first()} ${last()}`, {
-  persist: 'full-name',
+  persist: "full-name",
   historySize: 5,
   validate: (v) => v.length > 0,
 });
@@ -333,20 +327,20 @@ console.log(fullName.value);
 Combines multiple controls into a structured group with aggregate validity, touched/dirty state, and errors.
 
 ```ts
-import { spForm, spFormGroup } from 'ngx-signal-plus';
+import { spForm, spFormGroup } from "ngx-signal-plus";
 
 const login = spFormGroup(
   {
-    email: spForm.email(''),
-    password: spForm.text('', { minLength: 8 }),
+    email: spForm.email(""),
+    password: spForm.text("", { minLength: 8 }),
   },
   {
-    persistKey: 'login-form',
-    validators: [(v) => (v.password.length >= 8 ? true : 'Password too short')],
+    persistKey: "login-form",
+    validators: [(v) => (v.password.length >= 8 ? true : "Password too short")],
   },
 );
 
-login.patchValue({ email: 'user@example.com' });
+login.patchValue({ email: "user@example.com" });
 console.log(login.value(), login.isValid(), login.errors());
 ```
 
@@ -357,10 +351,10 @@ console.log(login.value(), login.isValid(), login.errors());
 Builds a reusable async state container with loading, error, retry, cache, and manual refetch controls.
 
 ```ts
-import { spAsync } from 'ngx-signal-plus';
+import { spAsync } from "ngx-signal-plus";
 
 const users = spAsync<{ id: string; name: string }[]>({
-  fetcher: () => fetch('/api/users').then((r) => r.json()),
+  fetcher: () => fetch("/api/users").then((r) => r.json()),
   initialValue: null,
   retryCount: 2,
   retryDelay: 300,
@@ -379,20 +373,20 @@ console.log(users.data(), users.loading(), users.error());
 Creates an ID-based collection helper for CRUD, querying, and optional undo/redo history support.
 
 ```ts
-import { spCollection } from 'ngx-signal-plus';
+import { spCollection } from "ngx-signal-plus";
 
 type Todo = { id: string; title: string; done: boolean };
 
 const todos = spCollection<Todo>({
-  idField: 'id',
+  idField: "id",
   initialValue: [],
-  persist: 'todos',
+  persist: "todos",
   withHistory: true,
 });
 
-todos.add({ id: '1', title: 'Write docs', done: false });
-todos.update('1', { done: true });
-console.log(todos.findById('1'));
+todos.add({ id: "1", title: "Write docs", done: false });
+todos.update("1", { done: true });
+console.log(todos.findById("1"));
 console.log(todos.count(), todos.isEmpty());
 ```
 
@@ -403,9 +397,9 @@ console.log(todos.count(), todos.isEmpty());
 Registers middleware hooks that run during signal updates for cross-cutting concerns. Registered middleware is executed by built signals in normal `set`, `setValue`, and `update` paths.
 
 ```ts
-import { spUseMiddleware, spLoggerMiddleware } from 'ngx-signal-plus';
+import { spUseMiddleware, spLoggerMiddleware } from "ngx-signal-plus";
 
-spUseMiddleware(spLoggerMiddleware('[APP]'));
+spUseMiddleware(spLoggerMiddleware("[APP]"));
 ```
 
 ### Analytics middleware (`spAnalyticsMiddleware`)
@@ -413,7 +407,7 @@ spUseMiddleware(spLoggerMiddleware('[APP]'));
 Sends normalized signal change events to your tracking or telemetry pipeline.
 
 ```ts
-import { spUseMiddleware, spAnalyticsMiddleware } from 'ngx-signal-plus';
+import { spUseMiddleware, spAnalyticsMiddleware } from "ngx-signal-plus";
 
 spUseMiddleware(
   spAnalyticsMiddleware((event) => {
@@ -427,14 +421,10 @@ spUseMiddleware(
 Provides lifecycle controls for middleware registration and registry inspection.
 
 ```ts
-import {
-  spRemoveMiddleware,
-  spClearMiddleware,
-  spGetMiddlewareCount,
-} from 'ngx-signal-plus';
+import { spRemoveMiddleware, spClearMiddleware, spGetMiddlewareCount } from "ngx-signal-plus";
 
 console.log(spGetMiddlewareCount());
-spRemoveMiddleware('sp-logger');
+spRemoveMiddleware("sp-logger");
 spClearMiddleware();
 ```
 
@@ -445,7 +435,7 @@ spClearMiddleware();
 Runs a block atomically and rolls back tracked signal changes if an error occurs.
 
 ```ts
-import { sp, spTransaction } from 'ngx-signal-plus';
+import { sp, spTransaction } from "ngx-signal-plus";
 
 const a = sp(0).build();
 const b = sp(0).build();
@@ -461,7 +451,7 @@ spTransaction(() => {
 Groups multiple updates into a single batch context for coordinated state changes.
 
 ```ts
-import { sp, spBatch } from 'ngx-signal-plus';
+import { sp, spBatch } from "ngx-signal-plus";
 
 const x = sp(1).build();
 const y = sp(2).build();
@@ -477,12 +467,7 @@ spBatch(() => {
 Exposes runtime flags and tracked-signal helpers for transaction and batch-aware logic.
 
 ```ts
-import {
-  spIsTransactionActive,
-  spIsInTransaction,
-  spIsInBatch,
-  spGetModifiedSignals,
-} from 'ngx-signal-plus';
+import { spIsTransactionActive, spIsInTransaction, spIsInBatch, spGetModifiedSignals } from "ngx-signal-plus";
 
 console.log(spIsTransactionActive());
 console.log(spIsInTransaction(a));
@@ -497,7 +482,7 @@ console.log(spGetModifiedSignals());
 Initializes query caching behavior and defaults used by query and mutation helpers.
 
 ```ts
-import { QueryClient, setGlobalQueryClient } from 'ngx-signal-plus';
+import { QueryClient, setGlobalQueryClient } from "ngx-signal-plus";
 
 const client = new QueryClient({
   defaultOptions: { staleTime: 3000, retry: 1 },
@@ -511,19 +496,15 @@ setGlobalQueryClient(client);
 Defines reactive, cached server-state reads with refetching and stale-state handling.
 
 ```ts
-import { spQuery, createQuery } from 'ngx-signal-plus';
+import { spQuery, createQuery } from "ngx-signal-plus";
 
 const usersQuery = spQuery({
-  queryKey: ['users'],
-  queryFn: () => fetch('/api/users').then((r) => r.json()),
+  queryKey: ["users"],
+  queryFn: () => fetch("/api/users").then((r) => r.json()),
   staleTime: 5000,
 });
 
-const userQuery = createQuery(
-  ['user', '1'],
-  () => fetch('/api/user/1').then((r) => r.json()),
-  { retry: 2 },
-);
+const userQuery = createQuery(["user", "1"], () => fetch("/api/user/1").then((r) => r.json()), { retry: 2 });
 
 await usersQuery.refetch();
 usersQuery.invalidate();
@@ -534,20 +515,17 @@ usersQuery.invalidate();
 Defines tracked write operations with loading/error/success state and retry hooks.
 
 ```ts
-import { spMutation, createMutation } from 'ngx-signal-plus';
+import { spMutation, createMutation } from "ngx-signal-plus";
 
 const saveUser = spMutation({
-  mutationFn: (payload: { name: string }) =>
-    fetch('/api/user', { method: 'POST', body: JSON.stringify(payload) }).then((r) => r.json()),
+  mutationFn: (payload: { name: string }) => fetch("/api/user", { method: "POST", body: JSON.stringify(payload) }).then((r) => r.json()),
 });
 
-await saveUser.mutate({ name: 'Jane' });
+await saveUser.mutate({ name: "Jane" });
 
-const deleteUser = createMutation((id: string) =>
-  fetch(`/api/user/${id}`, { method: 'DELETE' }).then((r) => r.json()),
-);
+const deleteUser = createMutation((id: string) => fetch(`/api/user/${id}`, { method: "DELETE" }).then((r) => r.json()));
 
-await deleteUser.mutateAsync('1');
+await deleteUser.mutateAsync("1");
 ```
 
 ### Global client getter
@@ -555,28 +533,23 @@ await deleteUser.mutateAsync('1');
 Returns the shared query client instance so you can invalidate or update cache globally.
 
 ```ts
-import { getGlobalQueryClient } from 'ngx-signal-plus';
+import { getGlobalQueryClient } from "ngx-signal-plus";
 
 const qc = getGlobalQueryClient();
-qc.invalidateQueries(['users']);
+qc.invalidateQueries(["users"]);
 ```
 
 ### `createDependentQuery`
 
-Creates a query that automatically enables only when dependency signals are all truthy.
+Creates a query that enables when every dependency is defined, non-null, and not `false`. Values such as `0` and `''` remain valid dependencies.
 
 ```ts
-import { signal } from '@angular/core';
-import { createDependentQuery } from 'ngx-signal-plus';
+import { signal } from "@angular/core";
+import { createDependentQuery } from "ngx-signal-plus";
 
 const userId = signal<string | null>(null);
 
-const profileQuery = createDependentQuery(
-  ['profile', userId],
-  () => fetch(`/api/profile/${userId()}`).then((r) => r.json()),
-  [userId],
-  { staleTime: 5000 },
-);
+const profileQuery = createDependentQuery(["profile", userId], () => fetch(`/api/profile/${userId()}`).then((r) => r.json()), [userId], { staleTime: 5000 });
 ```
 
 ### `spInfiniteQuery` / `createInfiniteQuery`
@@ -584,10 +557,10 @@ const profileQuery = createDependentQuery(
 Handles paginated and infinite-scroll patterns with page tracking and next-page fetching.
 
 ```ts
-import { spInfiniteQuery } from 'ngx-signal-plus';
+import { spInfiniteQuery } from "ngx-signal-plus";
 
 const feed = spInfiniteQuery<number[], number>({
-  queryKey: ['feed'],
+  queryKey: ["feed"],
   queryFn: (page) => fetch(`/api/feed?page=${page}`).then((r) => r.json()),
   initialPageParam: 1,
   getNextPageParam: (_lastPage, allPages) => allPages.length + 1,
@@ -602,13 +575,12 @@ console.log(feed.pages(), feed.hasNextPage());
 Updates cached query data immediately, then rolls back automatically if the mutation fails.
 
 ```ts
-import { spMutation } from 'ngx-signal-plus';
+import { spMutation } from "ngx-signal-plus";
 
 const addTodo = spMutation({
-  mutationFn: (title: string) =>
-    fetch('/api/todos', { method: 'POST', body: JSON.stringify({ title }) }).then((r) => r.json()),
+  mutationFn: (title: string) => fetch("/api/todos", { method: "POST", body: JSON.stringify({ title }) }).then((r) => r.json()),
   optimisticUpdate: {
-    queryKey: ['todos'],
+    queryKey: ["todos"],
     updater: (current: { title: string }[] = [], title) => [...current, { title }],
     rollbackOnError: true,
     invalidateOnSettled: true,
@@ -621,28 +593,31 @@ const addTodo = spMutation({
 Warms the cache ahead of navigation or user intent to reduce loading states on next screen.
 
 ```ts
-import { getGlobalQueryClient } from 'ngx-signal-plus';
+import { getGlobalQueryClient } from "ngx-signal-plus";
 
 const qc = getGlobalQueryClient();
-await qc.prefetchQuery(['users'], {
-  queryKey: ['users'],
-  queryFn: () => fetch('/api/users').then((r) => r.json()),
+await qc.prefetchQuery(["users"], {
+  queryKey: ["users"],
+  queryFn: () => fetch("/api/users").then((r) => r.json()),
 });
 ```
+
 ## Schema Validation Helpers
+
+The schema helpers use structural typing and add no schema-library dependency. The examples below assume that your application has installed Zod; compatible schema libraries can be used instead.
 
 ### `spSchema`
 
 Converts a schema parser into a boolean validator compatible with signal validation APIs.
 
 ```ts
-import { z } from 'zod';
-import { spSchema } from 'ngx-signal-plus';
+import { z } from "zod";
+import { spSchema } from "ngx-signal-plus";
 
 const userSchema = z.object({ email: z.string().email() });
 const validateUser = spSchema(userSchema);
 
-console.log(validateUser({ email: 'a@b.com' })); // true
+console.log(validateUser({ email: "a@b.com" })); // true
 ```
 
 ### `spSchemaWithErrors`
@@ -650,8 +625,8 @@ console.log(validateUser({ email: 'a@b.com' })); // true
 Returns structured `{ valid, errors }` output for schema-based validation workflows.
 
 ```ts
-import { z } from 'zod';
-import { spSchemaWithErrors } from 'ngx-signal-plus';
+import { z } from "zod";
+import { spSchemaWithErrors } from "ngx-signal-plus";
 
 const schema = z.object({ age: z.number().min(18) });
 const validateWithErrors = spSchemaWithErrors(schema);
@@ -664,14 +639,14 @@ console.log(validateWithErrors({ age: 12 }));
 Provides both boolean and detailed-error validation methods from a single schema adapter.
 
 ```ts
-import { z } from 'zod';
-import { spSchemaValidator } from 'ngx-signal-plus';
+import { z } from "zod";
+import { spSchemaValidator } from "ngx-signal-plus";
 
 const schema = z.object({ name: z.string().min(1) });
 const validator = spSchemaValidator(schema);
 
-console.log(validator.validate({ name: '' }));
-console.log(validator.validateWithErrors({ name: '' }));
+console.log(validator.validate({ name: "" }));
+console.log(validator.validateWithErrors({ name: "" }));
 ```
 
 ## Presets and Validators
@@ -681,13 +656,13 @@ console.log(validator.validateWithErrors({ name: '' }));
 Offers preconfigured builders for common scenarios like counters, toggles, and search fields.
 
 ```ts
-import { spPresets } from 'ngx-signal-plus';
+import { spPresets } from "ngx-signal-plus";
 
 const c = spPresets.counter({ initial: 0, min: 0, max: 100 }).build();
 const t = spPresets.toggle(false).build();
-const f = spPresets.formInput({ initial: '', debounce: 200 }).build();
-const s = spPresets.searchField('').build();
-const p = spPresets.persistentToggle(false, 'pref-key').build();
+const f = spPresets.formInput({ initial: "", debounce: 200 }).build();
+const s = spPresets.searchField("").build();
+const p = spPresets.persistentToggle(false, "pref-key").build();
 
 console.log(c.value, t.value, f.value, s.value, p.value);
 ```
@@ -697,14 +672,14 @@ console.log(c.value, t.value, f.value, s.value, p.value);
 Provides reusable validator helpers grouped by type, including async validator factories.
 
 ```ts
-import { spValidators } from 'ngx-signal-plus';
+import { spValidators } from "ngx-signal-plus";
 
 const isPositive = spValidators.number.positive(5);
-const isShortEnough = spValidators.string.maxLength(10)('hello');
-const asyncUnique = spValidators.async.unique(async (v: string) => v !== 'taken');
+const isShortEnough = spValidators.string.maxLength(10)("hello");
+const asyncUnique = spValidators.async.unique(async (v: string) => v !== "taken");
 
 console.log(isPositive, isShortEnough);
-await asyncUnique('new-name');
+await asyncUnique("new-name");
 ```
 
 ## Managers
@@ -714,7 +689,7 @@ await asyncUnique('new-name');
 Low-level history utility for manual undo/redo stacks outside SignalPlus instances.
 
 ```ts
-import { spHistoryManager } from 'ngx-signal-plus';
+import { spHistoryManager } from "ngx-signal-plus";
 
 const history = new spHistoryManager<number>(0);
 history.push(1);
@@ -728,11 +703,11 @@ console.log(history.redo());
 SSR-safe local storage helper with namespacing and typed load/save methods.
 
 ```ts
-import { spStorageManager } from 'ngx-signal-plus';
+import { spStorageManager } from "ngx-signal-plus";
 
-spStorageManager.save('user-settings', { theme: 'dark' });
-const settings = spStorageManager.load<{ theme: string }>('user-settings');
-spStorageManager.remove('user-settings');
+spStorageManager.save("user-settings", { theme: "dark" });
+const settings = spStorageManager.load<{ theme: string }>("user-settings");
+spStorageManager.remove("user-settings");
 console.log(settings, spStorageManager.isAvailable());
 ```
 
@@ -743,19 +718,13 @@ console.log(settings, spStorageManager.isAvailable());
 Standardized error model and helpers for consistent diagnostics and guidance across the library.
 
 ```ts
-import {
-  SpError,
-  SpErrorCode,
-  SP_ERRORS,
-  spCreateError,
-  formatSpError,
-} from 'ngx-signal-plus';
+import { SpError, SpErrorCode, SP_ERRORS, spCreateError, formatSpError } from "ngx-signal-plus";
 
 const e1 = spCreateError(SpErrorCode.INIT_001);
 const e2 = new SpError(SpErrorCode.VAL_001);
 
 console.log(SP_ERRORS.INIT_001.message);
-console.log(formatSpError(SpErrorCode.VAL_001, 'Validation failed'));
+console.log(formatSpError(SpErrorCode.VAL_001, "Validation failed"));
 console.log(e1, e2);
 ```
 
@@ -766,11 +735,11 @@ console.log(e1, e2);
 Standalone Angular demo component that showcases core `ngx-signal-plus` capabilities.
 
 ```ts
-import { Component } from '@angular/core';
-import { spSignalPlusComponent } from 'ngx-signal-plus';
+import { Component } from "@angular/core";
+import { spSignalPlusComponent } from "ngx-signal-plus";
 
 @Component({
-  selector: 'app-demo',
+  selector: "app-demo",
   standalone: true,
   imports: [spSignalPlusComponent],
   template: `<lib-signal-plus />`,
@@ -783,8 +752,8 @@ export class DemoComponent {}
 Injectable service wrapper for creating signals through a service-oriented API style.
 
 ```ts
-import { inject } from '@angular/core';
-import { spSignalPlusService } from 'ngx-signal-plus';
+import { inject } from "@angular/core";
+import { spSignalPlusService } from "ngx-signal-plus";
 
 const signalPlus = inject(spSignalPlusService);
 const state = signalPlus.createSimple(0, { history: true });
@@ -795,7 +764,7 @@ console.log(state.value);
 
 ## SSR Safety
 
-The library guards browser-specific behavior internally (`localStorage`, `window`, event listeners, timers), so all features are safe to import and run in SSR.
+The library guards browser-only operations such as `localStorage`, `window`, and DOM event listeners. Core signal, validation, collection, and query APIs can be imported during SSR. Features that schedule work still follow their documented lifecycle and should be destroyed with their Angular owner or explicit cleanup API.
 
 ## Exported Types
 
@@ -810,9 +779,3 @@ The package also exports all primary types for strong typing:
 - Schema: `SchemaLike`, `SafeParseLike`, `SchemaValidationResult`, `ZodError`, `ZodErrorIssue`, `ZodLike`
 - Queries: `QueryKey`, `QueryOptions`, `QueryState`, `QueryResult`, `MutationOptions`, `MutationState`, `MutationResult`, `InfiniteQueryOptions`, `InfiniteQueryResult`
 - Errors: `SpErrorCode`, `SpErrorContext`, `SpErrorInfo`
-
-
-
-
-
-

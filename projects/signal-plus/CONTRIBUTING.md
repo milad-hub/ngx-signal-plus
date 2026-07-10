@@ -22,9 +22,10 @@ This project follows the [Angular Code of Conduct](https://github.com/angular/an
 
 ### Prerequisites
 
-- Node.js (^18.13.0 || ^20.9.0)
-- npm (latest stable version)
-- Angular CLI (^19.0.0)
+- Node.js `>=20.19.0` for the current Angular 20 workspace
+- npm
+
+Use the repository's local Angular CLI through npm scripts; no global Angular CLI installation is required.
 
 ### Development Setup
 
@@ -44,7 +45,7 @@ This project follows the [Angular Code of Conduct](https://github.com/angular/an
    ```
 5. Build the library:
    ```bash
-   ng build signal-plus
+   npm run build:lib
    ```
 
 ## Development Workflow
@@ -62,13 +63,14 @@ This project follows the [Angular Code of Conduct](https://github.com/angular/an
 3. Run tests to ensure your changes don't break existing functionality:
 
    ```bash
-   ng test signal-plus
+   npm run test:lib
    ```
 
 4. Run linting:
 
    ```bash
-   ng lint
+   npm run lint:lib
+   npm run format:check:lib
    ```
 
 5. Commit your changes following the commit message format:
@@ -95,6 +97,7 @@ This project follows the [Angular Code of Conduct](https://github.com/angular/an
 - Follow the AAA pattern (Arrange, Act, Assert)
 - Use Angular's TestBed for component/service testing
 - Use Jasmine for test assertions
+- Do not add comments to `*.spec.ts` files
 
 ### Test Structure
 
@@ -102,7 +105,7 @@ This project follows the [Angular Code of Conduct](https://github.com/angular/an
 describe("Component/Service name", () => {
   describe("Feature/Method name", () => {
     it("should describe expected behavior", () => {
-      // Test implementation
+      expect(true).toBe(true);
     });
   });
 });
@@ -122,14 +125,12 @@ Example:
 
 ```typescript
 describe("spCounter", () => {
-  it("should respect min/max constraints", () => {
+  it("should update within min/max constraints", () => {
     const counter = spCounter(5, { min: 0, max: 10 });
 
-    counter.setValue(15);
-    expect(counter.value()).toBe(10); // Should cap at max
+    counter.setValue(10);
 
-    counter.setValue(-5);
-    expect(counter.value()).toBe(0); // Should cap at min
+    expect(counter.value).toBe(10);
   });
 });
 ```
@@ -169,7 +170,7 @@ Brief description of the changes
 ## Checklist
 - [ ] My code follows the style guidelines of this project
 - [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
+- [ ] I have documented public APIs and kept necessary comments concise
 - [ ] I have made corresponding changes to the documentation (API.md)
 - [ ] My changes generate no new warnings
 - [ ] I have added tests that prove my fix is effective or that my feature works
@@ -189,10 +190,10 @@ Brief description of the changes
 
 ### Angular Guidelines
 
-- Follow [Angular Style Guide](https://angular.io/guide/styleguide)
+- Follow the [Angular Style Guide](https://angular.dev/style-guide)
 - Use Angular CLI for generating components/services
 - Implement proper lifecycle hooks
-- Handle cleanup in `ngOnDestroy`
+- Prefer `inject()` and use `DestroyRef` for owner-scoped cleanup
 - Use standalone components when possible
 - Follow Angular's DI pattern
 
@@ -249,7 +250,6 @@ Description of the feature and its purpose.
 ```typescript
 // Code example showing basic usage
 ```
-````
 
 ### Advanced Options
 
@@ -272,7 +272,6 @@ Parameters:
 Returns:
 
 - (ReturnType): Description of return value
-
 ````
 
 ### Code Comments
@@ -284,7 +283,6 @@ Returns:
 ## Release Process
 
 1. Version Update
-
    - Follow semantic versioning (MAJOR.MINOR.PATCH)
      - MAJOR: Breaking changes
      - MINOR: New features, no breaking changes
@@ -293,16 +291,15 @@ Returns:
    - Update package.json version
 
 2. Testing
-
-   - Run full test suite: `ng test signal-plus`
+   - Run full test suite: `npm run test:lib`
+   - Run lint and formatting checks: `npm run check`
    - Verify documentation is up-to-date
-   - Check bundle size: `ng build signal-plus --configuration production`
+   - Build the production package: `npm run build:lib`
 
 3. Publishing
-
    - Build production version:
      ```bash
-     ng build signal-plus --configuration production
+     npm run build:lib
      ```
    - Publish to npm:
      ```bash
@@ -312,4 +309,3 @@ Returns:
    - Create a GitHub release with release notes
 
 Thank you for contributing to ngx-signal-plus!
-````

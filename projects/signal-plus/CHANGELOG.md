@@ -4,6 +4,20 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.8.1]
+
+### Fixed
+
+- Prevented cancelled query fetches from overwriting newer query state during cancel/refetch races.
+- Centralized pending-debounce cleanup in `SignalBuilder`, including nullable debounced values and reset/undo/redo/destroy paths.
+- Improved persisted-data error handling and server-mode/localStorage safety.
+- Simplified transaction rollback, collection history restoration, and form-group dirty-state handling without changing their public APIs.
+
+### Changed
+
+- Simplified query and mutation retry loops while preserving retry behavior.
+- Expanded focused coverage across core signals, managers, operators, queries, forms, middleware, monitoring, platform utilities, schemas, collections, and transactions.
+
 ## [2.8.0]
 
 ### Added
@@ -18,7 +32,9 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 ### Changed
 
 - Middleware interfaces/types were moved from utility implementation to `models/` and re-exported through package type exports.
-- API and README documentation updated for builder monitoring and runtime middleware execution behavior.`r`n`r`n## [2.7.0]
+- API and README documentation updated for builder monitoring and runtime middleware execution behavior.
+
+## [2.7.0]
 
 ### Added
 
@@ -75,6 +91,7 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 - Improved reactive query type documentation comments/examples in `src/lib/reactive-queries/query-types.ts`.
 - Expanded npm package keywords for better discoverability.
 - Normalized changelog structure and rebuilt historical entries for consistency.
+
 ## [2.4.1]
 
 ### Added
@@ -103,12 +120,12 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 ### Added
 
 - Middleware system for signal operations:
-- `spUseMiddleware()`
-- `spRemoveMiddleware()`
-- `spClearMiddleware()`
-- `spGetMiddlewareCount()`
-- `spLoggerMiddleware()`
-- `spAnalyticsMiddleware()`
+  - `spUseMiddleware()`
+  - `spRemoveMiddleware()`
+  - `spClearMiddleware()`
+  - `spGetMiddlewareCount()`
+  - `spLoggerMiddleware()`
+  - `spAnalyticsMiddleware()`
 
 ## [2.1.0]
 
@@ -243,8 +260,3 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 ### Changed
 
 - Initial release stabilization (versioning/docs/keyword updates).
-
-
-
-
-

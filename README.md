@@ -3,12 +3,14 @@
 This README is for contributors and maintainers of the repository.
 
 For npm package usage, examples, and API highlights, use:
-- `projects/signal-plus/README.md`
+
+- [`projects/signal-plus/README.md`](projects/signal-plus/README.md)
 - https://www.npmjs.com/package/ngx-signal-plus
 
 ## Project Purpose
 
 `ngx-signal-plus` is an Angular library that extends Angular Signals with:
+
 - validation and presets,
 - persistence and history,
 - form/form-group helpers,
@@ -35,7 +37,8 @@ README.md            (this file, contributor-facing)
 ## Development Setup
 
 Requirements:
-- Node `>=18.13.0`
+
+- Node `>=20.19.0` for the current Angular 20 workspace
 - npm
 
 Install dependencies:
@@ -70,21 +73,15 @@ These are enforced working rules for this repository:
 - `projects/signal-plus/README.md`: npm consumer documentation.
 - `projects/signal-plus/docs/API.md`: full API reference.
 
-## Current API Notes
-
-- `spComputed()` is modeled as `ReadonlySignalPlus<T>` (read-only computed surface).
-- `SignalPlus<T>` includes `errors: Signal<string[]>` for validation error access.
-- `SignalBuilder.monitor(options)` enables opt-in update/performance tracking via `spMonitor`.
-- Registered middleware executes in standard `set`/`setValue`/`update` runtime paths.
-
 ## Release Notes
 
-- Changelog: `projects/signal-plus/CHANGELOG.md`
+- Changelog: [`projects/signal-plus/CHANGELOG.md`](projects/signal-plus/CHANGELOG.md)
 
 ## Contributing
 
 Please read:
-- `projects/signal-plus/CONTRIBUTING.md`
+
+- [`projects/signal-plus/CONTRIBUTING.md`](projects/signal-plus/CONTRIBUTING.md)
 
 ## License
 
