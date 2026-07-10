@@ -1,6 +1,6 @@
 {
   "name": "ngx-signal-plus",
-  "version": "2.8.1",
+  "version": "2.8.2",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
