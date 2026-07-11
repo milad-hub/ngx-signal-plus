@@ -91,8 +91,15 @@ See the [API reference](projects/signal-plus/docs/API.md) for the complete publi
 ## Documentation
 
 - [API reference](projects/signal-plus/docs/API.md)
+- [Examples application](projects/examples/README.md) and [API coverage map](projects/examples/API_COVERAGE.md)
 - [npm package](https://www.npmjs.com/package/ngx-signal-plus)
 - [Issues](https://github.com/milad-hub/ngx-signal-plus/issues)
+
+## Examples
+
+Run the Angular 20 workspace examples locally with `npm run start:examples`. The application covers signal enhancement, collections, forms, history, async state, queries, mutations, batching, debugging, and monitoring.
+
+[Open the examples in StackBlitz](https://stackblitz.com/github/milad-hub/ngx-signal-plus?startScript=start:examples)
 
 ## Project Status
 

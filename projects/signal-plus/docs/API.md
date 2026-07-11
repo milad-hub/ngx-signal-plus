@@ -2,6 +2,8 @@
 
 This file documents the full public API exported by `projects/signal-plus/src/public-api.ts`.
 
+For interactive Angular 20 examples, see the [examples application](../../examples/README.md).
+
 ## Table of Contents
 
 - [Requirements](#requirements)
