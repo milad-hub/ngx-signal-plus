@@ -4,7 +4,7 @@
   "tasks": [
     {
       "type": "npm",
-      "script": "start",
+      "script": "start:examples",
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
@@ -22,7 +22,7 @@
     },
     {
       "type": "npm",
-      "script": "test",
+      "script": "test:lib:watch",
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",

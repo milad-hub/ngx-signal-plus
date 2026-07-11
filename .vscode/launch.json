@@ -3,17 +3,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ng serve",
+      "name": "Examples",
       "type": "chrome",
       "request": "launch",
-      "preLaunchTask": "npm: start",
+      "preLaunchTask": "npm: start:examples",
       "url": "http://localhost:4200/"
     },
     {
-      "name": "ng test",
+      "name": "Signal Plus tests",
       "type": "chrome",
       "request": "launch",
-      "preLaunchTask": "npm: test",
+      "preLaunchTask": "npm: test:lib:watch",
       "url": "http://localhost:9876/debug.html"
     }
   ]
