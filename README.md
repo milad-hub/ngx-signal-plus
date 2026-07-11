@@ -7,10 +7,14 @@ Composable utilities for Angular Signals, including validation, persistence, his
 
 ## Key Features
 
-- Signal builders with validation, transforms, persistence, and undo/redo history
-- Form, form-group, async-state, and collection helpers
-- Reactive query, mutation, and infinite-query primitives
-- Transactions, batching, middleware, debugging, monitoring, and signal operators
+- **Signal utilities** — builders, enhancement, composition, and operators.
+- **Validation and schema helpers** — validators, presets, and schema adapters.
+- **Persistence and history** — local storage support and undo/redo state history.
+- **Forms and form groups** — signal-backed controls and grouped validation.
+- **Async state and collections** — loading state and collection CRUD helpers.
+- **Reactive queries and mutations** — query, mutation, dependent-query, and infinite-query primitives.
+- **Transactions and batching** — coordinated updates and rollback support.
+- **Middleware, debugging, and monitoring** — opt-in signal instrumentation and hooks.
 
 ## Installation
 
@@ -27,24 +31,12 @@ npm install ngx-signal-plus
 ## Quick Start
 
 ```typescript
-import { Component } from "@angular/core";
 import { sp } from "ngx-signal-plus";
 
-@Component({
-  standalone: true,
-  selector: "app-counter",
-  template: `
-    <p>Count: {{ counter.value }}</p>
-    <button type="button" (click)="increment()">Increment</button>
-  `,
-})
-export class CounterComponent {
-  public readonly counter = sp(0).build();
+const count = sp(0).build();
 
-  public increment(): void {
-    this.counter.setValue(this.counter.value + 1);
-  }
-}
+console.log(count.value);
+count.setValue(count.value + 1);
 ```
 
 ## Common Examples
@@ -65,17 +57,24 @@ editor.undo();
 
 Angular Signals provide the core reactive primitive. This package adds optional, composable utilities when an application needs concerns such as validation, persistence, history, collections, transactions, or query-style state.
 
+## Best Fit
+
+Use `ngx-signal-plus` when your application already uses Angular Signals and needs lightweight utilities without adopting a complete store architecture.
+
+Choose another approach when your team wants the NgRx Signal Store architecture, requires a dedicated server-state solution, or only needs Angular's native signal primitives.
+
 ## Core APIs
 
-| Category                              | APIs                                                                                                                                      |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Signal creation and enhancement       | `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`, `enhance`                                                                          |
-| Forms and validation                  | `spForm`, `spFormGroup`, `spValidators`, `spSchema`, `spSchemaValidator`, `spSchemaWithErrors`                                            |
-| Async state and collections           | `spAsync`, `spCollection`                                                                                                                 |
-| Reactive queries                      | `spQuery`, `spMutation`, `spInfiniteQuery`, `createQuery`, `createMutation`, `createInfiniteQuery`, `createDependentQuery`, `QueryClient` |
-| Transactions and batching             | `spTransaction`, `spBatch`                                                                                                                |
-| Middleware, debugging, and monitoring | `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`, `spDebug`, `spMonitor`, `spEffect`                |
-| Operators and composition             | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spCombine`, `spAll`, `spAny`               |
+| Category                              | Purpose                                       | Key APIs                                                                                                                                  |
+| ------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Signal creation and enhancement       | Create and extend signal-backed state.        | `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`, `enhance`                                                                          |
+| Validation, persistence, and history  | Add constraints, storage, and state history.  | `spValidators`, `spSchema`, `spSchemaValidator`, `spHistoryManager`, `spStorageManager`                                                   |
+| Forms and form groups                 | Build validated signal-backed form state.     | `spForm`, `spFormGroup`                                                                                                                   |
+| Async state and collections           | Model async values and mutable collections.   | `spAsync`, `spCollection`                                                                                                                 |
+| Reactive queries                      | Manage query, mutation, and pagination state. | `spQuery`, `spMutation`, `spInfiniteQuery`, `createQuery`, `createMutation`, `createInfiniteQuery`, `createDependentQuery`, `QueryClient` |
+| Transactions and batching             | Coordinate related state updates.             | `spTransaction`, `spBatch`                                                                                                                |
+| Middleware, debugging, and monitoring | Add hooks and inspect signal behavior.        | `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`, `spDebug`, `spMonitor`, `spEffect`                |
+| Operators and composition             | Transform and combine signal streams.         | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spCombine`, `spAll`, `spAny`               |
 
 See the [API reference](projects/signal-plus/docs/API.md) for the complete public API.
 
@@ -97,7 +96,7 @@ See the [API reference](projects/signal-plus/docs/API.md) for the complete publi
 
 ## Project Status
 
-The package declares Angular peer dependencies from 16.0.0 through 21.0.0. The repository includes build, test, lint, and formatting scripts. See the [changelog](projects/signal-plus/CHANGELOG.md) for documented release history.
+The package declares Angular peer dependencies from 16.0.0 through 21.0.0. The npm badge above shows the published version. The repository includes build, test, lint, and formatting scripts. Releases follow [Semantic Versioning](https://semver.org/); see the [changelog](projects/signal-plus/CHANGELOG.md) for documented release history.
 
 ## Development
 
