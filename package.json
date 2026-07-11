@@ -8,6 +8,7 @@
     "test:examples": "ng test examples --browsers=ChromeHeadless --watch=false",
     "check:examples": "ng lint examples && prettier --check \"projects/examples/**/*.{ts,html,css,json,md}\"",
     "test:lib": "ng test signal-plus --browsers=ChromeHeadless --watch=false",
+    "test:lib:watch": "ng test signal-plus",
     "test:lib:coverage": "ng test signal-plus --browsers=ChromeHeadless --watch=false --code-coverage",
     "lint:lib": "ng lint signal-plus",
     "format:lib": "prettier --write \"projects/signal-plus/**/*.{ts,html,css,scss,json,md}\"",
