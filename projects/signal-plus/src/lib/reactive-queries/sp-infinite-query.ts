@@ -1,6 +1,8 @@
 import {
   computed,
   DestroyRef,
+  effect,
+  EffectRef,
   inject,
   signal,
   Signal,
@@ -92,7 +94,7 @@ export function spInfiniteQuery<TData, TPageParam>(
     }
   };
 
-  let enabledWatcher: ReturnType<typeof setInterval> | null = null;
+  let enabledEffect: EffectRef | null = null;
   let previousEnabledState = false;
 
   const getEnabled = (): boolean => {
@@ -128,17 +130,20 @@ export function spInfiniteQuery<TData, TPageParam>(
 
   runIfEnabled();
 
-  if (typeof options.enabled !== 'boolean' && options.enabled) {
-    enabledWatcher = setInterval(runIfEnabled, 100);
+  if (destroyRef && typeof options.enabled !== 'boolean' && options.enabled) {
+    enabledEffect = effect(runIfEnabled);
   }
 
+  let destroyed = false;
+  const destroy = () => {
+    if (destroyed) return;
+    destroyed = true;
+    enabledEffect?.destroy();
+    enabledEffect = null;
+  };
+
   if (destroyRef) {
-    destroyRef.onDestroy(() => {
-      if (enabledWatcher) {
-        clearInterval(enabledWatcher);
-        enabledWatcher = null;
-      }
-    });
+    destroyRef.onDestroy(destroy);
   }
 
   return {
@@ -150,13 +155,17 @@ export function spInfiniteQuery<TData, TPageParam>(
     hasNextPage: computed(() => hasNextPageSignal()),
     refetch,
     fetchNextPage,
+    destroy,
   };
 }
 
 export function createInfiniteQuery<TData, TPageParam>(
   queryKey: string[],
   queryFn: (pageParam: TPageParam) => Promise<TData>,
-  options: Omit<InfiniteQueryOptions<TData, TPageParam>, 'queryKey' | 'queryFn'>,
+  options: Omit<
+    InfiniteQueryOptions<TData, TPageParam>,
+    'queryKey' | 'queryFn'
+  >,
 ): InfiniteQueryResult<TData> {
   return spInfiniteQuery({
     ...options,

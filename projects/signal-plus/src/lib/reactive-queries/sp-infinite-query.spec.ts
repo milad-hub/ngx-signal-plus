@@ -1,4 +1,10 @@
-import { signal } from '@angular/core';
+import {
+  createEnvironmentInjector,
+  EnvironmentInjector,
+  runInInjectionContext,
+  signal,
+} from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { QueryClient, setGlobalQueryClient } from './query-client';
 import { createInfiniteQuery, spInfiniteQuery } from './sp-infinite-query';
 
@@ -8,6 +14,7 @@ describe('spInfiniteQuery', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    TestBed.configureTestingModule({});
     queryClient = new QueryClient();
     setGlobalQueryClient(queryClient);
   });
@@ -101,25 +108,93 @@ describe('spInfiniteQuery', () => {
     const enabled = signal(false);
     let calls = 0;
 
-    const query = spInfiniteQuery<number, number>({
-      queryKey: ['infinite', 'signal-enabled'],
-      initialPageParam: 1,
-      queryFn: async (page) => {
-        calls += 1;
-        return page;
-      },
-      getNextPageParam: () => undefined,
-      enabled,
+    TestBed.runInInjectionContext(() => {
+      spInfiniteQuery<number, number>({
+        queryKey: ['infinite', 'signal-enabled'],
+        initialPageParam: 1,
+        queryFn: async (page) => {
+          calls += 1;
+          return page;
+        },
+        getNextPageParam: () => undefined,
+        enabled,
+      });
+      TestBed.flushEffects();
     });
 
-    await wait(120);
-    expect(query.pages()).toEqual([]);
+    await wait(25);
     expect(calls).toBe(0);
 
     enabled.set(true);
+    TestBed.flushEffects();
 
-    await wait(140);
-    expect(query.pages()).toEqual([1]);
+    await wait(25);
+    expect(calls).toBe(1);
+  });
+
+  it('should stop enabled-signal reactions after destroy', async () => {
+    const enabled = signal(true);
+    let calls = 0;
+    let query!: ReturnType<typeof spInfiniteQuery<number, number>>;
+
+    TestBed.runInInjectionContext(() => {
+      query = spInfiniteQuery<number, number>({
+        queryKey: ['infinite', 'destroy'],
+        initialPageParam: 1,
+        queryFn: async (page) => {
+          calls += 1;
+          return page;
+        },
+        getNextPageParam: () => undefined,
+        enabled,
+      });
+      TestBed.flushEffects();
+    });
+
+    await wait(25);
+    expect(calls).toBe(1);
+
+    query.destroy();
+    query.destroy();
+    enabled.set(false);
+    enabled.set(true);
+    TestBed.flushEffects();
+
+    await wait(25);
+    expect(calls).toBe(1);
+  });
+
+  it('should clean up enabled-signal reactions when its owner is destroyed', async () => {
+    const enabled = signal(true);
+    let calls = 0;
+    const injector = createEnvironmentInjector(
+      [],
+      TestBed.inject(EnvironmentInjector),
+    );
+
+    runInInjectionContext(injector, () => {
+      spInfiniteQuery<number, number>({
+        queryKey: ['infinite', 'owner-destroy'],
+        initialPageParam: 1,
+        queryFn: async (page) => {
+          calls += 1;
+          return page;
+        },
+        getNextPageParam: () => undefined,
+        enabled,
+      });
+    });
+    TestBed.flushEffects();
+
+    await wait(25);
+    expect(calls).toBe(1);
+
+    injector.destroy();
+    enabled.set(false);
+    enabled.set(true);
+    TestBed.flushEffects();
+
+    await wait(25);
     expect(calls).toBe(1);
   });
 
@@ -146,7 +221,8 @@ describe('spInfiniteQuery', () => {
       async (page) => page,
       {
         initialPageParam: 1,
-        getNextPageParam: (lastPage) => (lastPage < 2 ? lastPage + 1 : undefined),
+        getNextPageParam: (lastPage) =>
+          lastPage < 2 ? lastPage + 1 : undefined,
       },
     );
 

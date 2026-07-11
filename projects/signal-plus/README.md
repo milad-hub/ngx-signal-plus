@@ -78,6 +78,8 @@ Choose another approach when your team wants the NgRx Signal Store architecture,
 
 See the [API reference](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md) for the complete public API.
 
+Query results expose an idempotent `destroy()` method for manual cleanup. Signal-based `enabled` values react to changes when the query is created in an Angular injection context; outside one, the initial value is used without polling.
+
 ## Comparison
 
 | Tool                       | Primary focus                       | When it may fit better                                                                   |

@@ -105,13 +105,22 @@ export interface InfiniteQueryOptions<TData = unknown, TPageParam = unknown> {
   queryKey: QueryKey | any[];
   queryFn: (pageParam: TPageParam) => Promise<TData>;
   initialPageParam: TPageParam;
-  getNextPageParam: (lastPage: TData, allPages: TData[]) => TPageParam | undefined;
+  getNextPageParam: (
+    lastPage: TData,
+    allPages: TData[],
+  ) => TPageParam | undefined;
   enabled?: boolean | Signal<boolean>;
 }
 
-export interface OptimisticMutationOptions<TVariables = unknown, TQueryData = unknown> {
+export interface OptimisticMutationOptions<
+  TVariables = unknown,
+  TQueryData = unknown,
+> {
   queryKey: string[];
-  updater: (current: TQueryData | undefined, variables: TVariables) => TQueryData;
+  updater: (
+    current: TQueryData | undefined,
+    variables: TVariables,
+  ) => TQueryData;
   rollbackOnError?: boolean;
   invalidateOnSettled?: boolean;
 }
@@ -218,6 +227,7 @@ export interface QueryResult<T = unknown> {
   isIdle: Signal<boolean>;
   refetch: () => Promise<T>;
   invalidate: () => void;
+  destroy: () => void;
 }
 
 /**
@@ -245,4 +255,5 @@ export interface InfiniteQueryResult<T = unknown> {
   hasNextPage: Signal<boolean>;
   refetch: () => Promise<void>;
   fetchNextPage: () => Promise<void>;
+  destroy: () => void;
 }

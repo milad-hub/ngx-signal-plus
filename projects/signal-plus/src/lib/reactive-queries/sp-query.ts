@@ -84,7 +84,6 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
   }
 
   let unsubscribe: (() => void) | undefined;
-  let enabledInterval: ReturnType<typeof setInterval> | null = null;
 
   const initialEnabled =
     typeof options.enabled === 'boolean'
@@ -107,7 +106,7 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
     } else {
       let isCurrentlySubscribed = shouldSubscribeInitially;
 
-      try {
+      if (destroyRef) {
         enabledEffect = effect(() => {
           const enabled = (options.enabled as Signal<boolean>)();
           if (!enabled && isCurrentlySubscribed) {
@@ -119,35 +118,22 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
             isCurrentlySubscribed = true;
           }
         });
-      } catch {
-        enabledInterval = setInterval(() => {
-          const enabled = (options.enabled as Signal<boolean>)();
-          if (!enabled && isCurrentlySubscribed) {
-            unsubscribe?.();
-            unsubscribe = undefined;
-            isCurrentlySubscribed = false;
-          } else if (enabled && !isCurrentlySubscribed) {
-            unsubscribe = query.subscribe(observer);
-            isCurrentlySubscribed = true;
-          }
-        }, 100);
       }
     }
   }
 
-  const cleanup = () => {
-    if (enabledEffect) {
-      enabledEffect.destroy();
-    }
-    if (enabledInterval) {
-      clearInterval(enabledInterval);
-      enabledInterval = null;
-    }
+  let destroyed = false;
+  const destroy = () => {
+    if (destroyed) return;
+    destroyed = true;
+    enabledEffect?.destroy();
+    enabledEffect = null;
     unsubscribe?.();
+    unsubscribe = undefined;
   };
 
   if (destroyRef) {
-    destroyRef.onDestroy(cleanup);
+    destroyRef.onDestroy(destroy);
   }
 
   return {
@@ -165,6 +151,7 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
         isStaleSignal.set(true);
       });
     },
+    destroy,
   };
 }
 

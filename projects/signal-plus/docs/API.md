@@ -502,6 +502,8 @@ setGlobalQueryClient(client);
 
 Defines reactive, cached server-state reads with refetching and stale-state handling.
 
+Query results expose an idempotent `destroy()` method for manual cleanup. Signal-based `enabled` values react to changes when the query is created in an Angular injection context; outside one, the initial value is used without polling.
+
 ```ts
 import { spQuery, createQuery } from "ngx-signal-plus";
 
@@ -562,6 +564,8 @@ const profileQuery = createDependentQuery(["profile", userId], () => fetch(`/api
 ### `spInfiniteQuery` / `createInfiniteQuery`
 
 Handles paginated and infinite-scroll patterns with page tracking and next-page fetching.
+
+Infinite-query results expose the same idempotent `destroy()` cleanup method. Angular-owned queries are cleaned up with their owner.
 
 ```ts
 import { spInfiniteQuery } from "ngx-signal-plus";
