@@ -96,6 +96,7 @@ export function spInfiniteQuery<TData, TPageParam>(
 
   let enabledEffect: EffectRef | null = null;
   let previousEnabledState = false;
+  let destroyed = false;
 
   const getEnabled = (): boolean => {
     if (typeof options.enabled === 'boolean') {
@@ -108,6 +109,10 @@ export function spInfiniteQuery<TData, TPageParam>(
   };
 
   const runIfEnabled = (): void => {
+    if (destroyed) {
+      return;
+    }
+
     const enabled = getEnabled();
     if (!enabled) {
       previousEnabledState = false;
@@ -131,10 +136,13 @@ export function spInfiniteQuery<TData, TPageParam>(
   runIfEnabled();
 
   if (destroyRef && typeof options.enabled !== 'boolean' && options.enabled) {
-    enabledEffect = effect(runIfEnabled);
+    const enabled = options.enabled as Signal<boolean>;
+    enabledEffect = effect(() => {
+      enabled();
+      queueMicrotask(runIfEnabled);
+    });
   }
 
-  let destroyed = false;
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;

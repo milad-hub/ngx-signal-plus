@@ -69,8 +69,7 @@ Use the repository's local Angular CLI through npm scripts; no global Angular CL
 4. Run linting:
 
    ```bash
-   npm run lint:lib
-   npm run format:check:lib
+   npm run check:lib
    ```
 
 5. Commit your changes following the commit message format:
@@ -292,7 +291,7 @@ Returns:
 
 2. Testing
    - Run full test suite: `npm run test:lib`
-   - Run lint and formatting checks: `npm run check`
+   - Run lint and formatting checks: `npm run check:lib`
    - Verify documentation is up-to-date
    - Build the production package: `npm run build:lib`
 

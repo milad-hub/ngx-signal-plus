@@ -164,6 +164,33 @@ describe('spInfiniteQuery', () => {
     expect(calls).toBe(1);
   });
 
+  it('should not fetch a queued enabled transition after destroy', async () => {
+    const enabled = signal(false);
+    let calls = 0;
+    let query!: ReturnType<typeof spInfiniteQuery<number, number>>;
+
+    TestBed.runInInjectionContext(() => {
+      query = spInfiniteQuery<number, number>({
+        queryKey: ['infinite', 'queued-destroy'],
+        initialPageParam: 1,
+        queryFn: async (page) => {
+          calls += 1;
+          return page;
+        },
+        getNextPageParam: () => undefined,
+        enabled,
+      });
+      TestBed.flushEffects();
+    });
+
+    enabled.set(true);
+    TestBed.flushEffects();
+    query.destroy();
+
+    await wait(25);
+    expect(calls).toBe(0);
+  });
+
   it('should clean up enabled-signal reactions when its owner is destroyed', async () => {
     const enabled = signal(true);
     let calls = 0;
