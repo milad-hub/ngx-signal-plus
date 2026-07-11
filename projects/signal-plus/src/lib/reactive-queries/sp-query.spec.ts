@@ -107,6 +107,23 @@ describe('spQuery', () => {
     }, 50);
   });
 
+  it('should honor a default disabled option', (done) => {
+    queryClient = new QueryClient({ defaultOptions: { enabled: false } });
+    setGlobalQueryClient(queryClient);
+    let calls = 0;
+    const query = spQuery({
+      queryKey: ['default-disabled'],
+      queryFn: async () => ({ calls: ++calls }),
+    });
+
+    setTimeout(() => {
+      expect(calls).toBe(0);
+      expect(query.data()).toBeUndefined();
+      query.destroy();
+      done();
+    }, 10);
+  });
+
   it('should allow an enabled observer to fetch a disabled-first cached query', (done) => {
     let calls = 0;
     const queryFn = async () => ({ calls: ++calls });

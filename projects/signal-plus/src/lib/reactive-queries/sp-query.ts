@@ -46,8 +46,12 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
   const queryKey = Array.isArray(options.queryKey)
     ? options.queryKey
     : options.queryKey.key;
+  const observerOptions: QueryOptions<T> = {
+    ...(queryClient.getDefaultOptions() as Partial<QueryOptions<T>>),
+    ...options,
+  };
 
-  const dataSignal = signal<T | undefined>(options.initialData);
+  const dataSignal = signal<T | undefined>(observerOptions.initialData);
   const errorSignal = signal<Error | null>(null);
   const isLoadingSignal = signal(false);
   const isFetchingSignal = signal(false);
@@ -57,7 +61,7 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
   const isIdleSignal = signal(true);
 
   const observer: QueryObserver<T> = {
-    options,
+    options: observerOptions,
     onStateUpdate: (state: QueryState<T>) => {
       untracked(() => {
         dataSignal.set(state.data);
@@ -75,20 +79,16 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
   let query = queryClient.getQueryCache().get<T>(queryKey);
 
   if (!query) {
-    const mergedOptions: QueryOptions<T> = {
-      ...(queryClient.getDefaultOptions() as Partial<QueryOptions<T>>),
-      ...options,
-    };
-    query = new Query<T>(queryKey, mergedOptions);
+    query = new Query<T>(queryKey, observerOptions);
     queryClient.getQueryCache().set(queryKey, query);
   }
 
   let unsubscribe: (() => void) | undefined;
 
   const initialEnabled =
-    typeof options.enabled === 'boolean'
-      ? options.enabled
-      : (options.enabled as Signal<boolean> | undefined)?.();
+    typeof observerOptions.enabled === 'boolean'
+      ? observerOptions.enabled
+      : (observerOptions.enabled as Signal<boolean> | undefined)?.();
   const shouldSubscribeInitially = initialEnabled !== false;
 
   if (shouldSubscribeInitially) {
@@ -97,9 +97,9 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
 
   let enabledEffect: EffectRef | null = null;
 
-  if (options.enabled !== undefined) {
-    if (typeof options.enabled === 'boolean') {
-      if (!options.enabled) {
+  if (observerOptions.enabled !== undefined) {
+    if (typeof observerOptions.enabled === 'boolean') {
+      if (!observerOptions.enabled) {
         unsubscribe?.();
         unsubscribe = undefined;
       }
@@ -108,7 +108,7 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
 
       if (destroyRef) {
         enabledEffect = effect(() => {
-          const enabled = (options.enabled as Signal<boolean>)();
+          const enabled = (observerOptions.enabled as Signal<boolean>)();
           if (!enabled && isCurrentlySubscribed) {
             unsubscribe?.();
             unsubscribe = undefined;
