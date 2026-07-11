@@ -299,11 +299,7 @@ export class Query<T = unknown> {
     };
     this.notify();
 
-    if (
-      Array.from(this.observers).some(
-        (observer) => observer.options.enabled !== false,
-      )
-    ) {
+    if (this.hasEnabledObservers()) {
       this.fetch().catch(() => undefined);
     }
   }
@@ -351,8 +347,9 @@ export class Query<T = unknown> {
     ) {
       this.refetchInterval = setInterval(() => {
         if (
-          this.options.refetchIntervalInBackground ||
-          document.visibilityState === 'visible'
+          this.hasEnabledObservers() &&
+          (this.options.refetchIntervalInBackground ||
+            document.visibilityState === 'visible')
         ) {
           this.fetch().catch(() => undefined);
         }
@@ -398,13 +395,13 @@ export class Query<T = unknown> {
   }
 
   private handleFocus = (): void => {
-    if (this.options.refetchOnWindowFocus && this.hasObservers()) {
+    if (this.options.refetchOnWindowFocus && this.hasEnabledObservers()) {
       this.fetch().catch(() => undefined);
     }
   };
 
   private handleReconnect = (): void => {
-    if (this.options.refetchOnReconnect && this.hasObservers()) {
+    if (this.options.refetchOnReconnect && this.hasEnabledObservers()) {
       this.fetch().catch(() => undefined);
     }
   };
@@ -423,6 +420,12 @@ export class Query<T = unknown> {
 
   hasObservers(): boolean {
     return this.observers.size > 0;
+  }
+
+  hasEnabledObservers(): boolean {
+    return Array.from(this.observers).some(
+      (observer) => observer.options.enabled !== false,
+    );
   }
 
   getState(): QueryState<T> {
