@@ -105,6 +105,10 @@ Run the Angular 20 workspace examples locally with `npm run start:examples`. The
 
 The package declares Angular peer dependencies from 16.0.0 through 21.0.0. The npm badge above shows the published version. The repository includes build, test, lint, and formatting scripts. Releases follow [Semantic Versioning](https://semver.org/); see the [changelog](projects/signal-plus/CHANGELOG.md) for documented release history.
 
+## Deprecation Policy
+
+Deprecated public APIs are marked in JSDoc and announced in the [changelog](projects/signal-plus/CHANGELOG.md). They remain available for at least one MINOR release and are removed only in a MAJOR release.
+
 ## Development
 
 ### Repository Layout
