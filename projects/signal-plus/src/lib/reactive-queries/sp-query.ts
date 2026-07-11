@@ -85,11 +85,10 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
 
   let unsubscribe: (() => void) | undefined;
 
-  const initialEnabled =
-    typeof observerOptions.enabled === 'boolean'
-      ? observerOptions.enabled
-      : (observerOptions.enabled as Signal<boolean> | undefined)?.();
-  const shouldSubscribeInitially = initialEnabled !== false;
+  const shouldSubscribeInitially =
+    typeof observerOptions.enabled === 'function'
+      ? observerOptions.enabled()
+      : true;
 
   if (shouldSubscribeInitially) {
     unsubscribe = query.subscribe(observer);
@@ -97,28 +96,24 @@ export function spQuery<T>(options: QueryOptions<T>): QueryResult<T> {
 
   let enabledEffect: EffectRef | null = null;
 
-  if (observerOptions.enabled !== undefined) {
-    if (typeof observerOptions.enabled === 'boolean') {
-      if (!observerOptions.enabled) {
-        unsubscribe?.();
-        unsubscribe = undefined;
-      }
-    } else {
-      let isCurrentlySubscribed = shouldSubscribeInitially;
+  if (
+    typeof observerOptions.enabled !== 'boolean' &&
+    observerOptions.enabled !== undefined
+  ) {
+    let isCurrentlySubscribed = shouldSubscribeInitially;
 
-      if (destroyRef) {
-        enabledEffect = effect(() => {
-          const enabled = (observerOptions.enabled as Signal<boolean>)();
-          if (!enabled && isCurrentlySubscribed) {
-            unsubscribe?.();
-            unsubscribe = undefined;
-            isCurrentlySubscribed = false;
-          } else if (enabled && !isCurrentlySubscribed) {
-            unsubscribe = query.subscribe(observer);
-            isCurrentlySubscribed = true;
-          }
-        });
-      }
+    if (destroyRef) {
+      enabledEffect = effect(() => {
+        const enabled = (observerOptions.enabled as Signal<boolean>)();
+        if (!enabled && isCurrentlySubscribed) {
+          unsubscribe?.();
+          unsubscribe = undefined;
+          isCurrentlySubscribed = false;
+        } else if (enabled && !isCurrentlySubscribed) {
+          unsubscribe = query.subscribe(observer);
+          isCurrentlySubscribed = true;
+        }
+      });
     }
   }
 

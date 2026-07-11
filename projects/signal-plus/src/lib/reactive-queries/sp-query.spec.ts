@@ -116,9 +116,11 @@ describe('spQuery', () => {
       queryFn: async () => ({ calls: ++calls }),
     });
 
-    setTimeout(() => {
+    setTimeout(async () => {
       expect(calls).toBe(0);
       expect(query.data()).toBeUndefined();
+      await query.refetch();
+      expect(query.data()).toEqual({ calls: 1 });
       query.destroy();
       done();
     }, 10);
