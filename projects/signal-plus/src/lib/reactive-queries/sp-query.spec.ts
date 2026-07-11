@@ -107,6 +107,29 @@ describe('spQuery', () => {
     }, 50);
   });
 
+  it('should allow an enabled observer to fetch a disabled-first cached query', (done) => {
+    let calls = 0;
+    const queryFn = async () => ({ calls: ++calls });
+    const disabledQuery = spQuery({
+      queryKey: ['disabled-first'],
+      queryFn,
+      enabled: false,
+    });
+    const enabledQuery = spQuery({
+      queryKey: ['disabled-first'],
+      queryFn,
+      enabled: true,
+    });
+
+    setTimeout(() => {
+      expect(calls).toBe(1);
+      expect(enabledQuery.data()).toEqual({ calls: 1 });
+      disabledQuery.destroy();
+      enabledQuery.destroy();
+      done();
+    }, 10);
+  });
+
   it('should handle enabled option (signal)', (done) => {
     const enabledSignal = signal(false);
     let query!: ReturnType<typeof spQuery<{ data: string }>>;

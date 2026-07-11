@@ -504,6 +504,8 @@ Defines reactive, cached server-state reads with refetching and stale-state hand
 
 Query results expose an idempotent `destroy()` method for manual cleanup. Signal-based `enabled` values react to changes when the query is created in an Angular injection context; outside one, the initial value is used without polling.
 
+For a shared cached query, `enabled` is evaluated per observer, so a disabled consumer does not prevent another enabled consumer from fetching.
+
 ```ts
 import { spQuery, createQuery } from "ngx-signal-plus";
 

@@ -1,6 +1,6 @@
 {
   "name": "ngx-signal-plus",
-  "version": "2.9.0",
+  "version": "2.9.1",
   "scripts": {
     "build:lib": "ng build signal-plus --configuration production",
     "start:examples": "npm run build:lib && ng serve examples",
