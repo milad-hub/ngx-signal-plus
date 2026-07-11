@@ -91,6 +91,8 @@ See the [API reference](https://github.com/milad-hub/ngx-signal-plus/blob/main/p
 ## Documentation
 
 - [API reference](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md)
+- [Examples application](https://github.com/milad-hub/ngx-signal-plus/tree/main/projects/examples)
+- [Open examples in StackBlitz](https://stackblitz.com/github/milad-hub/ngx-signal-plus?startScript=start:examples)
 - [Repository README](https://github.com/milad-hub/ngx-signal-plus/blob/main/README.md)
 - [Contributing guide](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/CONTRIBUTING.md)
 - [Changelog](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/CHANGELOG.md)

@@ -1,0 +1,583 @@
+<header class="hero" id="top">
+  <div class="eyebrow"><span></span> Angular Signals playground</div>
+  <div class="hero-copy">
+    <p class="kicker">ngx-signal-plus</p>
+    <h1>Make reactive state feel <em>effortless.</em></h1>
+    <p class="lede">
+      A live dashboard for validation, persistence, history, collections, and
+      query state—powered by the local workspace library.
+    </p>
+  </div>
+  <div class="hero-stats" aria-label="Example capabilities">
+    <div><strong>11</strong><span>interactive flows</span></div>
+    <div><strong>40+</strong><span>APIs demonstrated</span></div>
+    <div><strong>0</strong><span>external APIs</span></div>
+  </div>
+</header>
+
+<nav class="capability-nav" aria-label="Example sections">
+  <a href="#counter">State</a><a href="#todos">Collections</a>
+  <a href="#forms">Forms</a><a href="#editor">History</a>
+  <a href="#async">Async</a><a href="#cart">Cart</a>
+  <a href="#diagnostics">Diagnostics</a><a href="#composition">Composition</a>
+  <a href="#operators">Operators</a><a href="#presets">Presets</a>
+  <a href="#errors">Errors</a>
+</nav>
+
+<main class="dashboard">
+  <section class="panel panel-feature" id="counter">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">01 / State</p>
+        <h2>Counter control room</h2>
+      </div>
+      <span class="status-pill">Persisted</span>
+    </div>
+    <p class="panel-copy">
+      <code>sp()</code> adds validation, local persistence, history, and derived
+      state.
+    </p>
+    <div class="metric-row">
+      <div class="metric">
+        <span>Current value</span><strong>{{ counter.value }}</strong>
+      </div>
+      <div class="metric metric-accent">
+        <span>Computed double</span><strong>{{ doubled() }}</strong>
+      </div>
+    </div>
+    <div class="button-row">
+      <button
+        class="button button-primary"
+        type="button"
+        (click)="changeCounter(1)"
+      >
+        Increase
+      </button>
+      <button class="button" type="button" (click)="changeCounter(-1)">
+        Decrease
+      </button>
+      <button
+        class="button button-quiet"
+        type="button"
+        (click)="counter.undo()"
+      >
+        Undo
+      </button>
+      <button
+        class="button button-quiet"
+        type="button"
+        (click)="counter.redo()"
+      >
+        Redo
+      </button>
+      <button
+        class="button button-danger"
+        type="button"
+        (click)="counter.reset()"
+      >
+        Reset
+      </button>
+    </div>
+  </section>
+
+  <section class="panel panel-wide" id="todos">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">02 / Collections</p>
+        <h2>Todo flow</h2>
+      </div>
+      <span class="status-pill status-cyan">{{ todos.count() }} total</span>
+    </div>
+    <p class="panel-copy">
+      <code>spCollection()</code> provides persisted CRUD, filters, and
+      collection history.
+    </p>
+    <div class="composer">
+      <input
+        #todoTitle
+        id="todo-title"
+        placeholder="What needs attention?"
+        aria-label="New todo"
+      /><button
+        class="button button-primary"
+        type="button"
+        (click)="addTodo(todoTitle.value); todoTitle.value = ''"
+      >
+        Add task
+      </button>
+    </div>
+    <div class="toolbar">
+      <div class="segmented" aria-label="Todo filter">
+        <button
+          type="button"
+          [class.is-active]="todoFilter() === 'all'"
+          (click)="todoFilter.set('all')"
+        >
+          All</button
+        ><button
+          type="button"
+          [class.is-active]="todoFilter() === 'active'"
+          (click)="todoFilter.set('active')"
+        >
+          Active {{ activeTodos().length }}</button
+        ><button
+          type="button"
+          [class.is-active]="todoFilter() === 'completed'"
+          (click)="todoFilter.set('completed')"
+        >
+          Done {{ completedTodos().length }}
+        </button>
+      </div>
+      <div>
+        <button
+          class="button button-quiet"
+          type="button"
+          (click)="todos.undo()"
+        >
+          Undo</button
+        ><button
+          class="button button-quiet"
+          type="button"
+          (click)="todos.redo()"
+        >
+          Redo
+        </button>
+      </div>
+    </div>
+    <ul class="todo-list">
+      @for (todo of filteredTodos(); track todo.id) {
+      <li [class.is-complete]="todo.completed">
+        <label class="check"
+          ><input
+            type="checkbox"
+            [checked]="todo.completed"
+            (change)="todos.update(todo.id, { completed: !todo.completed })"
+          /><span>{{ todo.title }}</span></label
+        >
+        <div class="todo-actions">
+          <input
+            #editedTitle
+            [value]="todo.title"
+            [attr.aria-label]="'Edit ' + todo.title"
+          /><button
+            class="button button-quiet"
+            type="button"
+            (click)="editTodo(todo.id, editedTitle.value)"
+          >
+            Save</button
+          ><button
+            class="icon-button"
+            type="button"
+            [attr.aria-label]="'Remove ' + todo.title"
+            (click)="todos.remove(todo.id)"
+          >
+            Remove
+          </button>
+        </div>
+      </li>
+      } @empty {
+      <li class="empty-state">Add a task to see collection state in action.</li>
+      }
+    </ul>
+  </section>
+
+  <section class="panel" id="forms">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">03 / Forms</p>
+        <h2>Profile guardrails</h2>
+      </div>
+      <span class="status-pill" [class.is-valid]="profile.isValid()"
+        >{{ profile.isValid() ? 'Valid' : 'Needs input' }}</span
+      >
+    </div>
+    <p class="panel-copy">
+      Three validated signals grouped with <code>spFormGroup()</code>.
+    </p>
+    <div class="field-grid">
+      <label
+        >Name<input
+          #profileName
+          [value]="name.value"
+          placeholder="Ada Lovelace" /></label
+      ><label
+        >Email<input
+          #profileEmail
+          [value]="email.value"
+          placeholder="ada@example.com" /></label
+      ><label>Age<input #profileAge type="number" [value]="age.value" /></label>
+    </div>
+    <div class="button-row">
+      <button
+        class="button button-primary"
+        type="button"
+        (click)="updateProfile(profileName.value, profileEmail.value, +profileAge.value)"
+      >
+        Submit profile</button
+      ><button
+        class="button button-quiet"
+        type="button"
+        (click)="profile.reset()"
+      >
+        Reset
+      </button>
+    </div>
+    <p class="form-message" [class.has-message]="formMessage()">
+      {{ formMessage() || 'Required fields are validated before state changes.'
+      }}
+    </p>
+  </section>
+
+  <section class="panel" id="editor">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">04 / History</p>
+        <h2>Settings editor</h2>
+      </div>
+      <span class="status-pill status-violet"
+        >{{ editor.history().length }} snapshots</span
+      >
+    </div>
+    <textarea
+      #editorInput
+      [value]="editor.value"
+      aria-label="Editor text"
+      (input)="editor.setValue(editorInput.value)"
+    ></textarea>
+    <div class="button-row">
+      <button class="button button-quiet" type="button" (click)="editor.undo()">
+        Undo change</button
+      ><button
+        class="button button-quiet"
+        type="button"
+        (click)="editor.redo()"
+      >
+        Redo change</button
+      ><button
+        class="button button-danger"
+        type="button"
+        (click)="editor.reset()"
+      >
+        Restore
+      </button>
+    </div>
+  </section>
+
+  <section class="panel panel-wide" id="async">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">05 / Async</p>
+        <h2>Data without the network</h2>
+      </div>
+      <span class="status-pill status-cyan">Deterministic mock</span>
+    </div>
+    <p class="panel-copy">
+      Local promises keep <code>spAsync()</code>, queries, mutations, caching,
+      and retries predictable.
+    </p>
+    <div class="async-grid">
+      <div class="async-card">
+        <span>Async state</span><strong>{{ asyncMessage.data() }}</strong
+        ><small>Loading: {{ asyncMessage.loading() }}</small
+        ><button class="button" type="button" (click)="asyncMessage.refetch()">
+          Load
+        </button>
+      </div>
+      <div class="async-card">
+        <span>Query cache</span><strong>{{ query.data() || 'Ready' }}</strong
+        ><small>Loading: {{ query.isLoading() }}</small
+        ><button class="button" type="button" (click)="query.refetch()">
+          Refetch
+        </button>
+      </div>
+      <div class="async-card">
+        <span>Mutation</span><strong>{{ mutation.data() || 'Idle' }}</strong
+        ><small>Local write operation</small
+        ><button
+          class="button button-primary"
+          type="button"
+          (click)="mutation.mutate('Mutation completed')"
+        >
+          Run mutation
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="cart">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">06 / Batching</p>
+        <h2>Cart calculator</h2>
+      </div>
+      <span class="status-pill">{{ cartCount() }} items</span>
+    </div>
+    <div class="cart-total">
+      <span>Subtotal</span><strong>{{ cartSubtotal() }}</strong>
+    </div>
+    <button class="button button-primary" type="button" (click)="addCartItem()">
+      Add notebook
+    </button>
+    <ul class="cart-list">
+      @for (item of cart.value; track item.id) {
+      <li>
+        <div>
+          <strong>{{ item.name }}</strong><span>{{ item.price }} each</span>
+        </div>
+        <div class="quantity">
+          <button type="button" (click)="updateCartQuantity(item.id, -1)">
+            -</button
+          ><span>{{ item.quantity }}</span
+          ><button type="button" (click)="updateCartQuantity(item.id, 1)">
+            +
+          </button>
+        </div>
+      </li>
+      } @empty {
+      <li class="empty-state">Your batched cart is empty.</li>
+      }
+    </ul>
+  </section>
+
+  <section class="panel" id="diagnostics">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">07 / Diagnostics</p>
+        <h2>Signal telemetry</h2>
+      </div>
+      <span class="status-pill status-violet">Live</span>
+    </div>
+    <p class="panel-copy">
+      Counter updates are tracked by <code>spDebug</code> and
+      <code>spMonitor</code>.
+    </p>
+    <output>{{ debugState() }}</output><output>{{ monitorState() }}</output>
+  </section>
+
+  <section class="panel panel-wide" id="composition">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">08 / Composition</p>
+        <h2>Compose, validate, paginate</h2>
+      </div>
+      <span class="status-pill status-cyan">All local</span>
+    </div>
+    <div class="metric-row compact">
+      <div class="metric">
+        <span>Enhanced</span><strong>{{ enhancedNative.value }}</strong>
+      </div>
+      <div class="metric">
+        <span>Combined</span><strong>{{ combined() }}</strong>
+      </div>
+      <div class="metric">
+        <span>All positive</span><strong>{{ allPositive() }}</strong>
+      </div>
+      <div class="metric metric-accent">
+        <span>Derived</span><strong>{{ derivedCounter.value }}</strong>
+      </div>
+    </div>
+    <div class="button-row">
+      <button class="button" type="button" (click)="incrementNativeSource()">
+        Update native signal</button
+      ><button class="button" type="button" (click)="infiniteQuery.refetch()">
+        Load first page</button
+      ><button
+        class="button"
+        type="button"
+        (click)="infiniteQuery.fetchNextPage()"
+      >
+        Next page</button
+      ><button class="button" type="button" (click)="dependentQuery.refetch()">
+        Dependent query</button
+      ><button
+        class="button button-primary"
+        type="button"
+        (click)="featureToggle.setValue(!featureToggle.value)"
+      >
+        Feature: {{ featureToggle.value ? 'on' : 'off' }}
+      </button>
+    </div>
+    <div class="composition-results">
+      <span>Pages: {{ infiniteQuery.pages() }}</span
+      ><span>Dependent: {{ dependentQuery.data() || 'Ready' }}</span
+      ><span>Schema valid: {{ schemaCheck.validate({ name: 'Example' }) }}</span
+      ><span>Effect paused: {{ effectController.isPaused() }}</span>
+    </div>
+  </section>
+  <section class="panel panel-wide" id="operators">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">09 / Operators</p>
+        <h2>Operator pipeline</h2>
+      </div>
+      <span class="status-pill status-cyan">10 operators live</span>
+    </div>
+    <p class="panel-copy">
+      One search input and one pulse stream drive
+      <code>spDebounceTime</code>, <code>spDistinctUntilChanged</code>,
+      <code>spMap</code>, <code>spFilter</code>, <code>spThrottleTime</code>,
+      <code>spDelay</code>, <code>spSkip</code>, <code>spTake</code>,
+      <code>spMerge</code>, and <code>spCombineLatest</code>.
+    </p>
+    <div class="composer">
+      <input
+        #operatorSearch
+        [value]="searchTerm()"
+        placeholder="Type to feed the pipeline…"
+        aria-label="Operator search input"
+        (input)="searchTerm.set(operatorSearch.value)"
+      /><button class="button button-primary" type="button" (click)="sendPulse()">
+        Send pulse ({{ pulse() }})
+      </button>
+    </div>
+    <div class="metric-row compact">
+      <div class="metric">
+        <span>Debounced + distinct</span
+        ><strong>{{ debouncedSearch() || '—' }}</strong>
+      </div>
+      <div class="metric">
+        <span>Mapped uppercase</span><strong>{{ shoutedSearch() || '—' }}</strong>
+      </div>
+      <div class="metric">
+        <span>Filter ≥ 3 chars</span><strong>{{ longSearch() || '—' }}</strong>
+      </div>
+      <div class="metric metric-accent">
+        <span>Any stream active</span><strong>{{ anyActive() }}</strong>
+      </div>
+    </div>
+    <div class="metric-row compact">
+      <div class="metric">
+        <span>Throttled 1s</span><strong>{{ throttledPulse() }}</strong>
+      </div>
+      <div class="metric">
+        <span>Delayed 600ms</span><strong>{{ delayedPulse() }}</strong>
+      </div>
+      <div class="metric">
+        <span>Skip first 2</span><strong>{{ pulseAfterTwo() }}</strong>
+      </div>
+      <div class="metric">
+        <span>Take first 3</span><strong>{{ firstThreePulses() }}</strong>
+      </div>
+    </div>
+    <div class="composition-results">
+      <span>Merged pulse + native: {{ mergedStreams() }}</span
+      ><span>Combined latest: [{{ latestPair().join(', ') }}]</span>
+    </div>
+  </section>
+
+  <section class="panel" id="presets">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">10 / Presets</p>
+        <h2>Ready-made signals</h2>
+      </div>
+      <span
+        class="status-pill"
+        [class.is-valid]="username.isValid() && contactEmail.isValid()"
+        >{{ username.isValid() && contactEmail.isValid() ? 'Valid' : 'Needs input'
+        }}</span
+      >
+    </div>
+    <p class="panel-copy">
+      <code>spCounter</code>, <code>spForm</code>, <code>spPresets</code>, and
+      <code>spValidators</code> ship validation and history preconfigured.
+    </p>
+    <div class="metric-row">
+      <div class="metric">
+        <span>Bounded counter (0–10)</span
+        ><strong>{{ boundedCounter.value }}</strong>
+      </div>
+      <div class="metric metric-accent">
+        <span>Validated score (0–100)</span><strong>{{ score.value }}</strong>
+      </div>
+    </div>
+    <div class="button-row">
+      <button class="button" type="button" (click)="bumpBounded(1)">
+        Counter +1</button
+      ><button class="button" type="button" (click)="bumpBounded(-1)">
+        Counter −1</button
+      ><button
+        class="button button-quiet"
+        type="button"
+        (click)="score.setValue(score.value + 10 <= 100 ? score.value + 10 : 100)"
+      >
+        Score +10</button
+      ><button class="button button-quiet" type="button" (click)="score.undo()">
+        Undo score
+      </button>
+    </div>
+    <div class="field-grid">
+      <label
+        >Username (spForm.text, 3–12 chars)<input
+          #presetUsername
+          [value]="username.value"
+          placeholder="ada"
+          (input)="setUsername(presetUsername.value)" /></label
+      ><label
+        >Email (spForm.email)<input
+          #presetEmail
+          [value]="contactEmail.value"
+          placeholder="ada@example.com"
+          (input)="setContactEmail(presetEmail.value)" /></label
+      ><label
+        >Search preset (debounced + distinct)<input
+          #presetSearch
+          [value]="searchPreset.value"
+          placeholder="Search…"
+          (input)="searchPreset.setValue(presetSearch.value)"
+      /></label>
+    </div>
+    <div class="composition-results">
+      <span>Username valid: {{ username.isValid() }}</span
+      ><span>Email valid: {{ contactEmail.isValid() }}</span
+      ><span>Search value: {{ searchPreset.value || '—' }}</span>
+    </div>
+  </section>
+
+  <section class="panel" id="errors">
+    <div class="panel-heading">
+      <div>
+        <p class="panel-label">11 / Errors & storage</p>
+        <h2>Guardrails in action</h2>
+      </div>
+      <span class="status-pill status-violet">SpError + schema</span>
+    </div>
+    <p class="panel-copy">
+      Push the bounded counter past its limits to see
+      <code>spCreateError</code> and <code>formatSpError</code>; transactions
+      report <code>spIsInTransaction</code> state, and
+      <code>spStorageManager</code> snapshots the counter.
+    </p>
+    <div class="button-row">
+      <button class="button button-danger" type="button" (click)="bumpBounded(99)">
+        Break the counter</button
+      ><button
+        class="button"
+        type="button"
+        (click)="runIntrospectedTransaction()"
+      >
+        Inspect transaction</button
+      ><button class="button" type="button" (click)="saveSnapshot()">
+        Save snapshot</button
+      ><button class="button button-quiet" type="button" (click)="loadSnapshot()">
+        Load snapshot
+      </button>
+    </div>
+    @if (errorReport()) {
+    <output>{{ errorReport() }}</output>
+    }
+    <div class="composition-results">
+      <span
+        >Schema (score): {{ scoreSchemaValid(score.value) ? 'valid' : 'invalid'
+        }}</span
+      ><span
+        >Schema errors: {{ usernameSchema({ name: username.value }).errors.join(',
+        ') || 'none' }}</span
+      >
+      @if (transactionInfo()) {<span>{{ transactionInfo() }}</span>} @if
+      (storageInfo()) {<span>{{ storageInfo() }}</span>}
+    </div>
+  </section>
+</main>
+
+<footer><span>ngx-signal-plus</span><a href="#top">Back to top</a></footer>
