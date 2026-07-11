@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { QueryClient, setGlobalQueryClient } from './query-client';
 import { createDependentQuery, createQuery, spQuery } from './sp-query';
 
@@ -6,6 +7,7 @@ describe('spQuery', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    TestBed.configureTestingModule({});
     queryClient = new QueryClient();
     setGlobalQueryClient(queryClient);
   });
@@ -30,6 +32,7 @@ describe('spQuery', () => {
     expect(query.error).toBeDefined();
     expect(query.refetch).toBeDefined();
     expect(query.invalidate).toBeDefined();
+    expect(query.destroy).toBeDefined();
     setTimeout(() => {
       expect(query.data()).toEqual(testData);
       expect(query.isLoading()).toBe(false);
@@ -106,15 +109,20 @@ describe('spQuery', () => {
 
   it('should handle enabled option (signal)', (done) => {
     const enabledSignal = signal(false);
-    const query = spQuery({
-      queryKey: ['signal-enabled'],
-      queryFn: async () => ({ data: 'fetched' }),
-      enabled: enabledSignal,
+    let query!: ReturnType<typeof spQuery<{ data: string }>>;
+    TestBed.runInInjectionContext(() => {
+      query = spQuery({
+        queryKey: ['signal-enabled'],
+        queryFn: async () => ({ data: 'fetched' }),
+        enabled: enabledSignal,
+      });
+      TestBed.flushEffects();
     });
     setTimeout(() => {
       expect(query.data()).toBeUndefined();
       expect(query.isIdle()).toBe(true);
       enabledSignal.set(true);
+      TestBed.flushEffects();
       setTimeout(() => {
         expect(query.data()).toEqual({ data: 'fetched' });
         expect(query.isSuccess()).toBe(true);
@@ -291,15 +299,20 @@ describe('spQuery', () => {
   });
   it('should support dependent queries with signal dependencies', (done) => {
     const userId = signal<number | null>(null);
-    const query = createDependentQuery(
-      ['dependent-user'],
-      async () => ({ id: userId() }),
-      [userId],
-    );
+    let query!: ReturnType<typeof createDependentQuery<{ id: number | null }>>;
+    TestBed.runInInjectionContext(() => {
+      query = createDependentQuery(
+        ['dependent-user'],
+        async () => ({ id: userId() }),
+        [userId],
+      );
+      TestBed.flushEffects();
+    });
 
     setTimeout(() => {
       expect(query.data()).toBeUndefined();
       userId.set(10);
+      TestBed.flushEffects();
 
       setTimeout(() => {
         expect(query.data()).toEqual({ id: 10 });

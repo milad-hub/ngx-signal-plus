@@ -4,6 +4,17 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.9.0]
+
+### Added
+
+- Idempotent `destroy()` methods on `QueryResult` and `InfiniteQueryResult` for manual cleanup.
+
+### Fixed
+
+- Replaced signal-based query `enabled` polling with Angular effects when an injection context is available.
+- Query and infinite-query cleanup now shares the Angular owner lifecycle.
+
 ## [2.8.1]
 
 ### Fixed

@@ -1,7 +1,11 @@
-import { signal } from '@angular/core';
+import {
+  createEnvironmentInjector,
+  EnvironmentInjector,
+  runInInjectionContext,
+  signal,
+} from '@angular/core';
 import {
   TestBed,
-  discardPeriodicTasks,
   fakeAsync,
   flushMicrotasks,
   tick,
@@ -40,7 +44,7 @@ describe('spQuery enabled-signal behavior', () => {
     });
   }));
 
-  it('should fall back to interval watching outside an injection context', fakeAsync(() => {
+  it('should not watch enabled signals outside an injection context', fakeAsync(() => {
     let calls = 0;
     const enabled = signal(false);
 
@@ -50,20 +54,68 @@ describe('spQuery enabled-signal behavior', () => {
       enabled,
     });
 
-    tick(100);
+    tick(200);
     expect(calls).toBe(0);
 
     enabled.set(true);
-    tick(100);
+    tick(200);
+    expect(calls).toBe(0);
+
+    result.destroy();
+    result.destroy();
+  }));
+
+  it('should stop enabled-signal reactions after manual destroy', fakeAsync(() => {
+    let calls = 0;
+    const enabled = signal(true);
+
+    TestBed.runInInjectionContext(() => {
+      const result = spQuery({
+        queryKey: ['sq-destroy'],
+        queryFn: () => Promise.resolve(++calls),
+        enabled,
+      });
+
+      TestBed.flushEffects();
+      flushMicrotasks();
+      expect(calls).toBe(1);
+
+      result.destroy();
+      enabled.set(false);
+      enabled.set(true);
+      TestBed.flushEffects();
+      flushMicrotasks();
+
+      expect(calls).toBe(1);
+    });
+  }));
+
+  it('should clean up enabled-signal reactions when its owner is destroyed', fakeAsync(() => {
+    let calls = 0;
+    const enabled = signal(true);
+    const injector = createEnvironmentInjector(
+      [],
+      TestBed.inject(EnvironmentInjector),
+    );
+
+    runInInjectionContext(injector, () => {
+      spQuery({
+        queryKey: ['sq-owner-destroy'],
+        queryFn: () => Promise.resolve(++calls),
+        enabled,
+      });
+    });
+    TestBed.flushEffects();
     flushMicrotasks();
     expect(calls).toBe(1);
-    expect(result.data()).toBe(1);
 
+    injector.destroy();
     enabled.set(false);
-    tick(100);
-    expect(result.data()).toBe(1);
+    enabled.set(true);
+    TestBed.flushEffects();
+    flushMicrotasks();
 
-    discardPeriodicTasks();
+    expect(calls).toBe(1);
   }));
 
   it('should accept object query keys', fakeAsync(() => {

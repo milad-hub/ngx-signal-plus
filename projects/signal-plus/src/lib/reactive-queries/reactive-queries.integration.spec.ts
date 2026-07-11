@@ -1,4 +1,5 @@
 import { computed, signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { QueryClient, setGlobalQueryClient } from './query-client';
 import { createMutation, spMutation } from './sp-mutation';
 import { createQuery, spQuery } from './sp-query';
@@ -7,6 +8,7 @@ describe('Reactive Queries Integration', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    TestBed.configureTestingModule({});
     queryClient = new QueryClient();
     setGlobalQueryClient(queryClient);
   });
@@ -51,43 +53,54 @@ describe('Reactive Queries Integration', () => {
 
   it('should handle dependent queries', (done) => {
     const userIdSignal = signal<number | null>(null);
-    const userQuery = spQuery({
-      queryKey: ['user', userIdSignal()?.toString() || 'null'],
-      queryFn: async () => {
-        const userId = userIdSignal();
-        if (!userId) throw new Error('No user ID');
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return { id: userId, name: `User ${userId}` };
-      },
-      enabled: computed(() => !!userIdSignal()),
-    });
-    const postsQuery = spQuery({
-      queryKey: ['posts', userQuery.data()?.id?.toString() || 'null'],
-      queryFn: async () => {
-        const user = userQuery.data();
-        if (!user) throw new Error('No user');
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return [
-          { id: 1, userId: user.id, title: 'Post 1' },
-          { id: 2, userId: user.id, title: 'Post 2' },
-        ];
-      },
-      enabled: computed(() => !!userQuery.data()),
+    let userQuery!: ReturnType<typeof spQuery<{ id: number; name: string }>>;
+    let postsQuery!: ReturnType<
+      typeof spQuery<{ id: number; userId: number; title: string }[]>
+    >;
+    TestBed.runInInjectionContext(() => {
+      userQuery = spQuery({
+        queryKey: ['user', userIdSignal()?.toString() || 'null'],
+        queryFn: async () => {
+          const userId = userIdSignal();
+          if (!userId) throw new Error('No user ID');
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return { id: userId, name: `User ${userId}` };
+        },
+        enabled: computed(() => !!userIdSignal()),
+      });
+      postsQuery = spQuery({
+        queryKey: ['posts', userQuery.data()?.id?.toString() || 'null'],
+        queryFn: async () => {
+          const user = userQuery.data();
+          if (!user) throw new Error('No user');
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return [
+            { id: 1, userId: user.id, title: 'Post 1' },
+            { id: 2, userId: user.id, title: 'Post 2' },
+          ];
+        },
+        enabled: computed(() => !!userQuery.data()),
+      });
+      TestBed.flushEffects();
     });
     setTimeout(() => {
       expect(userQuery.isIdle()).toBe(true);
       expect(postsQuery.isIdle()).toBe(true);
       userIdSignal.set(1);
+      TestBed.flushEffects();
       setTimeout(() => {
-        expect(userQuery.data()).toEqual({ id: 1, name: 'User 1' });
-        expect(userQuery.isSuccess()).toBe(true);
-        expect(postsQuery.data()).toEqual([
-          { id: 1, userId: 1, title: 'Post 1' },
-          { id: 2, userId: 1, title: 'Post 2' },
-        ]);
-        expect(postsQuery.isSuccess()).toBe(true);
-        done();
-      }, 200);
+        TestBed.flushEffects();
+        setTimeout(() => {
+          expect(userQuery.data()).toEqual({ id: 1, name: 'User 1' });
+          expect(userQuery.isSuccess()).toBe(true);
+          expect(postsQuery.data()).toEqual([
+            { id: 1, userId: 1, title: 'Post 1' },
+            { id: 2, userId: 1, title: 'Post 2' },
+          ]);
+          expect(postsQuery.isSuccess()).toBe(true);
+          done();
+        }, 50);
+      }, 150);
     }, 50);
   });
 

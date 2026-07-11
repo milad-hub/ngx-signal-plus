@@ -1,6 +1,6 @@
 {
   "name": "ngx-signal-plus",
-  "version": "2.8.4",
+  "version": "2.9.0",
   "scripts": {
     "ng": "ng",
     "start": "npm run start:examples",
