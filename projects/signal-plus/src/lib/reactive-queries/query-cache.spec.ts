@@ -1,3 +1,4 @@
+import { fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { Query, QueryCache } from './query-cache';
 import { QueryObserver, QueryOptions } from './query-types';
 
@@ -234,6 +235,35 @@ describe('Query', () => {
     unsub1();
     unsub2();
   });
+
+  it('should keep polling while another observer remains', fakeAsync(() => {
+    let calls = 0;
+    const intervalOptions: QueryOptions<{ data: string }> = {
+      queryKey: ['interval'],
+      queryFn: async () => ({ data: `${++calls}` }),
+      refetchInterval: 10,
+    };
+    const intervalQuery = new Query(['interval'], intervalOptions);
+    const observer1 = {
+      options: intervalOptions,
+      onStateUpdate: jasmine.createSpy('onStateUpdate1'),
+    };
+    const observer2 = {
+      options: intervalOptions,
+      onStateUpdate: jasmine.createSpy('onStateUpdate2'),
+    };
+    const unsubscribeFirst = intervalQuery.subscribe(observer1);
+    const unsubscribeSecond = intervalQuery.subscribe(observer2);
+
+    flushMicrotasks();
+    unsubscribeFirst();
+    tick(10);
+    flushMicrotasks();
+
+    expect(calls).toBe(2);
+    unsubscribeSecond();
+    intervalQuery.destroy();
+  }));
 
   it('should invalidate and refetch', async () => {
     let callCount = 0;

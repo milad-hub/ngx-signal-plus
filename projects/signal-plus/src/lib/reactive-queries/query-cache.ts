@@ -126,15 +126,15 @@ export class Query<T = unknown> {
 
     this.scheduleRefetch();
 
-    if (this.state.isStale && this.options.enabled !== false) {
+    if (this.state.isStale && observer.options.enabled !== false) {
       this.fetch().catch(() => undefined);
     }
 
     return () => {
       this.observers.delete(observer);
-      this.cancelRefetchInterval();
 
       if (this.observers.size === 0) {
+        this.cancelRefetchInterval();
         this.scheduleGarbageCollection();
       }
     };
@@ -299,7 +299,11 @@ export class Query<T = unknown> {
     };
     this.notify();
 
-    if (this.hasObservers() && this.options.enabled !== false) {
+    if (
+      Array.from(this.observers).some(
+        (observer) => observer.options.enabled !== false,
+      )
+    ) {
       this.fetch().catch(() => undefined);
     }
   }

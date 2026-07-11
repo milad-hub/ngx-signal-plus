@@ -4,6 +4,12 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.9.1]
+
+### Fixed
+
+- Evaluated cached-query `enabled` state per observer and kept shared refetch intervals active until the final observer unsubscribes.
+
 ## [2.9.0]
 
 ### Added
