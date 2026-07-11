@@ -506,6 +506,8 @@ Query results expose an idempotent `destroy()` method for manual cleanup. Signal
 
 For a shared cached query, `enabled` is evaluated per observer, so a disabled consumer does not prevent another enabled consumer from fetching.
 
+Set `cacheTime: 0` to evict an inactive query immediately.
+
 ```ts
 import { spQuery, createQuery } from "ngx-signal-plus";
 

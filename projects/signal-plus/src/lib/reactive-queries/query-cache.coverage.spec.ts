@@ -1,8 +1,4 @@
-import {
-  fakeAsync,
-  flushMicrotasks,
-  tick,
-} from '@angular/core/testing';
+import { fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { _setServerModeForTesting } from '../utils/platform';
 import { Query, QueryCache } from './query-cache';
 
@@ -148,6 +144,7 @@ describe('Query gap behavior', () => {
       refetchInterval: 20,
       refetchIntervalInBackground: true,
     });
+    const unsubscribe = query.subscribe(makeObserver());
 
     query.refetch();
     flushMicrotasks();
@@ -155,6 +152,7 @@ describe('Query gap behavior', () => {
     flushMicrotasks();
 
     expect(calls).toBe(2);
+    unsubscribe();
     query.destroy();
   }));
 
@@ -165,6 +163,7 @@ describe('Query gap behavior', () => {
       queryFn: () => Promise.resolve(++calls),
       refetchInterval: 20,
     });
+    const unsubscribe = query.subscribe(makeObserver());
 
     query.refetch();
     flushMicrotasks();
@@ -172,6 +171,7 @@ describe('Query gap behavior', () => {
     flushMicrotasks();
 
     expect(calls).toBe(2);
+    unsubscribe();
     query.destroy();
   }));
 
@@ -181,10 +181,13 @@ describe('Query gap behavior', () => {
       queryKey: ['interval-fail'],
       queryFn: () => {
         calls += 1;
-        return calls === 1 ? Promise.resolve(1) : Promise.reject(new Error('x'));
+        return calls === 1
+          ? Promise.resolve(1)
+          : Promise.reject(new Error('x'));
       },
       refetchInterval: 20,
     });
+    const unsubscribe = query.subscribe(makeObserver());
 
     query.refetch();
     flushMicrotasks();
@@ -193,6 +196,7 @@ describe('Query gap behavior', () => {
 
     expect(calls).toBe(2);
     expect(query.getState().isError).toBe(true);
+    unsubscribe();
     query.destroy();
   }));
 
@@ -251,7 +255,9 @@ describe('Query gap behavior', () => {
       queryKey: ['focus-fail'],
       queryFn: () => {
         calls += 1;
-        return calls === 1 ? Promise.resolve(1) : Promise.reject(new Error('x'));
+        return calls === 1
+          ? Promise.resolve(1)
+          : Promise.reject(new Error('x'));
       },
       refetchOnWindowFocus: true,
     });
@@ -274,7 +280,9 @@ describe('Query gap behavior', () => {
       queryKey: ['online-fail'],
       queryFn: () => {
         calls += 1;
-        return calls === 1 ? Promise.resolve(1) : Promise.reject(new Error('x'));
+        return calls === 1
+          ? Promise.resolve(1)
+          : Promise.reject(new Error('x'));
       },
       refetchOnReconnect: true,
     });

@@ -22,16 +22,14 @@ export class QueryCache {
 
   set<T>(queryKey: QueryKey | string[], query: Query<T>): void {
     const key = hashQueryKey(queryKey);
-    this.queries.set(key, query as Query<unknown>);
+    const storedQuery = query as Query<unknown>;
+    this.queries.set(key, storedQuery);
+    query.setEvictionHandler(() => this.evict(key, storedQuery));
   }
 
   delete(queryKey: QueryKey | string[]): void {
     const key = hashQueryKey(queryKey);
-    const query = this.queries.get(key);
-    if (query) {
-      query.destroy();
-      this.queries.delete(key);
-    }
+    this.evict(key);
   }
 
   invalidate(queryKey: QueryKey | string[]): void {
@@ -50,8 +48,7 @@ export class QueryCache {
     const now = Date.now();
     for (const [key, query] of this.queries.entries()) {
       if (query.canBeGarbageCollected(now)) {
-        this.queries.delete(key);
-        query.destroy();
+        this.evict(key, query);
       }
     }
   }
@@ -84,6 +81,16 @@ export class QueryCache {
 
     return { totalQueries, activeQueries, gcReadyQueries };
   }
+
+  private evict(key: string, expected?: Query<unknown>): void {
+    const query = this.queries.get(key);
+    if (!query || (expected && query !== expected)) {
+      return;
+    }
+
+    this.queries.delete(key);
+    query.destroy();
+  }
 }
 
 export class Query<T = unknown> {
@@ -94,6 +101,7 @@ export class Query<T = unknown> {
   private refetchInterval: ReturnType<typeof setInterval> | null = null;
   private abortController: AbortController | null = null;
   private staleTimeout: ReturnType<typeof setTimeout> | null = null;
+  private evictionHandler: (() => void) | null = null;
 
   constructor(
     private queryKey: QueryKey | string[],
@@ -120,6 +128,11 @@ export class Query<T = unknown> {
   }
 
   subscribe(observer: QueryObserver<T>): () => void {
+    if (this.gcTimeout) {
+      clearTimeout(this.gcTimeout);
+      this.gcTimeout = null;
+    }
+
     this.observers.add(observer);
 
     observer.onStateUpdate(this.state);
@@ -388,9 +401,14 @@ export class Query<T = unknown> {
 
     this.gcTimeout = setTimeout(
       () => {
-        this.destroy();
+        if (!this.hasObservers()) {
+          this.evictionHandler?.();
+          if (!this.evictionHandler) {
+            this.destroy();
+          }
+        }
       },
-      this.options.cacheTime || 5 * 60 * 1000,
+      this.options.cacheTime ?? 5 * 60 * 1000,
     );
   }
 
@@ -407,7 +425,7 @@ export class Query<T = unknown> {
   };
 
   canBeGarbageCollected(now: number): boolean {
-    const cacheTime = this.options.cacheTime || 5 * 60 * 1000;
+    const cacheTime = this.options.cacheTime ?? 5 * 60 * 1000;
     const lastAccessTime = Math.max(
       this.state.dataUpdatedAt,
       this.state.errorUpdatedAt,
@@ -415,7 +433,7 @@ export class Query<T = unknown> {
     if (lastAccessTime === 0) {
       return false;
     }
-    return this.observers.size === 0 && now - lastAccessTime > cacheTime;
+    return this.observers.size === 0 && now - lastAccessTime >= cacheTime;
   }
 
   hasObservers(): boolean {
@@ -426,6 +444,10 @@ export class Query<T = unknown> {
     return Array.from(this.observers).some(
       (observer) => observer.options.enabled !== false,
     );
+  }
+
+  setEvictionHandler(handler: () => void): void {
+    this.evictionHandler = handler;
   }
 
   getState(): QueryState<T> {
