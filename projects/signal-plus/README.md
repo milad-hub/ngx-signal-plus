@@ -2,12 +2,15 @@
 
 [![Angular 16-21](https://img.shields.io/badge/Angular-16--21-dd0031)](https://angular.dev/)
 [![npm version](https://img.shields.io/npm/v/ngx-signal-plus.svg)](https://www.npmjs.com/package/ngx-signal-plus)
-![Coverage](https://img.shields.io/badge/coverage-91.04%25-brightgreen)
 
-Bring validation, persistence, undo/redo, and reactive queries to Angular Signals on Angular 16+.
+Composable utilities for Angular Signals, including validation, persistence, history, collections, and query-style state.
 
-- Full API docs: https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md
-- Repository README (contributors): https://github.com/milad-hub/ngx-signal-plus/blob/main/README.md
+## Key Features
+
+- Signal builders with validation, transforms, persistence, and undo/redo history
+- Form, form-group, async-state, and collection helpers
+- Reactive query, mutation, and infinite-query primitives
+- Transactions, batching, middleware, debugging, monitoring, and signal operators
 
 ## Installation
 
@@ -17,102 +20,86 @@ npm install ngx-signal-plus
 
 ## Requirements
 
-- Angular 16 through 21
+- Angular peer dependencies: `>=16.0.0 <=21.0.0`
+- Node.js `>=18.13.0`
 - A TypeScript version supported by your Angular version
-
-## Why this library?
-
-| Capability                               | Angular native                  | ngx-signal-plus                            |
-| ---------------------------------------- | ------------------------------- | ------------------------------------------ |
-| Signal validation and validation helpers | Limited                         | `sp().validate()`, presets, schema helpers |
-| localStorage persistence                 | Manual                          | `sp().persist()`                           |
-| Undo/redo history                        | Manual                          | `sp().withHistory()`                       |
-| Transaction rollback                     | Manual                          | `spTransaction()`                          |
-| Middleware/interceptors                  | No built-in                     | `spUseMiddleware()`                        |
-| Query cache/retry/invalidation           | `resource/httpResource` (basic) | `spQuery()`, `spMutation()`, `QueryClient` |
-| Collection CRUD helpers                  | Manual                          | `spCollection()`                           |
 
 ## Quick Start
 
 ```typescript
-import { NgIf } from "@angular/common";
-import { Component, computed } from "@angular/core";
+import { Component } from "@angular/core";
 import { sp } from "ngx-signal-plus";
 
 @Component({
   standalone: true,
   selector: "app-counter",
-  imports: [NgIf],
   template: `
     <p>Count: {{ counter.value }}</p>
-    <p>Doubled: {{ doubled() }}</p>
-    <button (click)="inc()">+</button>
-    <button (click)="dec()">-</button>
-    <button *ngIf="counter.history().length > 1" (click)="counter.undo()">Undo</button>
+    <button type="button" (click)="increment()">Increment</button>
   `,
 })
 export class CounterComponent {
-  counter = sp(0)
-    .persist("counter")
-    .withHistory(10)
-    .validate((n) => n >= 0)
-    .build();
-  doubled = computed(() => this.counter.value * 2);
+  public readonly counter = sp(0).build();
 
-  inc() {
+  public increment(): void {
     this.counter.setValue(this.counter.value + 1);
-  }
-
-  dec() {
-    if (this.counter.value > 0) this.counter.setValue(this.counter.value - 1);
   }
 }
 ```
 
+## Common Examples
+
+```typescript
+import { sp } from "ngx-signal-plus";
+
+const preferences = sp({ theme: "system" }).persist("preferences").build();
+const quantity = sp(1)
+  .validate((value) => value > 0)
+  .build();
+const editor = sp("").withHistory(20).build();
+
+editor.undo();
+```
+
+## Why This Library?
+
+Angular Signals provide the core reactive primitive. This package adds optional, composable utilities when an application needs concerns such as validation, persistence, history, collections, transactions, or query-style state.
+
 ## Core APIs
 
-- Signal creation: `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`
-- Signal enhancement: `enhance`
-- Operators: `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`
-- Developer experience: `spCombine`, `spAll`, `spAny`, `spEffect`, `spDebug`, `spMonitor`, `sp().debug(label)`, `sp().monitor(options)`
-- Forms and groups: `spForm`, `spFormGroup`
-- Async helpers: `spAsync`, `spCollection`
-- Reactive queries: `spQuery`, `createDependentQuery`, `spInfiniteQuery`, `spMutation`, `QueryClient`, `setGlobalQueryClient`, `getGlobalQueryClient`
-- Transactions: `spTransaction`, `spBatch`
-- Schema validation: `spSchema`, `spSchemaValidator`
-- Middleware: `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`
+| Category                              | APIs                                                                                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Signal creation and enhancement       | `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`, `enhance`                                                                          |
+| Forms and validation                  | `spForm`, `spFormGroup`, `spValidators`, `spSchema`, `spSchemaValidator`, `spSchemaWithErrors`                                            |
+| Async state and collections           | `spAsync`, `spCollection`                                                                                                                 |
+| Reactive queries                      | `spQuery`, `spMutation`, `spInfiniteQuery`, `createQuery`, `createMutation`, `createInfiniteQuery`, `createDependentQuery`, `QueryClient` |
+| Transactions and batching             | `spTransaction`, `spBatch`                                                                                                                |
+| Middleware, debugging, and monitoring | `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`, `spDebug`, `spMonitor`, `spEffect`                |
+| Operators and composition             | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spCombine`, `spAll`, `spAny`               |
 
-## Comparisons
+See the [API reference](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md) for the complete public API.
 
-### ngx-signal-plus vs Angular native signals
+## Comparison
 
-- Angular provides core signal primitives (`signal`, `computed`, `effect`). Newer Angular versions also provide `resource` and `httpResource`; availability and stability depend on the Angular major.
-- ngx-signal-plus focuses on higher-level utilities on top of signals: validation, persistence, undo/redo, middleware, transactions, collections, and query-style helpers.
-- ngx-signal-plus supports Angular 16, where the resource APIs are unavailable.
-
-### ngx-signal-plus vs NgRx Signals (@ngrx/signals)
-
-- NgRx Signals is a full state-management approach centered on Signal Store architecture (store features, methods/hooks, and structured app state patterns).
-- ngx-signal-plus is intentionally lighter: composable utilities that keep you close to native Angular signal usage without adopting a full store architecture.
-- NgRx Signals is the better fit when an application wants the Signal Store architecture.
-
-### ngx-signal-plus vs TanStack Query (Angular)
-
-- TanStack Query is a dedicated server-state library (fetching, cache lifecycle, invalidation, retries, mutations).
-- The Angular adapter is published as `@tanstack/angular-query-experimental`.
-- ngx-signal-plus includes query-style capabilities inside one package that also covers local signal utilities.
-
-### ngx-signal-plus vs Akita
-
-- Akita is a store-centric architecture built around RxJS stores/queries.
-- ngx-signal-plus is signal-first and utility-first, designed for composable local/global signal state without store boilerplate.
-- Akita's GitHub repository is archived; existing Akita applications may still prefer its established store/query model.
+| Tool                       | Primary focus                       | When it may fit better                                                                   |
+| -------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------- |
+| Angular native signals     | Core reactive primitives            | You only need Angular's built-in signal APIs.                                            |
+| NgRx Signals               | Signal Store-based state management | Your application adopts a structured store architecture.                                 |
+| TanStack Query for Angular | Server-state fetching and caching   | Server-state lifecycle is the main concern.                                              |
+| Akita                      | RxJS store/query architecture       | You maintain an existing Akita application or prefer its store model.                    |
+| ngx-signal-plus            | Composable signal utilities         | You want optional signal-focused helpers without adopting a complete store architecture. |
 
 ## Documentation
 
-- API documentation: https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md
-- Contributing guide: https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/CONTRIBUTING.md
-- Issues: https://github.com/milad-hub/ngx-signal-plus/issues
+- [API reference](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md)
+- [Repository README](https://github.com/milad-hub/ngx-signal-plus/blob/main/README.md)
+- [Contributing guide](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/CONTRIBUTING.md)
+- [Changelog](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/CHANGELOG.md)
+- [Issues](https://github.com/milad-hub/ngx-signal-plus/issues)
+
+## Project Status
+
+The package declares Angular peer dependencies from 16.0.0 through 21.0.0. The repository includes build, test, lint, and formatting scripts. See the [changelog](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/CHANGELOG.md) for documented release history.
 
 ## License
 
