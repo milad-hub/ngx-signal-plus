@@ -155,7 +155,20 @@ describe('QueryClient', () => {
     unsub();
   });
 
-  it('should not refetch disabled observers', async () => {
+  it('should refetch an inactive query by key', async () => {
+    const key = ['refetch-inactive'];
+    let calls = 0;
+    await queryClient.fetchQuery(key, {
+      queryKey: key,
+      queryFn: async () => ({ count: ++calls }),
+    });
+
+    await queryClient.refetchQueries(key);
+
+    expect(calls).toBe(2);
+  });
+
+  it('should not refetch disabled observers without a key', async () => {
     const key = ['disabled-refetch'];
     let calls = 0;
     await queryClient.fetchQuery(key, {
@@ -169,9 +182,10 @@ describe('QueryClient', () => {
     });
 
     await queryClient.refetchQueries(key);
+    expect(calls).toBe(2);
     await queryClient.refetchQueries();
 
-    expect(calls).toBe(1);
+    expect(calls).toBe(2);
     unsub();
   });
 

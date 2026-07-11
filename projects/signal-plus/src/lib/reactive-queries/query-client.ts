@@ -107,7 +107,7 @@ export class QueryClient {
     const promises: Promise<unknown>[] = [];
     if (queryKey) {
       const query = this.queryCache.get(queryKey);
-      if (query?.hasEnabledObservers()) {
+      if (query) {
         promises.push(query.refetch());
       }
     } else {
