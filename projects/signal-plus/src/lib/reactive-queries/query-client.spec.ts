@@ -155,6 +155,26 @@ describe('QueryClient', () => {
     unsub();
   });
 
+  it('should not refetch disabled observers', async () => {
+    const key = ['disabled-refetch'];
+    let calls = 0;
+    await queryClient.fetchQuery(key, {
+      queryKey: key,
+      queryFn: async () => ({ count: ++calls }),
+    });
+    const query = queryClient.getQueryCache().get(key)!;
+    const unsub = query.subscribe({
+      options: { queryKey: key, queryFn: async () => ({}), enabled: false },
+      onStateUpdate: jasmine.createSpy('onStateUpdate'),
+    });
+
+    await queryClient.refetchQueries(key);
+    await queryClient.refetchQueries();
+
+    expect(calls).toBe(1);
+    unsub();
+  });
+
   it('should report fetching state during fetch', async () => {
     const key = ['isFetching'];
     const p = queryClient.fetchQuery(key, {

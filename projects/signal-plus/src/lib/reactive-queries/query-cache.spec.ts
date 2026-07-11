@@ -265,6 +265,35 @@ describe('Query', () => {
     intervalQuery.destroy();
   }));
 
+  it('should not automatically refetch a disabled observer', fakeAsync(() => {
+    let calls = 0;
+    const disabledOptions: QueryOptions<{ data: string }> = {
+      queryKey: ['disabled-observer'],
+      queryFn: async () => ({ data: `${++calls}` }),
+      enabled: false,
+      refetchInterval: 10,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    };
+    const disabledQuery = new Query(['disabled-observer'], disabledOptions);
+    const unsubscribe = disabledQuery.subscribe({
+      options: disabledOptions,
+      onStateUpdate: jasmine.createSpy('onStateUpdate'),
+    });
+
+    disabledQuery.refetch();
+    flushMicrotasks();
+    window.dispatchEvent(new Event('focus'));
+    window.dispatchEvent(new Event('online'));
+    tick(10);
+    flushMicrotasks();
+
+    expect(calls).toBe(1);
+    unsubscribe();
+    disabledQuery.destroy();
+  }));
+
   it('should invalidate and refetch', async () => {
     let callCount = 0;
     const options: QueryOptions = {
