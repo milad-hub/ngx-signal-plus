@@ -8,6 +8,7 @@ For interactive Angular 20 examples, see the [examples application](../../exampl
 
 - [Requirements](#requirements)
 - [Install](#install)
+- [Deprecation Policy](#deprecation-policy)
 - [Core Signal Creation](#core-signal-creation)
 - [Enhance Existing Angular Signals](#enhance-existing-angular-signals)
 - [SignalBuilder (exported as `spSignalBuilder`)](#signalbuilder-exported-as-spsignalbuilder)
@@ -39,6 +40,10 @@ For interactive Angular 20 examples, see the [examples application](../../exampl
 ```bash
 npm install ngx-signal-plus
 ```
+
+## Deprecation Policy
+
+Deprecated public APIs are marked in JSDoc and announced in the [changelog](../CHANGELOG.md). They remain available for at least one MINOR release and are removed only in a MAJOR release.
 
 ## Core Signal Creation
 
