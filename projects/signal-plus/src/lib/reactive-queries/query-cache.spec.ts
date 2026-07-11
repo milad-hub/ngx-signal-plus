@@ -42,6 +42,33 @@ describe('QueryCache', () => {
     expect(queryCache.get(queryKey)).toBeUndefined();
   });
 
+  it('should evict zero-cache-time queries and allow recreation', fakeAsync(() => {
+    const queryKey = ['zero-cache'];
+    const options: QueryOptions = {
+      queryKey,
+      queryFn: async () => ({ data: 'test' }),
+      cacheTime: 0,
+      enabled: false,
+    };
+    const query = new Query(queryKey, options);
+    queryCache.set(queryKey, query);
+    const unsubscribe = query.subscribe({
+      options,
+      onStateUpdate: jasmine.createSpy('onStateUpdate'),
+    });
+
+    unsubscribe();
+    tick(0);
+
+    expect(queryCache.get(queryKey)).toBeUndefined();
+    expect(queryCache.getStats().totalQueries).toBe(0);
+
+    const replacement = new Query(queryKey, options);
+    queryCache.set(queryKey, replacement);
+    expect(queryCache.get(queryKey)).toBe(replacement);
+    replacement.destroy();
+  }));
+
   it('should invalidate queries', async () => {
     const queryKey = ['test'];
     let callCount = 0;
