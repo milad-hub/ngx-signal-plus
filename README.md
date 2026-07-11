@@ -142,7 +142,7 @@ npm run build:lib
 npm run test:lib
 npm run test:lib:coverage
 npm run lint:lib
-npm run format:check:lib
+npm run check:lib
 ```
 
 ### Quality Rules
