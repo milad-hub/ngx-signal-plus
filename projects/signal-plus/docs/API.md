@@ -357,6 +357,8 @@ console.log(login.value(), login.isValid(), login.errors());
 
 Builds a reusable async state container with loading, error, retry, cache, and manual refetch controls.
 
+`reset()` invalidates in-flight work, so an earlier fetch or retry cannot overwrite the reset state. `invalidate()` does not cancel active work.
+
 ```ts
 import { spAsync } from "ngx-signal-plus";
 

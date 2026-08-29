@@ -4,6 +4,12 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.9.3]
+
+### Fixed
+
+- Prevented stale `spAsync` fetches and retries from writing after `reset()`.
+
 ## [2.9.2]
 
 ### Fixed

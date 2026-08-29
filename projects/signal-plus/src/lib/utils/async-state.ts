@@ -15,50 +15,69 @@ export function spAsync<T>(options: AsyncStateOptions<T>): SignalAsync<T> {
   let cacheExpiry: number | null = null;
   let isStale = false;
   let currentFetch: Promise<T> | null = null;
+  let generation = 0;
 
   const isSuccess = computed(() => errorSignal() === null);
   const isError = computed(() => errorSignal() !== null);
 
-  async function executeFetch(retries = 0): Promise<T> {
+  async function executeFetch(
+    retries = 0,
+    fetchGeneration = generation,
+  ): Promise<T> {
     if (
       !isStale &&
       cachedData !== null &&
       cacheExpiry !== null &&
       Date.now() < cacheExpiry
     ) {
-      dataSignal.set(cachedData);
-      errorSignal.set(null);
+      if (fetchGeneration === generation) {
+        dataSignal.set(cachedData);
+        errorSignal.set(null);
+      }
       return cachedData;
     }
 
     try {
-      loadingSignal.set(true);
-      errorSignal.set(null);
+      if (fetchGeneration === generation) {
+        loadingSignal.set(true);
+        errorSignal.set(null);
+      }
       const result = await options.fetcher();
 
-      if (options.cacheTime && options.cacheTime > 0) {
-        cachedData = result;
-        cacheExpiry = Date.now() + options.cacheTime;
-        isStale = false;
-      }
+      if (fetchGeneration === generation) {
+        if (options.cacheTime && options.cacheTime > 0) {
+          cachedData = result;
+          cacheExpiry = Date.now() + options.cacheTime;
+          isStale = false;
+        }
 
-      dataSignal.set(result);
-      options.onSuccess?.(result);
+        dataSignal.set(result);
+        options.onSuccess?.(result);
+      }
       return result;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       const retryCount = options.retryCount ?? 0;
 
+      if (fetchGeneration !== generation) {
+        throw error;
+      }
+
       if (retries < retryCount) {
         await delay(options.retryDelay ?? 1000);
-        return executeFetch(retries + 1);
+        if (fetchGeneration !== generation) {
+          throw error;
+        }
+        return executeFetch(retries + 1, fetchGeneration);
       }
 
       errorSignal.set(error);
       options.onError?.(error);
       throw error;
     } finally {
-      loadingSignal.set(false);
+      if (fetchGeneration === generation) {
+        loadingSignal.set(false);
+      }
     }
   }
 
@@ -67,11 +86,14 @@ export function spAsync<T>(options: AsyncStateOptions<T>): SignalAsync<T> {
       return currentFetch;
     }
 
-    currentFetch = executeFetch();
+    const fetch = executeFetch();
+    currentFetch = fetch;
     try {
-      return await currentFetch;
+      return await fetch;
     } finally {
-      currentFetch = null;
+      if (currentFetch === fetch) {
+        currentFetch = null;
+      }
     }
   }
 
@@ -81,6 +103,7 @@ export function spAsync<T>(options: AsyncStateOptions<T>): SignalAsync<T> {
   }
 
   function reset(): void {
+    generation += 1;
     dataSignal.set(options.initialValue);
     errorSignal.set(null);
     loadingSignal.set(false);
