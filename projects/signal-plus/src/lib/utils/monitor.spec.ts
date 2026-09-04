@@ -26,12 +26,12 @@ describe('spMonitor', () => {
     spMonitor.disable('a');
     spMonitor.recordUpdate('a', 20);
 
-    expect((spMonitor.exportMetrics('object') as Array<{ updates: number }>)[0].updates).toBe(0);
+    expect((spMonitor.exportMetrics('object') as { updates: number }[])[0].updates).toBe(0);
 
     spMonitor.enable('a');
     spMonitor.recordUpdate('a', 15);
 
-    expect((spMonitor.exportMetrics('object') as Array<{ updates: number }>)[0].updates).toBe(1);
+    expect((spMonitor.exportMetrics('object') as { updates: number }[])[0].updates).toBe(1);
   });
 
   it('should respect global disable and enable', () => {
@@ -39,11 +39,11 @@ describe('spMonitor', () => {
 
     spMonitor.disableAll();
     spMonitor.recordUpdate('a', 20);
-    expect((spMonitor.exportMetrics('object') as Array<{ updates: number }>)[0].updates).toBe(0);
+    expect((spMonitor.exportMetrics('object') as { updates: number }[])[0].updates).toBe(0);
 
     spMonitor.enableAll();
     spMonitor.recordUpdate('a', 20);
-    expect((spMonitor.exportMetrics('object') as Array<{ updates: number }>)[0].updates).toBe(1);
+    expect((spMonitor.exportMetrics('object') as { updates: number }[])[0].updates).toBe(1);
   });
 
   it('should sort and limit hot signals', () => {
@@ -85,8 +85,8 @@ describe('spMonitor', () => {
     expect(typeof json).toBe('string');
     expect(JSON.parse(json as string)[0].name).toBe('a');
 
-    (obj as Array<{ name: string }>)[0].name = 'changed';
-    expect((spMonitor.exportMetrics('object') as Array<{ name: string }>)[0].name).toBe('a');
+    (obj as { name: string }[])[0].name = 'changed';
+    expect((spMonitor.exportMetrics('object') as { name: string }[])[0].name).toBe('a');
   });
 
   it('should clear metrics and reset global state', () => {

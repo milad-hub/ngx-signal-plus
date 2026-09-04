@@ -102,6 +102,7 @@ export interface QueryOptions<T = unknown> {
  * ```
  */
 export interface InfiniteQueryOptions<TData = unknown, TPageParam = unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   queryKey: QueryKey | any[];
   queryFn: (pageParam: TPageParam) => Promise<TData>;
   initialPageParam: TPageParam;

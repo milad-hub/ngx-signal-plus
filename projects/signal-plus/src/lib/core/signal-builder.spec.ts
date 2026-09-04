@@ -3800,10 +3800,10 @@ describe('SignalBuilder', () => {
       signal.setValue(1);
       signal.update((current) => current + 1);
 
-      const metrics = spMonitor.exportMetrics('object') as Array<{
+      const metrics = spMonitor.exportMetrics('object') as {
         name: string;
         updates: number;
-      }>;
+      }[];
       const metric = metrics.find((entry) => entry.name === 'phase1-counter');
 
       expect(metric).toBeDefined();
@@ -3811,7 +3811,7 @@ describe('SignalBuilder', () => {
     });
 
     it('should execute middleware on set and update runtime paths', () => {
-      const contexts: Array<{ oldValue: number; newValue: number }> = [];
+      const contexts: { oldValue: number; newValue: number }[] = [];
       spUseMiddleware<number>({
         name: 'phase1-middleware-runtime',
         onSet: (context) => {
