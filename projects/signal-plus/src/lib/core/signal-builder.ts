@@ -27,7 +27,10 @@ import { spMonitor } from '../utils/monitor';
 import { MiddlewareContext } from '../models/middleware.model';
 import { SpMonitorOptions } from '../models/developer-experience.model';
 import { spRunMiddleware, spRunMiddlewareError } from '../utils/middleware';
-import { _trackTransactionWrite } from '../utils/transactions';
+import {
+  _deferBatchNotification,
+  _trackTransactionWrite,
+} from '../utils/transactions';
 
 /**
  * @fileoverview Builder class for creating enhanced Angular signals
@@ -525,7 +528,7 @@ export class SignalBuilder<T> {
     const subscribers = new Map<number, (value: T) => void>();
     let isCleanedUp = false;
 
-    const notifySubscribers: (value: T) => void = (value: T) => {
+    const deliverNotification: (value: T) => void = (value: T) => {
       if (isCleanedUp) return;
 
       if (this.options.debugLabel) {
@@ -544,6 +547,16 @@ export class SignalBuilder<T> {
       runAsyncValidation(value).catch((error) => {
         this.handleError(error as Error);
       });
+    };
+
+    const notifySubscribers: (value: T) => void = (value: T) => {
+      if (isCleanedUp) return;
+
+      if (_deferBatchNotification(signalInstance, value, deliverNotification)) {
+        return;
+      }
+
+      deliverNotification(value);
     };
 
     const getValidationErrors = (value: T): string[] =>

@@ -1122,6 +1122,199 @@ describe('Transactions and Batching', () => {
     });
   });
 
+  describe('batch notification coalescing', () => {
+    it('should deliver one notification carrying the last value for repeat writes', () => {
+      const signal = signalPlusService.create(0).build();
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+      seen.length = 0;
+
+      spBatch(() => {
+        signal.setValue(1);
+        signal.setValue(2);
+        signal.setValue(3);
+        expect(seen).toEqual([]);
+      });
+
+      expect(seen).toEqual([3]);
+      expect(signal.value).toBe(3);
+    });
+
+    it('should deliver once per signal across several signals', () => {
+      const first = signalPlusService.create(0).build();
+      const second = signalPlusService.create(0).build();
+      const seenFirst: number[] = [];
+      const seenSecond: number[] = [];
+      first.subscribe((value) => seenFirst.push(value));
+      second.subscribe((value) => seenSecond.push(value));
+      seenFirst.length = 0;
+      seenSecond.length = 0;
+
+      spBatch(() => {
+        first.setValue(1);
+        second.setValue(10);
+        first.setValue(2);
+        second.setValue(20);
+      });
+
+      expect(seenFirst).toEqual([2]);
+      expect(seenSecond).toEqual([20]);
+    });
+
+    it('should notify immediately outside a batch', () => {
+      const signal = signalPlusService.create(0).build();
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+      seen.length = 0;
+
+      signal.setValue(1);
+      signal.setValue(2);
+
+      expect(seen).toEqual([1, 2]);
+    });
+
+    it('should let the outermost batch own the flush when nested', () => {
+      const signal = signalPlusService.create(0).build();
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+      seen.length = 0;
+
+      spBatch(() => {
+        signal.setValue(1);
+        spBatch(() => {
+          signal.setValue(2);
+        });
+        expect(seen).toEqual([]);
+        signal.setValue(3);
+      });
+
+      expect(seen).toEqual([3]);
+    });
+
+    it('should still deliver pending notifications when the batch throws', () => {
+      const signal = signalPlusService.create(0).build();
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+      seen.length = 0;
+
+      expect(() =>
+        spBatch(() => {
+          signal.setValue(1);
+          signal.setValue(2);
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      expect(seen).toEqual([2]);
+      expect(signal.value).toBe(2);
+    });
+
+    it('should notify immediately for a write made by a flushed subscriber', () => {
+      const source = signalPlusService.create(0).build();
+      const followUp = signalPlusService.create(0).build();
+      source.subscribe(() => followUp.setValue(followUp.value + 1));
+
+      const seen: number[] = [];
+      followUp.subscribe((value) => seen.push(value));
+      seen.length = 0;
+
+      spBatch(() => {
+        source.setValue(1);
+      });
+
+      expect(seen).toEqual([2]);
+    });
+
+    it('should coalesce notifications from undo and redo inside a batch', () => {
+      const signal = signalPlusService.create(0).withHistory().build();
+      signal.setValue(1);
+      signal.setValue(2);
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+      seen.length = 0;
+
+      spBatch(() => {
+        signal.undo();
+        signal.undo();
+      });
+
+      expect(seen).toEqual([0]);
+      expect(signal.value).toBe(0);
+    });
+
+    it('should not follow a flush-time write with the older queued value', () => {
+      const first = signalPlusService.create(0).build();
+      const second = signalPlusService.create(0).build();
+      let armed = false;
+      first.subscribe(() => {
+        if (armed) second.setValue(99);
+      });
+
+      const seen: number[] = [];
+      second.subscribe((value) => seen.push(value));
+      seen.length = 0;
+      armed = true;
+
+      spBatch(() => {
+        first.setValue(1);
+        second.setValue(2);
+      });
+
+      expect(second.value).toBe(99);
+      expect(seen).toEqual([99]);
+    });
+
+    it('should deliver a write made inside a batch opened during the flush', () => {
+      const source = signalPlusService.create(0).build();
+      const followUp = signalPlusService.create(0).build();
+      const seen: number[] = [];
+      followUp.subscribe((value) => seen.push(value));
+      seen.length = 0;
+      source.subscribe((value) => {
+        if (value === 1) {
+          spBatch(() => {
+            followUp.setValue(5);
+            followUp.setValue(6);
+          });
+        }
+      });
+
+      spBatch(() => {
+        source.setValue(1);
+      });
+
+      expect(followUp.value).toBe(6);
+      expect(seen).toEqual([6]);
+    });
+
+    it('should not deliver a pending notification for a signal destroyed inside the batch', () => {
+      const signal = signalPlusService.create(0).build();
+      const seen: number[] = [];
+      signal.subscribe((value) => seen.push(value));
+      seen.length = 0;
+
+      spBatch(() => {
+        signal.setValue(1);
+        signal.destroy();
+      });
+
+      expect(seen).toEqual([]);
+    });
+
+    it('should leave no batch state behind after a throwing batch', () => {
+      const signal = signalPlusService.create(0).build();
+
+      expect(() =>
+        spBatch(() => {
+          signal.setValue(1);
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      expect(spIsInBatch(signal)).toBe(false);
+    });
+  });
+
   describe('rollback without any consumer registration call', () => {
     it('should restore both signals from the documented example', () => {
       const userProfile = signalPlusService

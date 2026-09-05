@@ -469,7 +469,7 @@ Writes made through `set`, `setValue`, `update`, `reset`, `undo` and `redo` are 
 
 ### `spBatch`
 
-Groups multiple updates into a single batch context for coordinated state changes.
+Groups multiple updates so subscribers are notified once per signal when the block exits, with that signal's final value, instead of once per write.
 
 ```ts
 import { sp, spBatch } from "ngx-signal-plus";
@@ -477,11 +477,19 @@ import { sp, spBatch } from "ngx-signal-plus";
 const x = sp(1).build();
 const y = sp(2).build();
 
+x.subscribe((value) => console.log("x", value));
+
 spBatch(() => {
-  x.setValue(x.value + 1);
+  x.setValue(10);
+  x.setValue(20);
   y.setValue(y.value + 1);
 });
+// x logged once, with 20
 ```
+
+Notifications are coalesced per signal and delivered in order of first write. Debug recording and async validation are deferred with them, so a batch produces no intermediate reactions. Signals written outside a batch notify immediately, as before.
+
+`spBatch` does not roll back. If the block throws, the writes stand and the pending notifications are still delivered before the error propagates, so subscribers never observe stale state. Nested `spBatch` calls join the outermost batch, which owns the single flush. A subscriber that writes during the flush notifies immediately, and a signal destroyed inside the batch delivers nothing.
 
 ### Transaction state helpers
 

@@ -14,6 +14,17 @@ export interface TransactionContext {
 
 export interface BatchContext {
   active: boolean;
+  flushing: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   signals: Set<SignalPlus<any>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pending: Map<SignalPlus<any>, PendingBatchNotification<any>>;
+}
+
+/**
+ * A signal's latest pending notification, delivered once when the batch exits
+ */
+export interface PendingBatchNotification<T> {
+  value: T;
+  deliver: (value: T) => void;
 }
