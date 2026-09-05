@@ -242,7 +242,10 @@ describe('spMutation', () => {
   it('should apply optimistic updates and keep optimistic value on success', (done) => {
     queryClient.setQueryData(['todos'], [{ id: 1, title: 'old' }]);
 
-    const mutation = spMutation<{ id: number; title: string }, { title: string }>({
+    const mutation = spMutation<
+      { id: number; title: string },
+      { title: string }
+    >({
       mutationFn: async (vars) => ({ id: 1, title: vars.title }),
       optimisticUpdate: {
         queryKey: ['todos'],
@@ -251,7 +254,9 @@ describe('spMutation', () => {
     });
 
     mutation.mutate({ title: 'new' }).then(() => {
-      expect(queryClient.getQueryData(['todos'])).toEqual([{ id: 1, title: 'new' }]);
+      expect(queryClient.getQueryData(['todos'])).toEqual([
+        { id: 1, title: 'new' },
+      ]);
       done();
     });
   });
@@ -259,7 +264,10 @@ describe('spMutation', () => {
   it('should rollback optimistic updates on error', (done) => {
     queryClient.setQueryData(['todos'], [{ id: 1, title: 'old' }]);
 
-    const mutation = spMutation<{ id: number; title: string }, { title: string }>({
+    const mutation = spMutation<
+      { id: number; title: string },
+      { title: string }
+    >({
       mutationFn: async () => {
         throw new Error('failure');
       },
@@ -270,7 +278,9 @@ describe('spMutation', () => {
     });
 
     mutation.mutate({ title: 'new' }).catch(() => {
-      expect(queryClient.getQueryData(['todos'])).toEqual([{ id: 1, title: 'old' }]);
+      expect(queryClient.getQueryData(['todos'])).toEqual([
+        { id: 1, title: 'old' },
+      ]);
       done();
     });
   });

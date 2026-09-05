@@ -1,4 +1,9 @@
-import { TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
+import {
+  TestBed,
+  fakeAsync,
+  flushMicrotasks,
+  tick,
+} from '@angular/core/testing';
 import { MutationResult } from './interfaces';
 import { getGlobalQueryClient } from './query-client';
 import { spMutation } from './sp-mutation';

@@ -5,7 +5,7 @@
 // Managers
 export {
   HistoryManager as spHistoryManager,
-  StorageManager as spStorageManager
+  StorageManager as spStorageManager,
 } from '../managers';
 
 // Utilities
@@ -26,9 +26,12 @@ export {
   spRemoveMiddleware,
   spRunMiddleware,
   spRunMiddlewareError,
-  spUseMiddleware
+  spUseMiddleware,
 } from './middleware';
-export type { MiddlewareContext, SignalMiddleware } from '../models/middleware.model';
+export type {
+  MiddlewareContext,
+  SignalMiddleware,
+} from '../models/middleware.model';
 export {
   hasLocalStorage,
   isBrowser,
@@ -37,7 +40,7 @@ export {
   safeLocalStorageGet,
   safeLocalStorageRemove,
   safeLocalStorageSet,
-  safeSetTimeout
+  safeSetTimeout,
 } from './platform';
 export { presets as spPresets, validators as spValidators } from './presets';
 export { spSchema, spSchemaValidator, spSchemaWithErrors } from './schema';
@@ -47,7 +50,7 @@ export type {
   SchemaValidationResult,
   ZodError,
   ZodErrorIssue,
-  ZodLike
+  ZodLike,
 } from './schema';
 export {
   spBatch,
@@ -55,6 +58,6 @@ export {
   spIsInBatch,
   spIsInTransaction,
   spIsTransactionActive,
-  spTransaction
+  spTransaction,
 } from './transactions';
 export { SpError, SP_ERRORS, spCreateError, formatSpError } from './errors';

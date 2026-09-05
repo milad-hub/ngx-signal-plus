@@ -71,13 +71,19 @@ export const spMonitor = {
 
   getSlowSignals(thresholdMs = 16): SignalPerformanceState[] {
     return Array.from(metrics.values())
-      .filter((metric) => metric.enabled && metric.averageDurationMs >= thresholdMs)
+      .filter(
+        (metric) => metric.enabled && metric.averageDurationMs >= thresholdMs,
+      )
       .sort((a, b) => b.averageDurationMs - a.averageDurationMs)
       .map((metric) => ({ ...metric }));
   },
 
-  exportMetrics(format: 'json' | 'object' = 'object'): SignalPerformanceState[] | string {
-    const exported = Array.from(metrics.values()).map((metric) => ({ ...metric }));
+  exportMetrics(
+    format: 'json' | 'object' = 'object',
+  ): SignalPerformanceState[] | string {
+    const exported = Array.from(metrics.values()).map((metric) => ({
+      ...metric,
+    }));
     return format === 'json' ? JSON.stringify(exported) : exported;
   },
 

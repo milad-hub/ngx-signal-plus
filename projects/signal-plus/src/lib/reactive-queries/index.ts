@@ -7,4 +7,3 @@ export * from './sp-query';
 export * from './interfaces';
 
 export * from './sp-infinite-query';
-

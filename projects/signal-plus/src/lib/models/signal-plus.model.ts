@@ -584,4 +584,3 @@ export interface FormConfig<T = any> {
   /** Storage key for persistence */
   key?: string;
 }
-

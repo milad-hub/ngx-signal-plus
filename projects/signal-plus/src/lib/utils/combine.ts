@@ -2,7 +2,9 @@ import { Signal, computed } from '@angular/core';
 
 export function spCombine<TSignals extends readonly Signal<unknown>[], TResult>(
   signals: [...TSignals],
-  combiner: (...values: { [K in keyof TSignals]: ReturnType<TSignals[K]> }) => TResult,
+  combiner: (
+    ...values: { [K in keyof TSignals]: ReturnType<TSignals[K]> }
+  ) => TResult,
 ): Signal<TResult> {
   return computed(() => {
     const values = signals.map((source) => source()) as {
