@@ -10,6 +10,7 @@ Thank you for considering contributing to ngx-signal-plus! This document provide
 - [Development Workflow](#development-workflow)
 - [Testing Guidelines](#testing-guidelines)
 - [Branch and Merge Policy](#branch-and-merge-policy)
+- [Continuous Integration](#continuous-integration)
 - [Pull Request Process](#pull-request-process)
 - [Coding Standards](#coding-standards)
 - [Documentation](#documentation)
@@ -220,6 +221,69 @@ branch, delete and recreate the branch rather than force-pushing anything into
 The Wiki and Projects tabs are disabled. Discussions is disabled as well, so
 questions belong in an issue for now.
 
+## Continuous Integration
+
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs on every push
+to `main`, on every pull request, and on demand. It runs the same gates this
+guide asks you to run locally, so a green pull request means the commands above
+were run for you rather than trusted.
+
+| Job        | Node    | What it runs                                               |
+| ---------- | ------- | ---------------------------------------------------------- |
+| `library`  | 20.19.0 | `build:lib`, `check:lib`, `test:lib`, `test:lib:coverage`  |
+| `examples` | 20.19.0 | `build:examples`, `test:examples`, `check:examples`        |
+| `smoke`    | 24.15.0 | `smoke:lib` once per Angular lane, one lane per matrix job |
+
+The library and examples jobs run on Node 20.19.0, the floor declared in
+`engines`, because a floor nothing runs against is a claim rather than a
+guarantee. The smoke job runs on Node 24.15.0, which is what the Angular 22
+lane requires; the older lanes tolerate it.
+
+### How a smoke lane reports
+
+A permanently red job is a job people stop reading, so each lane declares what
+its own red means and only one lane can turn the workflow red:
+
+- **Angular 21 is `required`.** It is the top of the declared peer range. If it
+  fails, the workflow fails, and the change does not land.
+- **Angular 16 is `xfail`.** It fails because of B5, already recorded and
+  scheduled for Step 3.5, and the runner prints that reason before the lane
+  starts. Its failure is expected, so the job reports **green with a warning
+  annotation** rather than red: a check that is permanently red teaches everyone
+  to ignore the check list, which costs more than the lane is worth while the
+  defect is scheduled. If this lane ever _passes_, CI raises a notice asking you
+  to clear `expectedFailure` in `scripts/smoke/targets.json` and promote the
+  lane to `required`, so a stale exemption cannot survive the fix silently.
+- **Angular 22 is `advisory`.** It sits outside the declared peer range until
+  Step 7.2 widens it, so it installs with `--legacy-peer-deps` and reports for
+  information only, green with a warning on failure like `xfail`.
+
+Only a `required` lane can turn a job red, and all three of its bad outcomes do:
+a failure, and a skip, and a lane name that matched nothing. Read a green smoke
+job together with its annotations — for a non-required lane, green means "ran and
+reported", not "passed". The verdict and the reason for the lane's status are
+written to the job summary either way.
+
+Exit code `2` — a lane skipped because the runner's Node is older than the lane
+needs, or because `--only` matched no lane in `targets.json` — is reported as a
+warning and never as a pass, because nothing was verified. On the `required`
+lane it is fatal, so renaming that lane in `targets.json` cannot leave the job
+green while testing nothing.
+
+The lane list here and the lanes in `scripts/smoke/targets.json` must agree.
+Removing a lane from `targets.json` without removing it here fails loudly, since
+`--only` rejects an unknown lane; adding one does not, so add the matrix entry
+in the same change.
+
+### Actions and updates
+
+Actions are pinned to commit SHAs rather than tags, with the tag in a trailing
+comment, because a tag can be moved to point at different code.
+[`.github/dependabot.yml`](../../.github/dependabot.yml) watches the
+`github-actions` ecosystem weekly and groups the bumps into one pull request.
+npm updates are deliberately left off: security updates are already enabled, and
+a dev-only dependency tree gated on full coverage would produce weekly noise.
+
 ## Pull Request Process
 
 1. Update documentation for any new features
@@ -291,6 +355,14 @@ the repository two places that decide formatting, so prefer changing
 
 Run `npm run format:lib` to fix library formatting rather than adjusting code by
 hand to satisfy the checker.
+
+Prettier is pinned to an exact version in `package.json` rather than a `^` range.
+Because `package-lock.json` is deliberately not committed, a range would let CI
+resolve a newer Prettier than your machine has, and a minor release that changes
+one indentation rule then fails the gate on code nobody touched — which is
+exactly what a floating `^3.0.0` did, on a nested binary expression in
+`signal-builder.ts`. Raise the pin as a deliberate change and reformat in the
+same commit; do not widen it back to a range.
 
 ### TypeScript Guidelines
 

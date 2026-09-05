@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CHROME_BIN: /usr/bin/google-chrome
+
+jobs:
+  library:
+    name: Library
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.19.0
+      - run: google-chrome --version
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:lib
+      - run: npm run check:lib
+      - run: npm run test:lib
+      - run: npm run test:lib:coverage
+
+  examples:
+    name: Examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.19.0
+      - run: google-chrome --version
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:examples
+      - run: npm run test:examples
+      - run: npm run check:examples
+
+  smoke:
+    name: Smoke Angular ${{ matrix.lane }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.status != 'required' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: "16"
+            status: xfail
+            note: >-
+              The bottom of the declared peer range. Expected red until Step 3.5
+              fixes B5, and scripts/smoke/targets.json carries the reason the
+              runner prints before the lane starts.
+          - lane: "21"
+            status: required
+            note: >-
+              The top of the declared peer range. This lane is the only smoke
+              lane allowed to turn the workflow red, and it must stay green.
+          - lane: "22"
+            status: advisory
+            note: >-
+              Outside the declared peer range until Step 7.2 widens it, so this
+              lane installs with --legacy-peer-deps and reports for information
+              only.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.15.0
+      - run: google-chrome --version
+      - run: npm install --no-audit --no-fund
+      - name: Consumer smoke build
+        id: smoke
+        run: |
+          code=0
+          npm run smoke:lib -- --only=${{ matrix.lane }} || code=$?
+          case "$code" in
+            0) verdict=passed ;;
+            2) verdict=blocked ;;
+            *) verdict=failed ;;
+          esac
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+      - name: Report the lane
+        env:
+          LANE: ${{ matrix.lane }}
+          STATUS: ${{ matrix.status }}
+          NOTE: ${{ matrix.note }}
+          VERDICT: ${{ steps.smoke.outputs.verdict }}
+        run: |
+          {
+            printf '### Angular %s smoke lane: %s (%s)\n\n' "$LANE" "$VERDICT" "$STATUS"
+            printf '%s\n' "$NOTE"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$VERDICT" = blocked ]; then
+            if [ "$STATUS" = required ]; then
+              echo "::error title=Angular $LANE verified nothing::Exit 2 means the runner's Node is older than this lane needs, or --only matched no lane in scripts/smoke/targets.json. A required lane may not report green without running."
+              exit 1
+            fi
+            echo "::warning title=Angular $LANE skipped::The runner's Node is older than this lane requires, so nothing was verified."
+            exit 0
+          fi
+          if [ "$VERDICT" = passed ] && [ "$STATUS" = xfail ]; then
+            echo "::notice title=Angular $LANE no longer fails::Clear expectedFailure for this lane in scripts/smoke/targets.json and make it required here."
+            exit 0
+          fi
+          if [ "$VERDICT" = failed ]; then
+            if [ "$STATUS" = required ]; then
+              echo "::error title=Angular $LANE failed::$NOTE"
+              exit 1
+            fi
+            echo "::warning title=Angular $LANE failed as expected::$NOTE"
+            exit 0
+          fi
