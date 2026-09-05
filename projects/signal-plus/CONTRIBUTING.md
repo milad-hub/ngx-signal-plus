@@ -246,20 +246,29 @@ its own red means and only one lane can turn the workflow red:
 
 - **Angular 21 is `required`.** It is the top of the declared peer range. If it
   fails, the workflow fails, and the change does not land.
-- **Angular 16 is `xfail`.** It is red because of B5, already recorded and
+- **Angular 16 is `xfail`.** It fails because of B5, already recorded and
   scheduled for Step 3.5, and the runner prints that reason before the lane
-  starts. The job is annotated rather than fatal. If this lane ever _passes_,
-  CI raises a notice asking you to clear `expectedFailure` in
-  `scripts/smoke/targets.json` and promote the lane to `required`, so a stale
-  exemption cannot survive the fix silently.
+  starts. Its failure is expected, so the job reports **green with a warning
+  annotation** rather than red: a check that is permanently red teaches everyone
+  to ignore the check list, which costs more than the lane is worth while the
+  defect is scheduled. If this lane ever _passes_, CI raises a notice asking you
+  to clear `expectedFailure` in `scripts/smoke/targets.json` and promote the
+  lane to `required`, so a stale exemption cannot survive the fix silently.
 - **Angular 22 is `advisory`.** It sits outside the declared peer range until
   Step 7.2 widens it, so it installs with `--legacy-peer-deps` and reports for
-  information only.
+  information only, green with a warning on failure like `xfail`.
+
+Only a `required` lane can turn a job red, and all three of its bad outcomes do:
+a failure, and a skip, and a lane name that matched nothing. Read a green smoke
+job together with its annotations — for a non-required lane, green means "ran and
+reported", not "passed". The verdict and the reason for the lane's status are
+written to the job summary either way.
 
 Exit code `2` — a lane skipped because the runner's Node is older than the lane
-needs — is reported as a warning and never as a pass, because nothing was
-verified. Every lane writes its verdict and the reason for its status to the
-job summary.
+needs, or because `--only` matched no lane in `targets.json` — is reported as a
+warning and never as a pass, because nothing was verified. On the `required`
+lane it is fatal, so renaming that lane in `targets.json` cannot leave the job
+green while testing nothing.
 
 The lane list here and the lanes in `scripts/smoke/targets.json` must agree.
 Removing a lane from `targets.json` without removing it here fails loudly, since

@@ -113,6 +113,10 @@ jobs:
             exit 0
           fi
           if [ "$VERDICT" = failed ]; then
-            echo "::error title=Angular $LANE failed::$NOTE"
-            exit 1
+            if [ "$STATUS" = required ]; then
+              echo "::error title=Angular $LANE failed::$NOTE"
+              exit 1
+            fi
+            echo "::warning title=Angular $LANE failed as expected::$NOTE"
+            exit 0
           fi
