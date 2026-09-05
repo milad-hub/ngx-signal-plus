@@ -1,6 +1,6 @@
 /**
  * @fileoverview Collection of operators for transforming and manipulating Angular signals
- * @module ngx-signal-plus/operators
+ * @module ngx-signal-plus
  *
  * @description
  * This module provides a comprehensive set of operators for Angular signals, including:
@@ -18,7 +18,7 @@
  * @example Basic Usage
  * ```typescript
  * import { signal } from '@angular/core';
- * import { map, filter, debounceTime } from 'ngx-signal-plus/operators';
+ * import { spMap, spFilter, spDebounceTime } from 'ngx-signal-plus';
  *
  * const source = signal(0);
  * const result = source.pipe(

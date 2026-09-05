@@ -4,6 +4,13 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.9.6]
+
+### Fixed
+
+- Removed the `./core`, `./operators`, `./utils` and `./models` subpath exports from the package manifest. These paths never resolved: they pointed at bundles ng-packagr does not emit, because this library has a single entry point and no secondary entry points were ever built. Importing any of them failed for every consumer on every release that declared them. The nonstandard `esm` export condition went with them.
+- Everything the library exports has always been available from the package root, and still is: `import { sp, spMap, spQuery } from 'ngx-signal-plus'`. Nothing was removed from the public API, and no working import changed.
+
 ## [2.9.3]
 
 ### Fixed
