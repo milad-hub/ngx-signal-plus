@@ -1,0 +1,146 @@
+{
+  "16": {
+    "label": "Angular 16 (lowest supported)",
+    "angular": "16.2.12",
+    "cli": "16.2.16",
+    "typescript": "5.1.6",
+    "zone": "0.13.3",
+    "jasmineCore": "4.6.1",
+    "jasmineTypes": "4.3.6",
+    "minNode": "18.10.0",
+    "moduleResolution": "node",
+    "legacyPeerDeps": false,
+    "expectedFailure": "B7 \u2014 the published bundle declares minVersion 17.0.0 for spSignalPlusComponent, so the Angular linker rejects the whole bundle before any library code runs; Step 1.5 decides how to fix it",
+    "dependencies": {
+      "@angular/platform-browser-dynamic": "16.2.12"
+    },
+    "devDependencies": {
+      "@angular-devkit/build-angular": "16.2.16",
+      "@angular/compiler-cli": "16.2.12"
+    },
+    "build": {
+      "builder": "@angular-devkit/build-angular:browser",
+      "options": {
+        "main": "src/main.ts",
+        "index": "src/index.html",
+        "tsConfig": "tsconfig.app.json",
+        "polyfills": ["zone.js"],
+        "outputPath": "dist/smoke",
+        "aot": true
+      }
+    },
+    "test": {
+      "builder": "@angular-devkit/build-angular:karma",
+      "options": {
+        "tsConfig": "tsconfig.spec.json",
+        "polyfills": ["zone.js", "zone.js/testing"]
+      }
+    }
+  },
+  "20": {
+    "label": "Angular 20 (control lane, matches the workspace)",
+    "angular": "20.3.12",
+    "cli": "20.3.36",
+    "typescript": "5.9.3",
+    "zone": "0.15.1",
+    "jasmineCore": "5.4.0",
+    "jasmineTypes": "5.1.4",
+    "minNode": "20.19.0",
+    "moduleResolution": "bundler",
+    "legacyPeerDeps": false,
+    "optional": true,
+    "optionalReason": "a control lane, not part of the declared peer range; run it with --only=20 to prove the harness itself is sound",
+    "dependencies": {},
+    "devDependencies": {
+      "@angular/build": "20.3.10",
+      "@angular/compiler-cli": "20.3.12"
+    },
+    "build": {
+      "builder": "@angular/build:application",
+      "options": {
+        "browser": "src/main.ts",
+        "index": "src/index.html",
+        "tsConfig": "tsconfig.app.json",
+        "polyfills": ["zone.js"],
+        "outputPath": "dist/smoke"
+      }
+    },
+    "test": {
+      "builder": "@angular/build:karma",
+      "options": {
+        "tsConfig": "tsconfig.spec.json",
+        "polyfills": ["zone.js", "zone.js/testing"]
+      }
+    }
+  },
+  "21": {
+    "label": "Angular 21 (highest declared in the peer range)",
+    "angular": "21.2.22",
+    "cli": "21.2.23",
+    "typescript": "5.9.3",
+    "zone": "0.15.1",
+    "jasmineCore": "5.4.0",
+    "jasmineTypes": "5.1.4",
+    "minNode": "20.19.0",
+    "moduleResolution": "bundler",
+    "legacyPeerDeps": false,
+    "expectedFailure": "B8 \u2014 peerDependencies caps @angular/core at <=21.0.0, which excludes every Angular 21 release after 21.0.0, so npm install fails with ERESOLVE; the library code itself passes this lane, verified with --legacy-peer-deps",
+    "dependencies": {},
+    "devDependencies": {
+      "@angular/build": "21.2.23",
+      "@angular/compiler-cli": "21.2.22"
+    },
+    "build": {
+      "builder": "@angular/build:application",
+      "options": {
+        "browser": "src/main.ts",
+        "index": "src/index.html",
+        "tsConfig": "tsconfig.app.json",
+        "polyfills": ["zone.js"],
+        "outputPath": "dist/smoke"
+      }
+    },
+    "test": {
+      "builder": "@angular/build:karma",
+      "options": {
+        "tsConfig": "tsconfig.spec.json",
+        "polyfills": ["zone.js", "zone.js/testing"]
+      }
+    }
+  },
+  "22": {
+    "label": "Angular 22 (highest published)",
+    "angular": "22.1.5",
+    "cli": "22.1.7",
+    "typescript": "6.0.2",
+    "zone": "0.15.1",
+    "jasmineCore": "5.4.0",
+    "jasmineTypes": "5.1.4",
+    "minNode": "24.15.0",
+    "moduleResolution": "bundler",
+    "legacyPeerDeps": true,
+    "legacyPeerDepsReason": "the published peerDependencies range is >=16.0.0 <=21.0.0, so Angular 22 is not yet declared as supported; Step 7.2 widens it",
+    "dependencies": {},
+    "devDependencies": {
+      "@angular/build": "22.1.7",
+      "@angular/compiler-cli": "22.1.5"
+    },
+    "build": {
+      "builder": "@angular/build:application",
+      "options": {
+        "browser": "src/main.ts",
+        "index": "src/index.html",
+        "tsConfig": "tsconfig.app.json",
+        "polyfills": ["zone.js"],
+        "outputPath": "dist/smoke"
+      }
+    },
+    "test": {
+      "builder": "@angular/build:karma",
+      "options": {
+        "tsConfig": "tsconfig.spec.json",
+        "polyfills": ["zone.js", "zone.js/testing"]
+      }
+    }
+  }
+}

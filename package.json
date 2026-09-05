@@ -1,6 +1,6 @@
 {
   "name": "ngx-signal-plus",
-  "version": "2.9.4",
+  "version": "2.9.5",
   "scripts": {
     "build:lib": "ng build signal-plus --configuration production",
     "start:examples": "npm run build:lib && ng serve examples",
@@ -13,6 +13,7 @@
     "lint:lib": "ng lint signal-plus",
     "format:lib": "prettier --write \"projects/signal-plus/**/*.{ts,html,css,scss,json,md}\"",
     "check:lib": "npm run lint:lib && prettier --check \"projects/signal-plus/**/*.{ts,html,css,scss,json,md}\"",
+    "smoke:lib": "node scripts/smoke/run.mjs",
     "pack:lib": "cd dist/signal-plus && npm pack",
     "publish:lib": "cd dist/signal-plus && npm publish",
     "publish:lib:github": "node tmp/publish-github.js",

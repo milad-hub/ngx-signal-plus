@@ -134,6 +134,57 @@ describe("spCounter", () => {
 });
 ```
 
+### Consumer Smoke Builds
+
+The workspace suite compiles against one Angular version, so it cannot see a
+defect that only appears at one end of the supported peer range. `npm run
+smoke:lib` closes that gap: it packs the library, installs the tarball into a
+throwaway application for each Angular version in
+`scripts/smoke/targets.json`, builds it, and runs a spec suite that exercises a
+signal, an operator, a query, and a form group through the published entry
+point.
+
+```bash
+npm run smoke:lib                          # every default lane
+npm run smoke:lib -- --only=16             # one lane
+npm run smoke:lib -- --only=20             # the optional control lane
+npm run smoke:lib -- --keep                # leave the applications in place afterwards
+npm run smoke:lib -- --skip-pack           # reuse the tarball from the previous run
+npm run smoke:lib -- --legacy-peer-deps    # ignore the declared peer range while installing
+```
+
+The default lanes are Angular 16 and 21 — the ends of the declared peer range —
+plus Angular 22, the next major. Reach for `--legacy-peer-deps` when a lane fails
+during install: if the lane then installs and passes, the defect is in
+`peerDependencies` rather than in the library, and the two should never be
+reported as the same thing.
+
+Run it before any change to the public surface, to an operator, or to the
+package manifest, and read the exit code rather than the last line of output:
+`0` means every lane passed, `1` means a lane failed, and `2` means a lane was
+skipped because the local Node.js version is older than that Angular version
+requires. Angular 22 needs Node.js 24.15.0 or newer, which is stricter than the
+workspace's own `>=20.19.0`.
+
+The generated applications live outside the repository, under
+`%TEMP%/ngx-signal-plus-smoke` or `$TMPDIR/ngx-signal-plus-smoke`, so nothing
+resolves through the workspace's `node_modules`. A failed lane is left on disk
+so its output can be inspected.
+
+A lane carrying an `expectedFailure` note is red because of a defect that is
+already recorded and scheduled; the note names it and prints before the lane
+runs. Clear the note in the same change that fixes the defect, so a lane never
+stays red without an explanation attached to it.
+
+Add a lane by adding an entry to `scripts/smoke/targets.json`; a lane marked
+`"optional": true` is skipped unless it is named with `--only`, which is how the
+Angular 20 control lane is kept out of the default run. The control lane matches
+the workspace and is the fastest way to tell a real defect apart from a broken
+harness: if it fails, the problem is the harness.
+
+The application in `scripts/smoke/app` is shared by every lane, so it may only
+use APIs that exist across the whole supported range.
+
 ## Pull Request Process
 
 1. Update documentation for any new features
