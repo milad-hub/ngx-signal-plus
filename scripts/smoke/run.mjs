@@ -128,9 +128,30 @@ function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function removeDirectory(directory) {
+  try {
+    rmSync(directory, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 200,
+    });
+    return true;
+  } catch (error) {
+    console.log(
+      `  could not remove ${directory}: ${error.code ?? error.message}. Something still holds a file there — close it and rerun, or pass --dir to use another location.`,
+    );
+    return false;
+  }
+}
+
 function materialize(key, target, tarball) {
   const appDir = join(workspace, `ng${key}`);
-  rmSync(appDir, { recursive: true, force: true });
+  if (!removeDirectory(appDir)) {
+    throw new Error(
+      `the previous ${appDir} could not be cleared, so this lane cannot start from a clean application`,
+    );
+  }
   mkdirSync(appDir, { recursive: true });
   cpSync(join(here, "app", "src"), join(appDir, "src"), { recursive: true });
 
@@ -236,7 +257,18 @@ function smoke(key, target, tarball) {
   if (target.expectedFailure !== undefined && !forceLegacyPeerDeps) {
     console.log(`  expected to fail: ${target.expectedFailure}`);
   }
-  const appDir = materialize(key, target, tarball);
+  let appDir;
+  try {
+    appDir = materialize(key, target, tarball);
+  } catch (error) {
+    console.log(`  FAILED to prepare the application: ${error.message}`);
+    return {
+      key,
+      target,
+      appDir: join(workspace, `ng${key}`),
+      phases: { install: { ok: false, status: null, seconds: "0.0" } },
+    };
+  }
   const phases = {};
   phases.install = run(
     "install the consumer application",
@@ -314,7 +346,7 @@ if (failed) {
 } else if (!keep) {
   for (const { appDir } of results) {
     if (appDir !== null) {
-      rmSync(appDir, { recursive: true, force: true });
+      removeDirectory(appDir);
     }
   }
   console.log(

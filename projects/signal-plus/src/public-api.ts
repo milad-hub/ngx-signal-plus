@@ -11,12 +11,8 @@ export { sp, spCounter, spForm, spToggle } from './lib/utils/create';
 // Signal Enhancement
 export { enhance } from './lib/utils/enhance';
 
-// Core Components and Services
-export {
-  spSignalBuilder,
-  spSignalPlusComponent,
-  spSignalPlusService,
-} from './lib/core';
+// Core Services
+export { spSignalBuilder, spSignalPlusService } from './lib/core';
 
 // Models and Types
 export type {

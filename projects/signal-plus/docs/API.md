@@ -745,24 +745,7 @@ console.log(formatSpError(SpErrorCode.VAL_001, "Validation failed"));
 console.log(e1, e2);
 ```
 
-## Angular Component and Service Exports
-
-### `spSignalPlusComponent`
-
-Standalone Angular demo component that showcases core `ngx-signal-plus` capabilities.
-
-```ts
-import { Component } from "@angular/core";
-import { spSignalPlusComponent } from "ngx-signal-plus";
-
-@Component({
-  selector: "app-demo",
-  standalone: true,
-  imports: [spSignalPlusComponent],
-  template: `<lib-signal-plus />`,
-})
-export class DemoComponent {}
-```
+## Angular Service Exports
 
 ### `spSignalPlusService`
 

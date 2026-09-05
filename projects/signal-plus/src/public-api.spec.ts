@@ -58,7 +58,6 @@ describe('public API', () => {
         'spSchemaValidator',
         'spSchemaWithErrors',
         'spSignalBuilder',
-        'spSignalPlusComponent',
         'spSignalPlusService',
         'spSkip',
         'spStorageManager',
