@@ -162,9 +162,9 @@ export class App {
   public readonly debouncedSearch = spDistinctUntilChanged<string>()(
     spDebounceTime<string>(300)(this.searchTerm),
   );
-  public readonly shoutedSearch = spMap((value: string) =>
-    value.toUpperCase(),
-  )(this.debouncedSearch);
+  public readonly shoutedSearch = spMap((value: string) => value.toUpperCase())(
+    this.debouncedSearch,
+  );
   public readonly longSearch = spFilter((value: string) => value.length >= 3)(
     this.searchTerm,
   );

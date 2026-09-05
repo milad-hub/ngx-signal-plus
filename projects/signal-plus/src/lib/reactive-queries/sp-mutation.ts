@@ -82,9 +82,8 @@ export function spMutation<TData = unknown, TVariables = unknown>(
 
     if (optimistic) {
       optimisticPreviousData = queryClient.getQueryData(optimistic.queryKey);
-      queryClient.setQueryData(
-        optimistic.queryKey,
-        (oldValue) => optimistic.updater(oldValue, variables),
+      queryClient.setQueryData(optimistic.queryKey, (oldValue) =>
+        optimistic.updater(oldValue, variables),
       );
     }
 
@@ -236,4 +235,3 @@ export function createMutation<TData = unknown, TVariables = unknown>(
     ...options,
   });
 }
-

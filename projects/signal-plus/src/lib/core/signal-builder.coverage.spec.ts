@@ -78,9 +78,9 @@ describe('SignalBuilder internal gap behavior', () => {
       .monitor({ trackUpdates: false, label: 'gap-monitor-off' })
       .build();
     s.setValue(2);
-    expect(spMonitor.getHotSignals().some((m) => m.name === 'gap-monitor-off')).toBe(
-      false,
-    );
+    expect(
+      spMonitor.getHotSignals().some((m) => m.name === 'gap-monitor-off'),
+    ).toBe(false);
   });
 
   it('should enable tracking via trackPerformance even when trackUpdates is false', () => {
@@ -141,9 +141,7 @@ describe('SignalBuilder internal gap behavior', () => {
   });
 
   it('should ignore filter rejections by not applying the invalid value', () => {
-    const s = new SignalBuilder(1)
-      .filter((v) => v > 0)
-      .build();
+    const s = new SignalBuilder(1).filter((v) => v > 0).build();
     expect(() => s.setValue(-1)).toThrow();
     expect(s.value).toBe(1);
   });
@@ -189,15 +187,15 @@ describe('SignalBuilder internal gap behavior', () => {
     const circular: Circular = {};
     circular.self = circular;
 
-    const s = new SignalBuilder<Circular>({}).persist('gap-circular-key').build();
+    const s = new SignalBuilder<Circular>({})
+      .persist('gap-circular-key')
+      .build();
     expect(() => s.setValue(circular)).not.toThrow();
     s.destroy();
   });
 
   it('should collect a generic validation message for boolean validator failures', () => {
-    const s = new SignalBuilder(1)
-      .validate(() => false)
-      .build();
+    const s = new SignalBuilder(1).validate(() => false).build();
     expect(() => s.setValue(2)).toThrowError('Validation failed');
   });
 
@@ -212,7 +210,9 @@ describe('SignalBuilder internal gap behavior', () => {
   });
 
   it('should continue past string validation errors to collect further failures', () => {
-    const second = jasmine.createSpy('secondValidator').and.returnValue('second failed');
+    const second = jasmine
+      .createSpy('secondValidator')
+      .and.returnValue('second failed');
     const s = new SignalBuilder(1)
       .validate(() => 'first failed')
       .validate(second)
@@ -247,7 +247,9 @@ describe('SignalBuilder internal gap behavior', () => {
   });
 
   it('should default trackUpdates to true when monitor options omit it entirely', () => {
-    const s = new SignalBuilder(1).monitor({ label: 'gap-default-track' }).build();
+    const s = new SignalBuilder(1)
+      .monitor({ label: 'gap-default-track' })
+      .build();
     s.setValue(2);
     const metric = spMonitor
       .getHotSignals()
@@ -285,9 +287,7 @@ describe('SignalBuilder internal gap behavior', () => {
   });
 
   it('should expose validate() as a callable method', () => {
-    const s = new SignalBuilder(1)
-      .validate((v) => v > 0)
-      .build();
+    const s = new SignalBuilder(1).validate((v) => v > 0).build();
     expect(s.validate()).toBe(true);
   });
 
@@ -334,9 +334,7 @@ describe('SignalBuilder internal gap behavior', () => {
   });
 
   it('should clear a pending async validation timeout on destroy', fakeAsync(() => {
-    const s = new SignalBuilder(0)
-      .validateAsync(async () => true)
-      .build();
+    const s = new SignalBuilder(0).validateAsync(async () => true).build();
     s.setValue(1);
     expect(() => s.destroy()).not.toThrow();
     tick(100);
@@ -414,9 +412,9 @@ describe('SignalBuilder internal gap behavior', () => {
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fallback: any = { big: 0n };
-    expect(() => builder.serializeWithCircularCheck(primary, fallback)).toThrowError(
-      /BigInt/,
-    );
+    expect(() =>
+      builder.serializeWithCircularCheck(primary, fallback),
+    ).toThrowError(/BigInt/);
   });
 
   it('should invoke the generic Async validation error message for a non-Error thrown by a single validator', fakeAsync(() => {
@@ -458,7 +456,10 @@ describe('SignalBuilder internal gap behavior', () => {
     const handler = jasmine.createSpy('errorHandler');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bad: any = { big: 1n };
-    const s = new SignalBuilder<unknown>(1).persist('gap-write-fail').onError(handler).build();
+    const s = new SignalBuilder<unknown>(1)
+      .persist('gap-write-fail')
+      .onError(handler)
+      .build();
     expect(() => s.setValue(bad)).not.toThrow();
     expect(handler).toHaveBeenCalledWith(jasmine.any(Error));
   });
@@ -548,7 +549,10 @@ describe('SignalBuilder internal gap behavior', () => {
     const circularFallback: Circular = {};
     circularFallback.self = circularFallback;
 
-    const result = builder.serializeWithCircularCheck(primary, circularFallback);
+    const result = builder.serializeWithCircularCheck(
+      primary,
+      circularFallback,
+    );
     expect(result).toContain('[Circular Reference]');
   });
 });
@@ -569,7 +573,11 @@ describe('SignalBuilder async validation abort edge cases', () => {
 
   afterEach(() => {
     if (originalAbortedDescriptor) {
-      Object.defineProperty(AbortSignal.prototype, 'aborted', originalAbortedDescriptor);
+      Object.defineProperty(
+        AbortSignal.prototype,
+        'aborted',
+        originalAbortedDescriptor,
+      );
       originalAbortedDescriptor = undefined;
     }
   });

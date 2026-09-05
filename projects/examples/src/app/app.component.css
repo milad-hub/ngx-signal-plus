@@ -259,7 +259,11 @@ h1 em {
 }
 .panel-feature {
   background:
-    radial-gradient(circle at 100% 0%, rgb(74 222 142 / 12%) 0, transparent 22rem),
+    radial-gradient(
+      circle at 100% 0%,
+      rgb(74 222 142 / 12%) 0,
+      transparent 22rem
+    ),
     linear-gradient(170deg, var(--surface-2), var(--surface) 60%);
 }
 .panel-heading,

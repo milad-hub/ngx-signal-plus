@@ -1,5 +1,10 @@
 import { signal } from '@angular/core';
-import { TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
+import {
+  TestBed,
+  fakeAsync,
+  flushMicrotasks,
+  tick,
+} from '@angular/core/testing';
 import { spInfiniteQuery } from './sp-infinite-query';
 
 describe('spInfiniteQuery gap behavior', () => {

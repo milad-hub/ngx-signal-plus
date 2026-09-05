@@ -426,7 +426,11 @@
         placeholder="Type to feed the pipeline…"
         aria-label="Operator search input"
         (input)="searchTerm.set(operatorSearch.value)"
-      /><button class="button button-primary" type="button" (click)="sendPulse()">
+      /><button
+        class="button button-primary"
+        type="button"
+        (click)="sendPulse()"
+      >
         Send pulse ({{ pulse() }})
       </button>
     </div>
@@ -436,7 +440,8 @@
         ><strong>{{ debouncedSearch() || '—' }}</strong>
       </div>
       <div class="metric">
-        <span>Mapped uppercase</span><strong>{{ shoutedSearch() || '—' }}</strong>
+        <span>Mapped uppercase</span
+        ><strong>{{ shoutedSearch() || '—' }}</strong>
       </div>
       <div class="metric">
         <span>Filter ≥ 3 chars</span><strong>{{ longSearch() || '—' }}</strong>
@@ -474,8 +479,8 @@
       <span
         class="status-pill"
         [class.is-valid]="username.isValid() && contactEmail.isValid()"
-        >{{ username.isValid() && contactEmail.isValid() ? 'Valid' : 'Needs input'
-        }}</span
+        >{{ username.isValid() && contactEmail.isValid() ? 'Valid' : 'Needs
+        input' }}</span
       >
     </div>
     <p class="panel-copy">
@@ -549,7 +554,11 @@
       <code>spStorageManager</code> snapshots the counter.
     </p>
     <div class="button-row">
-      <button class="button button-danger" type="button" (click)="bumpBounded(99)">
+      <button
+        class="button button-danger"
+        type="button"
+        (click)="bumpBounded(99)"
+      >
         Break the counter</button
       ><button
         class="button"
@@ -559,7 +568,11 @@
         Inspect transaction</button
       ><button class="button" type="button" (click)="saveSnapshot()">
         Save snapshot</button
-      ><button class="button button-quiet" type="button" (click)="loadSnapshot()">
+      ><button
+        class="button button-quiet"
+        type="button"
+        (click)="loadSnapshot()"
+      >
         Load snapshot
       </button>
     </div>
@@ -571,8 +584,8 @@
         >Schema (score): {{ scoreSchemaValid(score.value) ? 'valid' : 'invalid'
         }}</span
       ><span
-        >Schema errors: {{ usernameSchema({ name: username.value }).errors.join(',
-        ') || 'none' }}</span
+        >Schema errors: {{ usernameSchema({ name: username.value
+        }).errors.join(', ') || 'none' }}</span
       >
       @if (transactionInfo()) {<span>{{ transactionInfo() }}</span>} @if
       (storageInfo()) {<span>{{ storageInfo() }}</span>}

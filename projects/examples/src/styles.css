@@ -8,8 +8,16 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 85% -5%, rgb(64 221 148 / 9%) 0, transparent 34rem),
-    radial-gradient(circle at 0% 45%, rgb(255 176 74 / 5%) 0, transparent 30rem),
+    radial-gradient(
+      circle at 85% -5%,
+      rgb(64 221 148 / 9%) 0,
+      transparent 34rem
+    ),
+    radial-gradient(
+      circle at 0% 45%,
+      rgb(255 176 74 / 5%) 0,
+      transparent 30rem
+    ),
     radial-gradient(rgb(154 227 187 / 7%) 1px, transparent 1px) 0 0 / 26px 26px,
     #060907;
   font-family:

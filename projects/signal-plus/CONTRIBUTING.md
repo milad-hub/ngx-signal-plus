@@ -229,6 +229,40 @@ Brief description of the changes
 
 ## Coding Standards
 
+### Line Endings
+
+Every text file in this repository is LF, in git and in your working copy alike.
+`.gitattributes` sets `* text=auto eol=lf`, so git checks files out with LF on
+every platform regardless of your `core.autocrlf` setting, which on a default
+Git for Windows install is `true` and would otherwise hand you CRLF.
+
+This is not a stylistic preference; it is what makes the format gate usable.
+Prettier's `endOfLine` default is `lf`, so before `.gitattributes` existed
+`npm run check:lib` failed on every file of a Windows checkout while passing on
+Linux, and the failure read as "119 files need formatting" when most of those
+files were fine. The alternative — a `.prettierrc` with `endOfLine: "auto"` —
+would also have made the gate pass, but by teaching it to accept whatever line
+endings it is given, which means CRLF could reach the repository unnoticed. The
+gate is deliberately still strict about this: converting a single file to CRLF
+fails `npm run check:lib`.
+
+Do not set `core.autocrlf` per repository to work around anything here.
+`.gitattributes` already overrides it, and a local override only desynchronises
+your checkout from everyone else's.
+
+### Formatting
+
+`npm run check:lib` and `npm run check:examples` run ESLint and then
+`prettier --check`. Both must pass before a pull request. There is no
+`.prettierrc`: Prettier's defaults apply, with `.editorconfig` supplying
+`indent_size`, `insert_final_newline`, `trim_trailing_whitespace`, and
+single quotes for TypeScript. Adding a Prettier configuration file would give
+the repository two places that decide formatting, so prefer changing
+`.editorconfig` if a rule genuinely needs to move.
+
+Run `npm run format:lib` to fix library formatting rather than adjusting code by
+hand to satisfy the checker.
+
 ### TypeScript Guidelines
 
 - Use strict mode

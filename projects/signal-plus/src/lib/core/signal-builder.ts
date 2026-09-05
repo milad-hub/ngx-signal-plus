@@ -308,7 +308,8 @@ export class SignalBuilder<T> {
     const monitorOptions = this.options.monitorOptions;
     const monitorEnabled = Boolean(
       monitorOptions &&
-        ((monitorOptions.trackUpdates ?? true) || monitorOptions.trackPerformance),
+        ((monitorOptions.trackUpdates ?? true) ||
+          monitorOptions.trackPerformance),
     );
     const trackPerformance = Boolean(monitorOptions?.trackPerformance);
     const signalName =
@@ -454,9 +455,7 @@ export class SignalBuilder<T> {
 
           if (this.options.enableHistory && parsedHistory) {
             history.set(
-              enforceHistorySize(
-                parsedHistory.map((v) => conditionalClone(v)),
-              ),
+              enforceHistorySize(parsedHistory.map((v) => conditionalClone(v))),
             );
           } else if (this.options.enableHistory) {
             history.set([conditionalClone(parsedValue)]);
@@ -625,7 +624,10 @@ export class SignalBuilder<T> {
         if (hasChanged) {
           const oldValue = conditionalClone(writable());
           spRunMiddleware(
-            createMiddlewareContext(oldValue, conditionalClone(transformedValue)),
+            createMiddlewareContext(
+              oldValue,
+              conditionalClone(transformedValue),
+            ),
           );
 
           const monitorStart =
@@ -669,7 +671,9 @@ export class SignalBuilder<T> {
           }
 
           if (monitorEnabled) {
-            const duration = trackPerformance ? performance.now() - monitorStart : 0;
+            const duration = trackPerformance
+              ? performance.now() - monitorStart
+              : 0;
             spMonitor.recordUpdate(signalName, duration);
           }
 
@@ -734,12 +738,14 @@ export class SignalBuilder<T> {
       } catch (error) {
         spRunMiddlewareError(
           error as Error,
-          createMiddlewareContext(conditionalClone(writable()), conditionalClone(value)),
+          createMiddlewareContext(
+            conditionalClone(writable()),
+            conditionalClone(value),
+          ),
         );
         this.handleError(error as Error);
         throw error;
       }
-
     };
     const signalInstance: SignalPlus<T> = {
       get value() {
@@ -762,7 +768,10 @@ export class SignalBuilder<T> {
         } catch (error) {
           spRunMiddlewareError(
             error as Error,
-            createMiddlewareContext(conditionalClone(writable()), conditionalClone(writable())),
+            createMiddlewareContext(
+              conditionalClone(writable()),
+              conditionalClone(writable()),
+            ),
           );
           this.handleError(error as Error);
           throw error;
@@ -1223,7 +1232,9 @@ export class SignalBuilder<T> {
           break;
         } catch (error) {
           this.handleError(error as Error);
-          errors.push(error instanceof Error ? error.message : 'Validation failed');
+          errors.push(
+            error instanceof Error ? error.message : 'Validation failed',
+          );
           break;
         }
       }

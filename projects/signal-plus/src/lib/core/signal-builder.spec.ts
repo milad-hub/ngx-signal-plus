@@ -3815,7 +3815,10 @@ describe('SignalBuilder', () => {
       spUseMiddleware<number>({
         name: 'phase1-middleware-runtime',
         onSet: (context) => {
-          contexts.push({ oldValue: context.oldValue, newValue: context.newValue });
+          contexts.push({
+            oldValue: context.oldValue,
+            newValue: context.newValue,
+          });
         },
       });
 
@@ -3842,9 +3845,7 @@ describe('SignalBuilder', () => {
       });
 
       const signal: SignalPlus<number> = TestBed.runInInjectionContext(() =>
-        new SignalBuilder(1)
-          .validate((value) => value > 0)
-          .build(),
+        new SignalBuilder(1).validate((value) => value > 0).build(),
       );
 
       expect(() => signal.setValue(0)).toThrow();

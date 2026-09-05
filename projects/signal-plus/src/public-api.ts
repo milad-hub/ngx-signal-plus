@@ -15,7 +15,7 @@ export { enhance } from './lib/utils/enhance';
 export {
   spSignalBuilder,
   spSignalPlusComponent,
-  spSignalPlusService
+  spSignalPlusService,
 } from './lib/core';
 
 // Models and Types
@@ -40,15 +40,15 @@ export type {
   SpMonitorOptions,
   Transform,
   // Function Types
-  Validator
+  Validator,
 } from './lib/models';
 export type {
   AsyncStateOptions,
-  SignalAsync
+  SignalAsync,
 } from './lib/models/async-state.model';
 export type {
   CollectionOptions,
-  SignalCollection
+  SignalCollection,
 } from './lib/models/collection.model';
 
 // Signal Operators
@@ -62,12 +62,34 @@ export {
   spMerge,
   spSkip,
   spTake,
-  spThrottleTime
+  spThrottleTime,
 } from './lib/operators';
 
 // Utilities and Presets
-export { spAll, spAny, spAsync, spCollection, spCombine, spComputed, spDebug, spEffect, spMonitor, spPresets, spSchema, spSchemaValidator, spSchemaWithErrors, spValidators } from './lib/utils';
-export type { SafeParseLike, SchemaLike, SchemaValidationResult, ZodError, ZodErrorIssue, ZodLike } from './lib/utils';
+export {
+  spAll,
+  spAny,
+  spAsync,
+  spCollection,
+  spCombine,
+  spComputed,
+  spDebug,
+  spEffect,
+  spMonitor,
+  spPresets,
+  spSchema,
+  spSchemaValidator,
+  spSchemaWithErrors,
+  spValidators,
+} from './lib/utils';
+export type {
+  SafeParseLike,
+  SchemaLike,
+  SchemaValidationResult,
+  ZodError,
+  ZodErrorIssue,
+  ZodLike,
+} from './lib/utils';
 
 // Middleware/Plugin System
 export {
@@ -76,7 +98,7 @@ export {
   spGetMiddlewareCount,
   spLoggerMiddleware,
   spRemoveMiddleware,
-  spUseMiddleware
+  spUseMiddleware,
 } from './lib/utils';
 export type { MiddlewareContext, SignalMiddleware } from './lib/models';
 
@@ -90,18 +112,27 @@ export {
   spIsInBatch,
   spIsInTransaction,
   spIsTransactionActive,
-  spTransaction
+  spTransaction,
 } from './lib/utils/transactions';
 
 // Error Utilities
-export { SpError, SP_ERRORS, spCreateError, formatSpError } from './lib/utils/errors';
-export type { SpErrorCode, SpErrorContext, SpErrorInfo } from './lib/models/errors.model';
+export {
+  SpError,
+  SP_ERRORS,
+  spCreateError,
+  formatSpError,
+} from './lib/utils/errors';
+export type {
+  SpErrorCode,
+  SpErrorContext,
+  SpErrorInfo,
+} from './lib/models/errors.model';
 // Form Groups
 export type {
   FormGroupConfig,
   FormGroupOptions,
   FormGroupValidator,
-  SignalFormGroup
+  SignalFormGroup,
 } from './lib/models/form-group.model';
 export { spFormGroup } from './lib/utils/form-group';
 
@@ -116,7 +147,7 @@ export {
   setGlobalQueryClient,
   spInfiniteQuery,
   spMutation,
-  spQuery
+  spQuery,
 } from './lib/reactive-queries';
 export type {
   MutationOptions,
@@ -127,5 +158,5 @@ export type {
   QueryKey,
   QueryOptions,
   QueryResult,
-  QueryState
+  QueryState,
 } from './lib/reactive-queries';
