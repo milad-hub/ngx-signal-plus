@@ -1,6 +1,6 @@
 {
   "name": "ngx-signal-plus",
-  "version": "2.9.5",
+  "version": "2.9.6",
   "description": "A comprehensive utility library for Angular Signals that provides enhanced functionality, operators, and utilities",
   "keywords": [
     "angular",
@@ -49,27 +49,5 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
-  },
-  "exports": {
-    "./core": {
-      "types": "./lib/core/index.d.ts",
-      "esm": "./esm2022/projects/signal-plus/src/lib/core/index.js",
-      "default": "./fesm2022/ngx-signal-plus-core.js"
-    },
-    "./operators": {
-      "types": "./lib/operators/index.d.ts",
-      "esm": "./esm2022/projects/signal-plus/src/lib/operators/index.js",
-      "default": "./fesm2022/ngx-signal-plus-operators.js"
-    },
-    "./utils": {
-      "types": "./lib/utils/index.d.ts",
-      "esm": "./esm2022/projects/signal-plus/src/lib/utils/index.js",
-      "default": "./fesm2022/ngx-signal-plus-utils.js"
-    },
-    "./models": {
-      "types": "./lib/models/index.d.ts",
-      "esm": "./esm2022/projects/signal-plus/src/lib/models/index.js",
-      "default": "./fesm2022/ngx-signal-plus-models.js"
-    }
   }
 }

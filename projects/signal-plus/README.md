@@ -22,6 +22,12 @@ Composable utilities for Angular Signals, including validation, persistence, his
 npm install ngx-signal-plus
 ```
 
+The package has a single entry point. Import everything from `ngx-signal-plus`; there are no subpath imports such as `ngx-signal-plus/operators`.
+
+```typescript
+import { sp, spMap, spQuery, spFormGroup } from "ngx-signal-plus";
+```
+
 ## Requirements
 
 - Angular peer dependencies: `>=16.0.0 <=21.0.0`
