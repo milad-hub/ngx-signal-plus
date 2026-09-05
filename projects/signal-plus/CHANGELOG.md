@@ -10,6 +10,18 @@ A few versions were bumped in this repository and never published. Their changes
 
 Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
 
+## [3.0.3]
+
+### Fixed
+
+- `spBatch` now coalesces notifications. It set an internal active flag that no write path ever read, so every write inside a batch notified subscribers immediately and a batch behaved exactly like writing the signals one by one. Subscribers are now notified once per signal when the block exits, carrying that signal's final value, in order of first write. Debug recording and async validation are deferred with them, so a batch produces no intermediate reactions — the behavior the documentation has always described.
+- Nested `spBatch` calls no longer break the outer batch. A nested call previously cleared the outer batch's state on entry and cleared its active flag on exit, ending the outer batch early. Nested calls now join the outermost batch, which owns the single flush.
+
+### Changed
+
+- Behavior on a failed batch is now defined: `spBatch` does not roll back, so if the block throws, the writes stand and the pending notifications are delivered before the error propagates, leaving no subscriber holding a stale value. A signal destroyed inside a batch delivers nothing, and a subscriber that writes during the flush notifies immediately.
+- A write made while the batch is flushing supersedes anything still queued for that signal, so the flush can never follow a newer value with an older one. A batch opened by a subscriber during the flush joins that flush rather than starting a competing one.
+
 ## [3.0.2]
 
 ### Fixed

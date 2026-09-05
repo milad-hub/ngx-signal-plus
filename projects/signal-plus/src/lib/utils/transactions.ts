@@ -30,6 +30,7 @@ import {
 } from '../models/signal-plus.model';
 import {
   BatchContext,
+  PendingBatchNotification,
   TransactionContext,
 } from '../models/transactions.models';
 import { SpErrorCode } from '../models/errors.model';
@@ -151,8 +152,11 @@ const state = {
 
   batch: {
     active: false,
+    flushing: false,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     signals: new Set<SignalPlus<any>>(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pending: new Map<SignalPlus<any>, PendingBatchNotification<any>>(),
   } as BatchContext,
 };
 
@@ -183,6 +187,33 @@ export function _trackTransactionWrite<T>(
   }
 
   txState.attemptedValues.set(signal, value);
+}
+
+/**
+ * Holds a signal's notification until the batch exits, keeping only the latest value
+ * @param signal The signal being notified
+ * @param value The value that would be delivered now
+ * @param deliver The delivery callback to run when the batch exits
+ * @returns True if delivery was deferred, false if the caller should deliver now
+ * @internal Called by the signal notification path; not part of the public API
+ */
+export function _deferBatchNotification<T>(
+  signal: SignalPlus<T>,
+  value: T,
+  deliver: (value: T) => void,
+): boolean {
+  const batchState = state.batch;
+
+  if (!batchState.active) {
+    // A write delivered outside the batch supersedes anything still queued for
+    // this signal, so the flush cannot follow it with an older value
+    batchState.pending.delete(signal);
+    return false;
+  }
+
+  batchState.signals.add(signal);
+  batchState.pending.set(signal, { value, deliver });
+  return true;
 }
 
 /**
@@ -379,17 +410,48 @@ export function spTransaction<T>(fn: () => T): T {
 export function spBatch<T>(fn: () => T): T {
   const batchState = state.batch;
 
+  // A nested batch joins the outermost one, which owns the flush. A batch
+  // opened by a subscriber during a flush joins that flush the same way.
+  const isOutermost = !batchState.active;
+
   // Mark batch as active
   batchState.active = true;
-  batchState.signals.clear();
+  if (isOutermost && !batchState.flushing) {
+    batchState.signals.clear();
+    batchState.pending.clear();
+  }
 
   try {
     // Execute batch operations
     return fn();
   } finally {
-    // Clean up batch state
-    batchState.active = false;
-    batchState.signals.clear();
+    if (isOutermost) {
+      // Clean up batch state before delivering, so a subscriber that writes
+      // during the flush notifies immediately instead of being swallowed
+      batchState.active = false;
+      batchState.signals.clear();
+
+      if (!batchState.flushing) {
+        batchState.flushing = true;
+        try {
+          // Drain the live queue rather than a snapshot: a write made during
+          // the flush removes its own stale entry, and one made inside a
+          // nested batch is appended and delivered by this same loop
+          for (
+            let next = batchState.pending.entries().next();
+            !next.done;
+            next = batchState.pending.entries().next()
+          ) {
+            const [signal, notification] = next.value;
+            batchState.pending.delete(signal);
+            notification.deliver(notification.value);
+          }
+        } finally {
+          batchState.flushing = false;
+          batchState.pending.clear();
+        }
+      }
+    }
   }
 }
 
@@ -457,7 +519,9 @@ export function _resetTransactionState(): void {
 
   // Reset batch state
   batchState.active = false;
+  batchState.flushing = false;
   batchState.signals.clear();
+  batchState.pending.clear();
 }
 
 /**

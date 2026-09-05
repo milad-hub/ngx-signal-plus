@@ -27,6 +27,18 @@ describe('examples application logic', () => {
     expect(app.cartSubtotal()).toBeGreaterThan(0);
   });
 
+  it('notifies cart subscribers once per batched add', () => {
+    const app = createApp();
+    const seen: number[] = [];
+    app.cart.subscribe((items) => seen.push(items.length));
+    seen.length = 0;
+
+    app.addCartItem();
+
+    expect(seen.length).toBe(1);
+    expect(app.cartCount()).toBeGreaterThan(0);
+  });
+
   it('restores every field when a profile transaction fails', () => {
     const app = createApp();
     const name = app.name.value;
