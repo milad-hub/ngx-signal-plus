@@ -1,6 +1,7 @@
 # ngx-signal-plus
 
 [![Angular 16-21](https://img.shields.io/badge/Angular-16--21-dd0031)](https://angular.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-97ca00)](https://github.com/milad-hub/ngx-signal-plus/blob/main/LICENSE)
 [![npm version](https://img.shields.io/npm/v/ngx-signal-plus.svg)](https://www.npmjs.com/package/ngx-signal-plus)
 
 Composable utilities for Angular Signals, including validation, persistence, history, collections, and query-style state.
@@ -116,4 +117,6 @@ Deprecated public APIs are marked in JSDoc and announced in the [changelog](http
 
 ## License
 
-MIT
+[MIT](https://github.com/milad-hub/ngx-signal-plus/blob/main/LICENSE) © Milad Jokar
+
+The license text ships inside the published package as `LICENSE`.
