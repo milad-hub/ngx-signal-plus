@@ -1,5 +1,6 @@
 # ngx-signal-plus
 
+[![CI](https://github.com/milad-hub/ngx-signal-plus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/milad-hub/ngx-signal-plus/actions/workflows/ci.yml)
 [![Angular 16-21](https://img.shields.io/badge/Angular-16--21-dd0031)](https://angular.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-97ca00)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/ngx-signal-plus.svg)](https://www.npmjs.com/package/ngx-signal-plus)
@@ -104,7 +105,7 @@ Run the Angular 20 workspace examples locally with `npm run start:examples`. The
 
 ## Project Status
 
-The package declares Angular peer dependencies for Angular 16 through 21. The npm badge above shows the published version. The repository includes build, test, lint, and formatting scripts. Releases follow [Semantic Versioning](https://semver.org/); see the [changelog](projects/signal-plus/CHANGELOG.md) for documented release history.
+The package declares Angular peer dependencies for Angular 16 through 21. The npm badge above shows the published version. Build, test, lint, formatting, and consumer smoke gates run in CI on every push and pull request; the CI badge above shows the state of `main`. Releases follow [Semantic Versioning](https://semver.org/); see the [changelog](projects/signal-plus/CHANGELOG.md) for documented release history.
 
 ## Deprecation Policy
 
@@ -181,6 +182,23 @@ and share one application in [`scripts/smoke/app`](scripts/smoke/app). Exit code
 `0` means every lane passed, `1` means a lane failed, and `2` means a lane was
 skipped because the local Node.js version is older than that Angular version
 requires. A failed lane's application is left on disk for inspection.
+
+### Continuous Integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push to
+`main` and on every pull request. Three jobs cover the same gates the scripts
+above run locally: `library` (build, lint, format, specs, coverage) and
+`examples` (build, specs, lint, format) on Node 20.19.0, the floor declared in
+`engines`, and `smoke`, one matrix job per Angular lane, on Node 24.15.0.
+
+Only the Angular 21 lane can turn the workflow red. Angular 16 is a recorded
+expected failure until B5 is fixed, and Angular 22 is advisory until the peer
+range widens; both are annotated instead of fatal, and CI raises a notice if the
+Angular 16 lane ever starts passing. The [contributing
+guide](projects/signal-plus/CONTRIBUTING.md#continuous-integration) explains the
+reporting rules in full.
+
+Actions are pinned to commit SHAs, and Dependabot updates them weekly.
 
 ### Quality Rules
 

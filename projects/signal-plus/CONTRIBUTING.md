@@ -10,6 +10,7 @@ Thank you for considering contributing to ngx-signal-plus! This document provide
 - [Development Workflow](#development-workflow)
 - [Testing Guidelines](#testing-guidelines)
 - [Branch and Merge Policy](#branch-and-merge-policy)
+- [Continuous Integration](#continuous-integration)
 - [Pull Request Process](#pull-request-process)
 - [Coding Standards](#coding-standards)
 - [Documentation](#documentation)
@@ -219,6 +220,60 @@ branch, delete and recreate the branch rather than force-pushing anything into
 
 The Wiki and Projects tabs are disabled. Discussions is disabled as well, so
 questions belong in an issue for now.
+
+## Continuous Integration
+
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs on every push
+to `main`, on every pull request, and on demand. It runs the same gates this
+guide asks you to run locally, so a green pull request means the commands above
+were run for you rather than trusted.
+
+| Job        | Node    | What it runs                                               |
+| ---------- | ------- | ---------------------------------------------------------- |
+| `library`  | 20.19.0 | `build:lib`, `check:lib`, `test:lib`, `test:lib:coverage`  |
+| `examples` | 20.19.0 | `build:examples`, `test:examples`, `check:examples`        |
+| `smoke`    | 24.15.0 | `smoke:lib` once per Angular lane, one lane per matrix job |
+
+The library and examples jobs run on Node 20.19.0, the floor declared in
+`engines`, because a floor nothing runs against is a claim rather than a
+guarantee. The smoke job runs on Node 24.15.0, which is what the Angular 22
+lane requires; the older lanes tolerate it.
+
+### How a smoke lane reports
+
+A permanently red job is a job people stop reading, so each lane declares what
+its own red means and only one lane can turn the workflow red:
+
+- **Angular 21 is `required`.** It is the top of the declared peer range. If it
+  fails, the workflow fails, and the change does not land.
+- **Angular 16 is `xfail`.** It is red because of B5, already recorded and
+  scheduled for Step 3.5, and the runner prints that reason before the lane
+  starts. The job is annotated rather than fatal. If this lane ever _passes_,
+  CI raises a notice asking you to clear `expectedFailure` in
+  `scripts/smoke/targets.json` and promote the lane to `required`, so a stale
+  exemption cannot survive the fix silently.
+- **Angular 22 is `advisory`.** It sits outside the declared peer range until
+  Step 7.2 widens it, so it installs with `--legacy-peer-deps` and reports for
+  information only.
+
+Exit code `2` — a lane skipped because the runner's Node is older than the lane
+needs — is reported as a warning and never as a pass, because nothing was
+verified. Every lane writes its verdict and the reason for its status to the
+job summary.
+
+The lane list here and the lanes in `scripts/smoke/targets.json` must agree.
+Removing a lane from `targets.json` without removing it here fails loudly, since
+`--only` rejects an unknown lane; adding one does not, so add the matrix entry
+in the same change.
+
+### Actions and updates
+
+Actions are pinned to commit SHAs rather than tags, with the tag in a trailing
+comment, because a tag can be moved to point at different code.
+[`.github/dependabot.yml`](../../.github/dependabot.yml) watches the
+`github-actions` ecosystem weekly and groups the bumps into one pull request.
+npm updates are deliberately left off: security updates are already enabled, and
+a dev-only dependency tree gated on full coverage would produce weekly noise.
 
 ## Pull Request Process
 
