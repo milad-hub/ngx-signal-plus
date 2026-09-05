@@ -10,6 +10,19 @@ A few versions were bumped in this repository and never published. Their changes
 
 Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
 
+## [3.0.2]
+
+### Fixed
+
+- `spTransaction` now rolls back. It never did: rollback only restored signals that had been registered by a prior `spIsInTransaction(signal)` call, and nothing in the library ever made that call, so a failing transaction restored nothing and the documented example silently kept its partial writes. Signals are now tracked automatically as they are written, so the documented usage works with no registration call. Writes through `set`, `setValue`, `update`, `reset`, `undo` and `redo` are all tracked.
+- A signal written more than once in a transaction now rolls back to the value it held before the transaction began, rather than to an intermediate value, and is reported once in `spGetModifiedSignals()` in order of first write.
+- Rollback no longer re-applies a signal's `transform` to the value it restores. Rollback wrote the saved value back through a path that transformed it again, so restoring a transformed signal produced a value that had been transformed twice and never existed.
+- Rollback now restores history and the redo stack alongside the value. Restoring previously appended to history and discarded the redo stack, so undoing a step inside a failed transaction left the signal unable to redo it afterwards.
+
+### Changed
+
+- **Behavior:** `spIsInTransaction(signal)` now reports whether that specific signal has been written during the open transaction. It previously ignored its argument and returned `true` for any signal whenever a transaction was open, while silently registering the signal as a side effect. It is now a pure query: calling it neither registers a signal nor arms rollback. Code that called it to opt a signal into rollback can delete the call — tracking is automatic. Code that used it as "is a transaction open" should call `spIsTransactionActive()`.
+
 ## [3.0.1]
 
 ### Added

@@ -24,7 +24,10 @@
  * ```
  */
 
-import { SignalPlus } from '../models/signal-plus.model';
+import {
+  SignalPlus,
+  SignalTransactionSnapshot,
+} from '../models/signal-plus.model';
 import {
   BatchContext,
   TransactionContext,
@@ -129,18 +132,20 @@ const state = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     originalValues: new Map<SignalPlus<any>, any>(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    originalHistories: new Map<SignalPlus<any>, any[]>(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     patchedSignals: new Map<SignalPlus<any>, (value: any) => void>(),
     modifiedSignals: [],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    modifiedSet: new Set<SignalPlus<any>>(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    snapshots: new Map<SignalPlus<any>, SignalTransactionSnapshot<any>>(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attemptedValues: new Map<SignalPlus<any>, any>(),
     startTime: null as Date | null,
   } as TransactionContext & {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    originalHistories: Map<SignalPlus<any>, any[]>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attemptedValues: Map<SignalPlus<any>, any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    snapshots: Map<SignalPlus<any>, SignalTransactionSnapshot<any>>;
     startTime: Date | null;
   },
 
@@ -150,6 +155,35 @@ const state = {
     signals: new Set<SignalPlus<any>>(),
   } as BatchContext,
 };
+
+/**
+ * Records a signal write against the active transaction so it can be rolled back
+ * @param signal The signal being written
+ * @param value The value the caller is attempting to write
+ * @internal Called by the signal write paths; not part of the public API
+ */
+export function _trackTransactionWrite<T>(
+  signal: SignalPlus<T>,
+  value: T,
+): void {
+  const txState = state.transaction;
+
+  if (!txState.active) {
+    return;
+  }
+
+  if (!txState.modifiedSet.has(signal)) {
+    txState.modifiedSet.add(signal);
+    txState.modifiedSignals.push(signal);
+    txState.originalValues.set(signal, signal.value);
+
+    if (signal._getTransactionSnapshot) {
+      txState.snapshots.set(signal, signal._getTransactionSnapshot());
+    }
+  }
+
+  txState.attemptedValues.set(signal, value);
+}
 
 /**
  * Patches a signal to intercept setValue calls during a transaction
@@ -169,29 +203,7 @@ function patchSignal<T>(signal: SignalPlus<T>): void {
 
   // Replace with transaction-aware version
   signal.setValue = function (value: T): void {
-    // If in a transaction
-    if (txState.active) {
-      // Store original value if first time seeing this signal
-      if (!txState.originalValues.has(signal)) {
-        txState.originalValues.set(signal, signal.value);
-
-        // Also store history state if signal has history
-        if (signal.history && typeof signal.history === 'function') {
-          const currentHistory = signal.history();
-          if (currentHistory && Array.isArray(currentHistory)) {
-            txState.originalHistories.set(signal, [...currentHistory]);
-          }
-        }
-
-        // Add to the modified signals list to maintain order of modification
-        if (!txState.modifiedSignals.includes(signal)) {
-          txState.modifiedSignals.push(signal);
-        }
-      }
-
-      // Always track the latest attempted value
-      txState.attemptedValues.set(signal, value);
-    }
+    _trackTransactionWrite(signal, value);
 
     // Delegate to the original implementation
     return originalSetValue.call(this, value);
@@ -246,19 +258,13 @@ function rollbackChanges(): boolean {
     // Restore original values using internal methods for fast rollback
     for (const [signal, originalValue] of txState.originalValues.entries()) {
       try {
-        // Use _setValueImmediate if available for fast rollback without debounce/validation
-        if (signal._setValueImmediate) {
-          signal._setValueImmediate(originalValue);
+        const snapshot = txState.snapshots.get(signal);
+        if (snapshot && signal._restoreTransactionSnapshot) {
+          signal._restoreTransactionSnapshot(snapshot);
         } else {
           // Transaction mode is disabled during rollback, so the patched
           // setValue delegates straight to the original implementation.
           signal.setValue(originalValue);
-        }
-
-        // Restore history state if it was captured
-        const originalHistory = txState.originalHistories.get(signal);
-        if (originalHistory && signal._setHistoryImmediate) {
-          signal._setHistoryImmediate(originalHistory);
         }
       } catch (error) {
         console.error('Error during transaction rollback:', error);
@@ -271,7 +277,7 @@ function rollbackChanges(): boolean {
     txState.active = wasActive;
     // Clear captured original values and histories
     txState.originalValues.clear();
-    txState.originalHistories.clear();
+    txState.snapshots.clear();
     txState.attemptedValues.clear();
   }
 
@@ -305,8 +311,10 @@ export function spTransaction<T>(fn: () => T): T {
   txState.active = true;
   txState.startTime = transactionStartTime;
   txState.originalValues.clear();
+  txState.snapshots.clear();
   txState.attemptedValues.clear();
   txState.modifiedSignals = [];
+  txState.modifiedSet.clear();
 
   try {
     // Execute the transaction
@@ -316,6 +324,7 @@ export function spTransaction<T>(fn: () => T): T {
     txState.active = false;
     txState.startTime = null;
     txState.originalValues.clear();
+    txState.snapshots.clear();
     txState.attemptedValues.clear();
 
     return result;
@@ -349,6 +358,7 @@ export function spTransaction<T>(fn: () => T): T {
     // Clean up patched signals
     restoreOriginalMethods();
     txState.modifiedSignals = [];
+    txState.modifiedSet.clear();
     txState.startTime = null;
   }
 }
@@ -392,17 +402,12 @@ export function spIsTransactionActive(): boolean {
 }
 
 /**
- * Check if the signal is part of an active transaction
+ * Check if the signal has been written during the active transaction
  * @param signal Signal to check
- * @returns True if a transaction is active
+ * @returns True if a transaction is active and this signal was written in it
  */
 export function spIsInTransaction<T>(signal: SignalPlus<T>): boolean {
-  if (state.transaction.active) {
-    // Ensure the signal is patched for transaction tracking
-    patchSignal(signal);
-    return true;
-  }
-  return false;
+  return state.transaction.active && state.transaction.modifiedSet.has(signal);
 }
 
 /**
@@ -444,9 +449,10 @@ export function _resetTransactionState(): void {
   txState.active = false;
   txState.startTime = null;
   txState.originalValues.clear();
-  txState.originalHistories.clear();
+  txState.snapshots.clear();
   txState.attemptedValues.clear();
   txState.modifiedSignals = [];
+  txState.modifiedSet.clear();
   restoreOriginalMethods();
 
   // Reset batch state
@@ -468,9 +474,7 @@ export function _patchAllSignalsInTest<T>(signal: SignalPlus<T>): void {
   patchSignal(signal);
 
   // Explicitly add this signal to the tracked list
-  if (state.transaction.active) {
-    spIsInTransaction(signal);
-  } else if (state.batch.active) {
+  if (state.batch.active) {
     spIsInBatch(signal);
   }
 }

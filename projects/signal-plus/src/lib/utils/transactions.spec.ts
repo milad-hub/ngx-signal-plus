@@ -531,12 +531,33 @@ describe('Transactions and Batching', () => {
   });
 
   describe('spIsInTransaction', () => {
-    it('should return true when called inside a transaction', () => {
-      let insideValue = false;
+    it('should return false for a signal that has not been written', () => {
+      let insideValue = true;
       spTransaction(() => {
         insideValue = spIsInTransaction(testSignal1);
       });
+      expect(insideValue).toBe(false);
+    });
+
+    it('should return true once the signal has been written', () => {
+      let insideValue = false;
+      spTransaction(() => {
+        testSignal1.setValue(42);
+        insideValue = spIsInTransaction(testSignal1);
+      });
       expect(insideValue).toBe(true);
+    });
+
+    it('should not arm rollback tracking as a side effect', () => {
+      const original = testSignal1.value;
+      expect(() =>
+        spTransaction(() => {
+          spIsInTransaction(testSignal1);
+          throw new Error('boom');
+        }),
+      ).toThrow();
+      expect(testSignal1.value).toBe(original);
+      expect(spGetModifiedSignals()).toEqual([]);
     });
 
     it('should return false when called outside a transaction', () => {
@@ -555,10 +576,11 @@ describe('Transactions and Batching', () => {
 
     it('should work with multiple signals in the same transaction', () => {
       const testSignal3 = signalPlusService.create(100).build();
-      _patchAllSignalsInTest(testSignal3);
       spTransaction(() => {
+        testSignal1.setValue(1);
+        testSignal3.setValue(3);
         expect(spIsInTransaction(testSignal1)).toBe(true);
-        expect(spIsInTransaction(testSignal2)).toBe(true);
+        expect(spIsInTransaction(testSignal2)).toBe(false);
         expect(spIsInTransaction(testSignal3)).toBe(true);
       });
     });
@@ -608,10 +630,10 @@ describe('Transactions and Batching', () => {
 
     it('should return modified signals during a transaction', () => {
       spTransaction(() => {
-        expect(spIsInTransaction(testSignal1)).toBe(true);
-        expect(spIsInTransaction(testSignal2)).toBe(true);
         testSignal1.setValue(42);
         testSignal2.setValue('modified');
+        expect(spIsInTransaction(testSignal1)).toBe(true);
+        expect(spIsInTransaction(testSignal2)).toBe(true);
         const modifiedSignals = spGetModifiedSignals();
         expect(modifiedSignals.includes(testSignal1)).toBe(true);
         expect(modifiedSignals.includes(testSignal2)).toBe(true);
@@ -621,8 +643,6 @@ describe('Transactions and Batching', () => {
 
     it('should return signals in order of first modification', () => {
       spTransaction(() => {
-        expect(spIsInTransaction(testSignal1)).toBe(true);
-        expect(spIsInTransaction(testSignal2)).toBe(true);
         testSignal2.setValue('modified first');
         testSignal1.setValue(42);
         const modifiedSignals = spGetModifiedSignals();
@@ -1078,14 +1098,10 @@ describe('Transactions and Batching', () => {
         const signal = signalPlusService.create(0).build();
         _patchAllSignalsInTest(signal);
         const consoleErrorSpy = spyOn(console, 'error');
-        if (signal._setValueImmediate) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const original = signal._setValueImmediate.bind(signal);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          spyOn(signal as any, '_setValueImmediate').and.callFake(() => {
-            throw new Error('Rollback error');
-          });
-        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        spyOn(signal as any, '_restoreTransactionSnapshot').and.callFake(() => {
+          throw new Error('Rollback error');
+        });
         let caughtError: Error | null = null;
         try {
           spTransaction(() => {
@@ -1103,6 +1119,192 @@ describe('Transactions and Batching', () => {
           jasmine.any(Error),
         );
       });
+    });
+  });
+
+  describe('rollback without any consumer registration call', () => {
+    it('should restore both signals from the documented example', () => {
+      const userProfile = signalPlusService
+        .create({ name: 'original' })
+        .build();
+      const userPreferences = signalPlusService
+        .create({ theme: 'light' })
+        .build();
+
+      expect(() =>
+        spTransaction(() => {
+          userProfile.setValue({ name: 'changed' });
+          userPreferences.setValue({ theme: 'dark' });
+          throw new Error('failure after both writes');
+        }),
+      ).toThrow();
+
+      expect(userProfile.value).toEqual({ name: 'original' });
+      expect(userPreferences.value).toEqual({ theme: 'light' });
+    });
+
+    it('should restore the first captured value after repeat writes to one signal', () => {
+      const signal = signalPlusService.create(0).build();
+
+      expect(() =>
+        spTransaction(() => {
+          signal.setValue(1);
+          signal.setValue(2);
+          signal.setValue(3);
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      expect(signal.value).toBe(0);
+    });
+
+    it('should record each signal once, in order of first write', () => {
+      const first = signalPlusService.create(0).build();
+      const second = signalPlusService.create(0).build();
+
+      spTransaction(() => {
+        second.setValue(1);
+        first.setValue(1);
+        second.setValue(2);
+        const modified = spGetModifiedSignals();
+        expect(modified.length).toBe(2);
+        expect(modified[0]).toBe(second);
+        expect(modified[1]).toBe(first);
+      });
+    });
+
+    it('should roll back many signals', () => {
+      const signals = Array.from({ length: 10 }, (_, index) =>
+        signalPlusService.create(index).build(),
+      );
+
+      expect(() =>
+        spTransaction(() => {
+          signals.forEach((signal, index) => signal.setValue(index + 100));
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      signals.forEach((signal, index) => expect(signal.value).toBe(index));
+    });
+
+    it('should roll back the outer transaction when a nested one is rejected', () => {
+      const signal = signalPlusService.create(0).build();
+
+      expect(() =>
+        spTransaction(() => {
+          signal.setValue(1);
+          spTransaction(() => signal.setValue(2));
+        }),
+      ).toThrow();
+
+      expect(signal.value).toBe(0);
+    });
+
+    it('should roll back writes made through update', () => {
+      const signal = signalPlusService.create(5).build();
+
+      expect(() =>
+        spTransaction(() => {
+          signal.update((current) => current + 10);
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      expect(signal.value).toBe(5);
+    });
+
+    it('should report the attempted values on the thrown TransactionError', () => {
+      const signal = signalPlusService.create(0).build();
+      let caught: TransactionError | null = null;
+
+      try {
+        spTransaction(() => {
+          signal.setValue(42);
+          throw new Error('boom');
+        });
+      } catch (error) {
+        caught = error as TransactionError;
+      }
+
+      expect(caught?.rollbackSuccessful).toBe(true);
+      expect(caught?.modifiedSignals).toEqual([signal]);
+      expect(caught?.originalValues.get(signal)).toBe(0);
+      expect(caught?.attemptedValues.get(signal)).toBe(42);
+    });
+
+    it('should restore a transformed signal without reapplying the transform', () => {
+      const doubled = signalPlusService
+        .create(5)
+        .transform((value: number) => value * 2)
+        .build();
+      const beforeTransaction = doubled.value;
+
+      expect(() =>
+        spTransaction(() => {
+          doubled.setValue(50);
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      expect(doubled.value).toBe(beforeTransaction);
+    });
+
+    it('should restore the redo stack after rolling back an undo', () => {
+      const signal = signalPlusService.create(0).withHistory().build();
+      signal.setValue(1);
+      signal.setValue(2);
+      signal.undo();
+      signal.undo();
+      signal.redo();
+
+      const valueBefore = signal.value;
+      const historyBefore = [...signal.history()];
+
+      expect(() =>
+        spTransaction(() => {
+          signal.undo();
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      expect(signal.value).toBe(valueBefore);
+      expect(signal.history()).toEqual(historyBefore);
+
+      signal.redo();
+      expect(signal.value).toBe(2);
+    });
+
+    it('should restore history when a write inside a transaction is rolled back', () => {
+      const signal = signalPlusService.create(0).withHistory().build();
+      signal.setValue(1);
+      const historyBefore = [...signal.history()];
+
+      expect(() =>
+        spTransaction(() => {
+          signal.setValue(2);
+          signal.setValue(3);
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      expect(signal.value).toBe(1);
+      expect(signal.history()).toEqual(historyBefore);
+    });
+
+    it('should leave no transaction state behind after rollback', () => {
+      const signal = signalPlusService.create(0).build();
+
+      expect(() =>
+        spTransaction(() => {
+          signal.setValue(1);
+          throw new Error('boom');
+        }),
+      ).toThrow();
+
+      expect(spIsTransactionActive()).toBe(false);
+      expect(spIsInTransaction(signal)).toBe(false);
+      expect(spGetModifiedSignals()).toEqual([]);
     });
   });
 });
