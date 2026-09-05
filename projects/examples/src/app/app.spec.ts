@@ -27,6 +27,28 @@ describe('examples application logic', () => {
     expect(app.cartSubtotal()).toBeGreaterThan(0);
   });
 
+  it('restores every field when a profile transaction fails', () => {
+    const app = createApp();
+    const name = app.name.value;
+    const email = app.email.value;
+    const age = app.age.value;
+
+    app.updateProfile('Valid Name', 'not-an-email', 30);
+
+    expect(app.name.value).toBe(name);
+    expect(app.email.value).toBe(email);
+    expect(app.age.value).toBe(age);
+  });
+
+  it('reports the counter as tracked once written in a transaction', () => {
+    const app = createApp();
+
+    app.runIntrospectedTransaction();
+
+    expect(app.transactionInfo()).toContain('counter in transaction: true');
+    expect(app.transactionInfo()).toContain('modified signals: 1');
+  });
+
   it('loads deterministic async state', async () => {
     const app = createApp();
 

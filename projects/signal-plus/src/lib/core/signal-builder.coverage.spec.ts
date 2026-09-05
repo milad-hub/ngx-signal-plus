@@ -355,6 +355,25 @@ describe('SignalBuilder internal gap behavior', () => {
     expect(s.value).toBe(2);
   });
 
+  it('should notify subscribers from _setValueImmediate', () => {
+    const s = new SignalBuilder(0).build() as AnyBuilder;
+    const seen: number[] = [];
+    s.subscribe((value: number) => seen.push(value));
+
+    s._setValueImmediate(7);
+
+    expect(s.value).toBe(7);
+    expect(seen).toContain(7);
+  });
+
+  it('should expose an empty history when history is not enabled', () => {
+    const s = new SignalBuilder(0).build();
+
+    s.setValue(1);
+
+    expect(s.history()).toEqual([]);
+  });
+
   it('should collect a generic message when collectValidationErrors catches a non-Error throw', () => {
     const builder = new SignalBuilder(1) as AnyBuilder;
     const errors = builder.collectValidationErrors(

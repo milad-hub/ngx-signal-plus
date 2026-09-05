@@ -8,6 +8,8 @@ export interface TransactionContext {
   patchedSignals: Map<SignalPlus<any>, (value: any) => void>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   modifiedSignals: SignalPlus<any>[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  modifiedSet: Set<SignalPlus<any>>;
 }
 
 export interface BatchContext {

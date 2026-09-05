@@ -441,7 +441,7 @@ spClearMiddleware();
 
 ### `spTransaction`
 
-Runs a block atomically and rolls back tracked signal changes if an error occurs.
+Runs a block atomically. Every signal written inside the block is tracked automatically, and if the block throws, each tracked signal is restored to the value it held before the block ran. No registration call is required.
 
 ```ts
 import { sp, spTransaction } from "ngx-signal-plus";
@@ -453,7 +453,19 @@ spTransaction(() => {
   a.setValue(10);
   b.setValue(20);
 });
+
+try {
+  spTransaction(() => {
+    a.setValue(99);
+    b.setValue(99);
+    throw new Error("something went wrong");
+  });
+} catch {
+  // a.value and b.value are back to 10 and 20
+}
 ```
+
+Writes made through `set`, `setValue`, `update`, `reset`, `undo` and `redo` are all tracked. The error thrown out of a failed transaction is a `TransactionError` carrying `modifiedSignals`, `originalValues`, `attemptedValues` and `rollbackSuccessful`. Transactions cannot be nested; a nested call rejects, which fails the outer transaction and rolls it back.
 
 ### `spBatch`
 
@@ -478,11 +490,16 @@ Exposes runtime flags and tracked-signal helpers for transaction and batch-aware
 ```ts
 import { spIsTransactionActive, spIsInTransaction, spIsInBatch, spGetModifiedSignals } from "ngx-signal-plus";
 
-console.log(spIsTransactionActive());
-console.log(spIsInTransaction(a));
-console.log(spIsInBatch(a));
-console.log(spGetModifiedSignals());
+spTransaction(() => {
+  console.log(spIsTransactionActive()); // true
+  console.log(spIsInTransaction(a)); // false — a has not been written yet
+  a.setValue(1);
+  console.log(spIsInTransaction(a)); // true
+  console.log(spGetModifiedSignals()); // [a]
+});
 ```
+
+`spIsTransactionActive()` reports whether a transaction is open. `spIsInTransaction(signal)` reports whether that specific signal has been written during the open transaction, and is a pure query — calling it does not register the signal or arm rollback. `spGetModifiedSignals()` returns the written signals in order of first write, each listed once.
 
 ## Reactive Queries
 

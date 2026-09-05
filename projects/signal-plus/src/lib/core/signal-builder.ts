@@ -10,6 +10,7 @@ import {
   BuilderOptions,
   ErrorHandler,
   SignalPlus,
+  SignalTransactionSnapshot,
   Transform,
   Validator,
 } from '../models/signal-plus.model';
@@ -26,6 +27,7 @@ import { spMonitor } from '../utils/monitor';
 import { MiddlewareContext } from '../models/middleware.model';
 import { SpMonitorOptions } from '../models/developer-experience.model';
 import { spRunMiddleware, spRunMiddlewareError } from '../utils/middleware';
+import { _trackTransactionWrite } from '../utils/transactions';
 
 /**
  * @fileoverview Builder class for creating enhanced Angular signals
@@ -703,6 +705,8 @@ export class SignalBuilder<T> {
         return;
       }
 
+      _trackTransactionWrite(signalInstance, value);
+
       // Clear existing debounce timeout
       if (debounceTimeout !== null) {
         safeClearTimeout(debounceTimeout);
@@ -787,6 +791,8 @@ export class SignalBuilder<T> {
           // Reset to initial untransformed value and apply transform
           const resetValue: T =
             this.options.defaultValue ?? this.options.initialValue;
+
+          _trackTransactionWrite(signalInstance, resetValue);
 
           // Clear history and redo stack
           redoStack = [];
@@ -884,14 +890,16 @@ export class SignalBuilder<T> {
         // Get current value
         const currentValue: T = writable();
 
+        // Get the previous value from history
+        const currentHistory: T[] = history();
+        const previousValue: T = currentHistory[currentHistory.length - 2];
+
+        _trackTransactionWrite(signalInstance, previousValue);
+
         // Move current value to redo stack
         redoStack.push(conditionalClone(currentValue));
         // Enforce redo stack size limit
         redoStack = enforceRedoStackSize(redoStack);
-
-        // Get the previous value from history
-        const currentHistory: T[] = history();
-        const previousValue: T = currentHistory[currentHistory.length - 2];
 
         // Update history and current value
         history.set(currentHistory.slice(0, -1));
@@ -907,7 +915,11 @@ export class SignalBuilder<T> {
         clearPendingDebounce();
 
         // Get the value to redo
-        const valueToRedo: T = redoStack.pop() as T;
+        const valueToRedo: T = redoStack[redoStack.length - 1] as T;
+
+        _trackTransactionWrite(signalInstance, valueToRedo);
+
+        redoStack.pop();
 
         // Add it to history
         const currentHistory: T[] = history();
@@ -1140,6 +1152,22 @@ export class SignalBuilder<T> {
         if (this.options.enableHistory) {
           history.set(enforceHistorySize([...historyArray]));
         }
+      },
+      _getTransactionSnapshot: () => ({
+        value: writable(),
+        history: this.options.enableHistory ? [...history()] : [],
+        redo: [...redoStack],
+      }),
+      _restoreTransactionSnapshot: (snapshot: SignalTransactionSnapshot<T>) => {
+        clearPendingDebounce();
+
+        writable.set(snapshot.value);
+        if (this.options.enableHistory) {
+          history.set([...snapshot.history]);
+        }
+        redoStack = [...snapshot.redo];
+
+        notifySubscribers(snapshot.value);
       },
     };
 

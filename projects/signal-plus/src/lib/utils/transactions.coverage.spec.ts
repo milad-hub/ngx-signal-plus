@@ -72,4 +72,21 @@ describe('transaction rollback gap behavior', () => {
     });
     expect(result).toBe(42);
   });
+
+  it('should patch a signal only once', () => {
+    const fake = makeFakeSignal(0);
+
+    expect(() =>
+      spTransaction(() => {
+        _patchAllSignalsInTest(fake);
+        const afterFirstPatch = fake.setValue;
+        _patchAllSignalsInTest(fake);
+        expect(fake.setValue).toBe(afterFirstPatch);
+        fake.setValue(7);
+        throw new Error('boom');
+      }),
+    ).toThrow();
+
+    expect(fake.value).toBe(0);
+  });
 });

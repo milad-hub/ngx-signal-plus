@@ -367,6 +367,30 @@ export interface ReadonlySignalPlus<T> {
    * @param historyArray - The history array to set
    */
   _setHistoryImmediate?(historyArray: T[]): void;
+
+  /**
+   * @internal
+   * Captures the stored value, history and redo stack verbatim
+   * Used internally by transaction rollback to snapshot state before a write
+   */
+  _getTransactionSnapshot?(): SignalTransactionSnapshot<T>;
+
+  /**
+   * @internal
+   * Restores a snapshot verbatim, applying no transform, validation or debounce
+   * Used internally by transaction rollback
+   * @param snapshot - The snapshot to restore
+   */
+  _restoreTransactionSnapshot?(snapshot: SignalTransactionSnapshot<T>): void;
+}
+
+/**
+ * Stored state of a signal captured before its first write in a transaction
+ */
+export interface SignalTransactionSnapshot<T> {
+  value: T;
+  history: T[];
+  redo: T[];
 }
 
 export interface SignalPlus<T> extends ReadonlySignalPlus<T> {
