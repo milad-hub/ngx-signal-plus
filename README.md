@@ -200,6 +200,12 @@ requires. A failed lane's application is left on disk for inspection.
 
 Read the [contributing guide](projects/signal-plus/CONTRIBUTING.md) before opening a pull request.
 
+- [Code of Conduct](.github/CODE_OF_CONDUCT.md) — Contributor Covenant 2.1
+- [Security policy](SECURITY.md) — report vulnerabilities privately, not as an issue
+- [Report a bug](https://github.com/milad-hub/ngx-signal-plus/issues/new?template=bug_report.yml) or [request a feature](https://github.com/milad-hub/ngx-signal-plus/issues/new?template=feature_request.yml)
+
+`main` cannot be force-pushed or deleted, and squash is the only merge method. See the [branch and merge policy](projects/signal-plus/CONTRIBUTING.md#branch-and-merge-policy).
+
 ## Changelog
 
 Read the [changelog](projects/signal-plus/CHANGELOG.md) for release history.

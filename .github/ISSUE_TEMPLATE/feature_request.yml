@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest a capability the library does not have.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What are you trying to do, and what makes it awkward today? Describe the
+        situation rather than the solution — it is the part that cannot be
+        guessed later.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: How it would look in a consuming application, if you have a shape in mind.
+      render: typescript
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: >
+        Existing APIs you attempted, or the workaround you are using. This
+        library prefers composing what exists over adding surface, so a
+        workaround that is merely verbose is useful to know about.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
