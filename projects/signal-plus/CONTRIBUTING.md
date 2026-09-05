@@ -9,6 +9,7 @@ Thank you for considering contributing to ngx-signal-plus! This document provide
 - [Development Setup](#development-setup)
 - [Development Workflow](#development-workflow)
 - [Testing Guidelines](#testing-guidelines)
+- [Branch and Merge Policy](#branch-and-merge-policy)
 - [Pull Request Process](#pull-request-process)
 - [Coding Standards](#coding-standards)
 - [Documentation](#documentation)
@@ -16,7 +17,9 @@ Thank you for considering contributing to ngx-signal-plus! This document provide
 
 ## Code of Conduct
 
-This project follows the [Angular Code of Conduct](https://github.com/angular/angular/blob/main/CODE_OF_CONDUCT.md).
+This project adopts the [Contributor Covenant](../../.github/CODE_OF_CONDUCT.md),
+version 2.1. By participating you are expected to uphold it. Report unacceptable
+behaviour to the maintainer at the address given in that file.
 
 ## Getting Started
 
@@ -185,6 +188,38 @@ harness: if it fails, the problem is the harness.
 The application in `scripts/smoke/app` is shared by every lane, so it may only
 use APIs that exist across the whole supported range.
 
+## Branch and Merge Policy
+
+`main` is protected by a repository ruleset that blocks two operations outright:
+
+- **Force-pushing to `main`** — rejected with `Cannot force-push to this branch`.
+- **Deleting `main`** — rejected with `Cannot delete this branch`.
+
+The ruleset has no bypass actors, so it applies to repository administrators
+too. That is deliberate: on September 4, 2026 `main` was force-pushed and
+deleted during a history cleanup, and a rule that exempts the one person able
+to make that mistake would not have prevented it. An administrator can still
+disable or delete the ruleset itself, so this is a guardrail against an
+accident, not a lock against intent.
+
+Pull requests are **not** required to merge into `main`. For a single
+maintainer a mandatory review by nobody is ceremony, and it can be added the
+day a second maintainer exists. Direct pushes that move `main` forward are
+allowed; only rewriting or removing its history is not.
+
+**Squash is the only merge method.** Merge commits and rebase merging are both
+disabled, so `main` keeps one commit per merged branch and a linear history,
+which is what makes the release-to-release diffs in the changelog meaningful.
+Head branches are deleted automatically on merge.
+
+The practical consequence for a contributor: keep each branch to one logical
+change, and expect the squashed commit to be what lands. If you need to redo a
+branch, delete and recreate the branch rather than force-pushing anything into
+`main`.
+
+The Wiki and Projects tabs are disabled. Discussions is disabled as well, so
+questions belong in an issue for now.
+
 ## Pull Request Process
 
 1. Update documentation for any new features
@@ -207,25 +242,19 @@ Follow the Angular commit message format:
 
 ### PR Description Template
 
-```
-## Description
-Brief description of the changes
+GitHub fills a new pull request from
+[`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md).
+Keeping a second copy here would only let the two drift, so edit that file if
+the checklist needs to change.
 
-## Type of change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
+### Issue Templates
 
-## Checklist
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have documented public APIs and kept necessary comments concise
-- [ ] I have made corresponding changes to the documentation (API.md)
-- [ ] My changes generate no new warnings
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-```
+Bugs and feature requests are opened through forms in
+[`.github/ISSUE_TEMPLATE`](../../.github/ISSUE_TEMPLATE). Blank issues are
+disabled. The bug form asks for the library version, the Angular version, and
+whether the application uses server-side rendering, because those three
+determine which defects are even reachable — several are specific to one end of
+the supported Angular range.
 
 ## Coding Standards
 

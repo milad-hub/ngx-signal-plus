@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in the library does not behave as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not report security issues here. Use the
+        [security policy](https://github.com/milad-hub/ngx-signal-plus/security/policy)
+        so the report stays private.
+
+  - type: input
+    id: library-version
+    attributes:
+      label: ngx-signal-plus version
+      placeholder: "3.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: angular-version
+    attributes:
+      label: Angular version
+      description: The version in the application that consumes the library.
+      placeholder: "20.3.12"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ssr
+    attributes:
+      label: Does the application use server-side rendering?
+      options:
+        - "No"
+        - "Yes"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, what happened instead, and the exact error text if there was one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: >
+        The smallest code that shows the problem, or a link to a StackBlitz.
+        A failing spec is ideal. Rendered as TypeScript, no backticks needed.
+      render: typescript
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I checked the [API reference](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md) and the behaviour still looks wrong.
+          required: true
