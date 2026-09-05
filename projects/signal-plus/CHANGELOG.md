@@ -4,6 +4,12 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+Every version heading below is a release of this package. Each is published to [npm](https://www.npmjs.com/package/ngx-signal-plus) when its branch merges to `main`, so the newest heading can briefly precede its own publish.
+
+A few versions were bumped in this repository and never published. Their changes still reached consumers, inside the next release that actually shipped, and they are documented under that release rather than under a heading of their own: **2.3.0** is included in 2.4.0, **2.9.1** and **2.9.2** in 2.9.3, and **2.9.4**, **2.9.5** and **2.9.6** in 3.0.0. A changelog records what consumers received, so there is no heading for a version nobody could install. 2.9.4 and 2.9.5 changed only repository tooling and are not described below, because they altered nothing a consumer can observe.
+
+Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
+
 ## [3.0.1]
 
 ### Added
@@ -20,34 +26,19 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 
 - Angular 16 can now build against this package. It never could: every release since the first declared `>=16.0.0` while shipping a bundle the Angular 16 linker refuses. This is stated plainly rather than as a new restriction, because the support was advertised and never worked.
 - Widened the peer range upper bound from `<=21.0.0` to `<22.0.0`. The old bound was a version comparison rather than a major-version range, so it admitted only Angular `21.0.0` exactly and rejected `21.0.1` and every release after it. Installing alongside a current Angular 21 failed with `ERESOLVE`. The library itself was always compatible; only the manifest was wrong.
+- Removed the `./core`, `./operators`, `./utils` and `./models` subpath exports from the package manifest. These paths never resolved: they pointed at bundles ng-packagr does not emit, because this library has a single entry point and no secondary entry points were ever built. Importing any of them failed for every consumer on every release that declared them. The nonstandard `esm` export condition went with them.
+- Everything the library exports has always been available from the package root, and still is: `import { sp, spMap, spQuery } from 'ngx-signal-plus'`. Nothing was removed from the public API, and no working import changed.
 
 ### Changed
 
 - Angular peer dependencies are now `>=16.0.0 <22.0.0` for `@angular/common` and `@angular/core`.
-
-## [2.9.6]
-
-### Fixed
-
-- Removed the `./core`, `./operators`, `./utils` and `./models` subpath exports from the package manifest. These paths never resolved: they pointed at bundles ng-packagr does not emit, because this library has a single entry point and no secondary entry points were ever built. Importing any of them failed for every consumer on every release that declared them. The nonstandard `esm` export condition went with them.
-- Everything the library exports has always been available from the package root, and still is: `import { sp, spMap, spQuery } from 'ngx-signal-plus'`. Nothing was removed from the public API, and no working import changed.
 
 ## [2.9.3]
 
 ### Fixed
 
 - Prevented stale `spAsync` fetches and retries from writing after `reset()`.
-
-## [2.9.2]
-
-### Fixed
-
 - Evicted expired query-cache entries through the cache and preserved `cacheTime: 0`.
-
-## [2.9.1]
-
-### Fixed
-
 - Evaluated cached-query `enabled` state per observer and kept shared refetch intervals active until the final observer unsubscribes.
 
 ## [2.9.0]
@@ -163,14 +154,9 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 
 ### Added
 
+- Schema validation utilities for signal workflows (`spSchema` family foundation).
 - `spSchemaValidator()` for schema validation with detailed error extraction.
 - Improved schema validation ergonomics for integration with external schema libraries.
-
-## [2.3.0]
-
-### Added
-
-- Schema validation utilities for signal workflows (`spSchema` family foundation).
 
 ## [2.2.0]
 
