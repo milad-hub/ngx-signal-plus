@@ -4,6 +4,12 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.1]
+
+### Added
+
+- The MIT license text now ships inside the package as `LICENSE`. `package.json` has declared `"license": "MIT"` since the first release and `ng-package.json` has listed `LICENSE` as an asset, but no such file existed anywhere in the repository, so the asset silently resolved to nothing and every published tarball claimed a license it did not include. The terms are unchanged — this adds the text that was always meant to be there.
+
 ## [3.0.0]
 
 ### Removed
