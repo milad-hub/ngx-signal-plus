@@ -143,7 +143,43 @@ npm run test:lib
 npm run test:lib:coverage
 npm run lint:lib
 npm run check:lib
+npm run smoke:lib
 ```
+
+### Consumer Smoke Builds
+
+`npm run smoke:lib` packs the library and installs the tarball into throwaway
+applications pinned to the ends of the supported Angular range, then builds each
+one and runs a spec suite against a real signal, operator, query, and form
+group. The workspace suite compiles against one Angular version only, so this is
+the only check that sees version-dependent breakage.
+
+```bash
+npm run smoke:lib                          # every default lane
+npm run smoke:lib -- --only=16             # one lane
+npm run smoke:lib -- --only=20             # the optional control lane
+npm run smoke:lib -- --keep                # leave the applications in place afterwards
+npm run smoke:lib -- --skip-pack           # reuse the tarball from the previous run
+npm run smoke:lib -- --legacy-peer-deps    # ignore the declared peer range while installing
+```
+
+The default lanes are Angular 16 and 21, the ends of the declared peer range,
+plus Angular 22, the next major. An Angular 20 control lane matching the
+workspace is available through `--only=20`; it is the fastest way to tell a real
+defect apart from a broken harness. `--legacy-peer-deps` separates a manifest
+problem from a code problem: if a lane installs and passes only with that flag,
+the defect is in `peerDependencies`, not in the library.
+
+The applications are generated outside the repository, under
+`%TEMP%/ngx-signal-plus-smoke` or `$TMPDIR/ngx-signal-plus-smoke`, so the
+workspace's own `node_modules` cannot satisfy an import the published package
+should have satisfied. Override the location with `--dir=<path>`.
+
+Lanes are declared in [`scripts/smoke/targets.json`](scripts/smoke/targets.json)
+and share one application in [`scripts/smoke/app`](scripts/smoke/app). Exit code
+`0` means every lane passed, `1` means a lane failed, and `2` means a lane was
+skipped because the local Node.js version is older than that Angular version
+requires. A failed lane's application is left on disk for inspection.
 
 ### Quality Rules
 
