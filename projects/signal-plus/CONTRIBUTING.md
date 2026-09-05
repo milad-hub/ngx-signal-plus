@@ -347,6 +347,14 @@ the repository two places that decide formatting, so prefer changing
 Run `npm run format:lib` to fix library formatting rather than adjusting code by
 hand to satisfy the checker.
 
+Prettier is pinned to an exact version in `package.json` rather than a `^` range.
+Because `package-lock.json` is deliberately not committed, a range would let CI
+resolve a newer Prettier than your machine has, and a minor release that changes
+one indentation rule then fails the gate on code nobody touched — which is
+exactly what a floating `^3.0.0` did, on a nested binary expression in
+`signal-builder.ts`. Raise the pin as a deliberate change and reformat in the
+same commit; do not widen it back to a range.
+
 ### TypeScript Guidelines
 
 - Use strict mode
