@@ -24,7 +24,7 @@ npm install ngx-signal-plus
 
 ## Requirements
 
-- Angular peer dependencies: `>=16.0.0 <=21.0.0`
+- Angular peer dependencies: `>=16.0.0 <22.0.0`
 - Node.js `>=18.13.0`
 - A TypeScript version supported by your Angular version
 
@@ -103,7 +103,7 @@ Run the Angular 20 workspace examples locally with `npm run start:examples`. The
 
 ## Project Status
 
-The package declares Angular peer dependencies from 16.0.0 through 21.0.0. The npm badge above shows the published version. The repository includes build, test, lint, and formatting scripts. Releases follow [Semantic Versioning](https://semver.org/); see the [changelog](projects/signal-plus/CHANGELOG.md) for documented release history.
+The package declares Angular peer dependencies for Angular 16 through 21. The npm badge above shows the published version. The repository includes build, test, lint, and formatting scripts. Releases follow [Semantic Versioning](https://semver.org/); see the [changelog](projects/signal-plus/CHANGELOG.md) for documented release history.
 
 ## Deprecation Policy
 

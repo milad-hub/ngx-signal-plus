@@ -4,6 +4,21 @@ All notable changes to `ngx-signal-plus` are documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/) and is formatted using [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.0]
+
+### Removed
+
+- **Breaking:** `spSignalPlusComponent` is no longer exported. It was a demo component rendering a `lib-signal-plus` element, and it was the single reason this package could not be used on Angular 16 at all: it compiled to a declaration requiring Angular 17 or newer, and the Angular linker rejects an entire bundle on one such declaration. Removing it is what makes the Angular 16 support claimed below real. Everything it demonstrated is shown in the [examples application](https://github.com/milad-hub/ngx-signal-plus/tree/main/projects/examples), which never used the component. `spSignalPlusService` is unaffected and still exported.
+
+### Fixed
+
+- Angular 16 can now build against this package. It never could: every release since the first declared `>=16.0.0` while shipping a bundle the Angular 16 linker refuses. This is stated plainly rather than as a new restriction, because the support was advertised and never worked.
+- Widened the peer range upper bound from `<=21.0.0` to `<22.0.0`. The old bound was a version comparison rather than a major-version range, so it admitted only Angular `21.0.0` exactly and rejected `21.0.1` and every release after it. Installing alongside a current Angular 21 failed with `ERESOLVE`. The library itself was always compatible; only the manifest was wrong.
+
+### Changed
+
+- Angular peer dependencies are now `>=16.0.0 <22.0.0` for `@angular/common` and `@angular/core`.
+
 ## [2.9.6]
 
 ### Fixed

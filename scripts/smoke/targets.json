@@ -10,7 +10,7 @@
     "minNode": "18.10.0",
     "moduleResolution": "node",
     "legacyPeerDeps": false,
-    "expectedFailure": "B7 \u2014 the published bundle declares minVersion 17.0.0 for spSignalPlusComponent, so the Angular linker rejects the whole bundle before any library code runs; Step 1.5 decides how to fix it",
+    "expectedFailure": "B5 - merge, throttleTime, skip and take write signals synchronously inside effect(), which throws NG0600 on Angular 16 through 18; the lane now builds and reaches the specs, and all six fail on this. Step 3.5 fixes it",
     "dependencies": {
       "@angular/platform-browser-dynamic": "16.2.12"
     },
@@ -84,7 +84,6 @@
     "minNode": "20.19.0",
     "moduleResolution": "bundler",
     "legacyPeerDeps": false,
-    "expectedFailure": "B8 \u2014 peerDependencies caps @angular/core at <=21.0.0, which excludes every Angular 21 release after 21.0.0, so npm install fails with ERESOLVE; the library code itself passes this lane, verified with --legacy-peer-deps",
     "dependencies": {},
     "devDependencies": {
       "@angular/build": "21.2.23",
@@ -119,7 +118,7 @@
     "minNode": "24.15.0",
     "moduleResolution": "bundler",
     "legacyPeerDeps": true,
-    "legacyPeerDepsReason": "the published peerDependencies range is >=16.0.0 <=21.0.0, so Angular 22 is not yet declared as supported; Step 7.2 widens it",
+    "legacyPeerDepsReason": "the published peerDependencies range is >=16.0.0 <22.0.0, so Angular 22 is still outside the declared range; Step 7.2 widens it after verifying the upgrade",
     "dependencies": {},
     "devDependencies": {
       "@angular/build": "22.1.7",
