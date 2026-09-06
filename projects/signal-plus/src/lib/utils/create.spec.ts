@@ -1,6 +1,7 @@
 import { fakeAsync, tick } from '@angular/core/testing';
 import { SignalPlus } from '../models';
 import { sp, spCounter, spForm, spToggle, createSimple } from './create';
+import { _setServerModeForTesting } from './platform';
 
 describe('Signal Creation Utils', () => {
   let originalLocalStorage: Storage;
@@ -10,7 +11,7 @@ describe('Signal Creation Utils', () => {
     originalLocalStorage = window.localStorage;
     mockStorage = {};
     const mockLocalStorage = {
-      getItem: (key: string) => mockStorage[key] || null,
+      getItem: (key: string) => (key in mockStorage ? mockStorage[key] : null),
       setItem: (key: string, value: string) => {
         mockStorage[key] = value;
       },
@@ -135,10 +136,9 @@ describe('Signal Creation Utils', () => {
       expect(toggle.value).toBe(false);
       toggle.setValue(true);
       tick();
-      const storedData: SignalPlus<boolean> = JSON.parse(
-        localStorage.getItem('test-toggle') || '{"value":false}',
+      expect(JSON.parse(localStorage.getItem('test-toggle') || 'null')).toBe(
+        true,
       );
-      expect(storedData.value).toBe(true);
       expect(toggle.value).toBe(true);
     }));
 
@@ -180,20 +180,90 @@ describe('Signal Creation Utils', () => {
       expect(localStorage.getItem('toggle')).toBeNull();
     });
 
-    it('should properly override setValue with persistence', fakeAsync(() => {
+    it('should persist through the builder storage format', fakeAsync(() => {
       const toggle: SignalPlus<boolean> = spToggle(false, 'test-toggle');
-      localStorage.setItem('test-toggle', JSON.stringify({ value: false }));
-      const originalValue: SignalPlus<boolean> = JSON.parse(
-        localStorage.getItem('test-toggle') || '{"value":false}',
+      expect(JSON.parse(localStorage.getItem('test-toggle') || 'null')).toBe(
+        false,
       );
-      expect(originalValue.value).toBe(false);
       toggle.setValue(true);
       tick();
-      const newValue: SignalPlus<boolean> = JSON.parse(
-        localStorage.getItem('test-toggle') || '{"value":false}',
+      expect(JSON.parse(localStorage.getItem('test-toggle') || 'null')).toBe(
+        true,
       );
-      expect(newValue.value).toBe(true);
     }));
+
+    it('should seed storage only when the key holds nothing', () => {
+      localStorage.setItem('test-toggle-seed', JSON.stringify(true));
+      const toggle: SignalPlus<boolean> = spToggle(false, 'test-toggle-seed');
+      expect(toggle.value).toBe(true);
+      expect(
+        JSON.parse(localStorage.getItem('test-toggle-seed') || 'null'),
+      ).toBe(true);
+    });
+
+    it('should restore the persisted value on reconstruction', fakeAsync(() => {
+      const first: SignalPlus<boolean> = spToggle(false, 'test-toggle-reload');
+      expect(first.value).toBe(false);
+      first.setValue(true);
+      tick();
+
+      const second: SignalPlus<boolean> = spToggle(false, 'test-toggle-reload');
+      expect(second.value).toBe(true);
+      expect(
+        JSON.parse(localStorage.getItem('test-toggle-reload') || 'null'),
+      ).toBe(true);
+    }));
+
+    it('should keep the persisted value across writes made through update', fakeAsync(() => {
+      const first: SignalPlus<boolean> = spToggle(false, 'test-toggle-update');
+      first.update((current) => !current);
+      tick();
+      expect(spToggle(false, 'test-toggle-update').value).toBe(true);
+    }));
+
+    it('should fall back to the initial value for a malformed payload', () => {
+      localStorage.setItem('test-toggle-bad', 'invalid json{');
+      const toggle: SignalPlus<boolean> = spToggle(true, 'test-toggle-bad');
+      expect(toggle.value).toBe(true);
+      expect(localStorage.getItem('test-toggle-bad')).toBe('invalid json{');
+    });
+
+    it('should reseed a key holding an empty string', () => {
+      localStorage.setItem('test-toggle-empty', '');
+      const toggle: SignalPlus<boolean> = spToggle(true, 'test-toggle-empty');
+      expect(toggle.value).toBe(true);
+      expect(
+        JSON.parse(localStorage.getItem('test-toggle-empty') || 'null'),
+      ).toBe(true);
+    });
+
+    it('should not touch storage on the server', () => {
+      _setServerModeForTesting(true);
+      try {
+        const toggle: SignalPlus<boolean> = spToggle(true, 'test-toggle-ssr');
+        expect(toggle.value).toBe(true);
+        expect(mockStorage['test-toggle-ssr']).toBeUndefined();
+      } finally {
+        _setServerModeForTesting(false);
+      }
+    });
+
+    it('should ignore a stored value on the server', () => {
+      localStorage.setItem('test-toggle-ssr-read', JSON.stringify(true));
+      _setServerModeForTesting(true);
+      try {
+        const toggle: SignalPlus<boolean> = spToggle(
+          false,
+          'test-toggle-ssr-read',
+        );
+        expect(toggle.value).toBe(false);
+        expect(
+          JSON.parse(localStorage.getItem('test-toggle-ssr-read') || 'null'),
+        ).toBe(true);
+      } finally {
+        _setServerModeForTesting(false);
+      }
+    });
 
     it('should handle persistence error recovery', fakeAsync(() => {
       const key = 'recovery-test';
@@ -232,10 +302,9 @@ describe('Signal Creation Utils', () => {
       expect(toggle.value).toBe(false);
       toggle.setValue(true);
       tick();
-      const storedData: SignalPlus<boolean> = JSON.parse(
-        localStorage.getItem('test-create-simple') || '{"value":false}',
-      );
-      expect(storedData.value).toBe(true);
+      expect(
+        JSON.parse(localStorage.getItem('test-create-simple') || 'null'),
+      ).toBe(true);
       expect(toggle.value).toBe(true);
     }));
 

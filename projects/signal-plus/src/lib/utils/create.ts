@@ -31,7 +31,7 @@ import { FormNumberOptions, FormTextOptions } from '../models/form.model';
 import { AsyncValidator, SignalPlus } from '../models/signal-plus.model';
 import { SpErrorCode } from '../models/errors.model';
 import { spCreateError } from './errors';
-import { safeLocalStorageSet } from './platform';
+import { safeLocalStorageGet, safeLocalStorageSet } from './platform';
 
 /**
  * Creates a new SignalBuilder for configuring enhanced signals
@@ -440,18 +440,9 @@ export const spToggle = (initial = false, key?: string) => {
   // Enable persistence if key is provided
   if (key) {
     signal.persist(key);
-    // Store initial value using SSR-safe wrapper
-    safeLocalStorageSet(key, JSON.stringify({ value: initial }));
-
-    // Override updateValue to store in correct format
-    const instance = signal.build();
-    const originalSetValue = instance.setValue;
-    instance.setValue = (value: boolean) => {
-      originalSetValue(value);
-      // Use SSR-safe wrapper for storage
-      safeLocalStorageSet(key, JSON.stringify({ value }));
-    };
-    return instance;
+    if (!safeLocalStorageGet(key)) {
+      safeLocalStorageSet(key, JSON.stringify(initial));
+    }
   }
 
   return signal.build();
