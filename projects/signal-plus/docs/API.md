@@ -198,9 +198,15 @@ interface SignalPlus<T> {
 
 ## Operators
 
+An operator is a function from a signal to a signal, applied by calling it with the source: `spMap(fn)(source)`. Raw Angular signals have no `pipe` method, so operators are composed by nesting.
+
+`spDebounceTime`, `spDelay`, `spThrottleTime`, `spSkip`, `spTake` and `spMerge` create effects and must be called from an injection context. Their writes run inside `untracked()`, so they work on every Angular version in the peer range, including 16 through 18, where a synchronous signal write inside an `effect()` throws `NG0600`. `spMap`, `spFilter`, `spDistinctUntilChanged` and `spCombineLatest` are computed-based and may be called anywhere.
+
+`spDebounceTime` and `spDelay` schedule timers and cancel any pending one when the injection context is destroyed. `spThrottleTime` schedules no timer at all — it is leading-only and drops values inside the throttle window rather than deferring them — so a destroyed context leaves it with nothing to cancel.
+
 ### `spMap`, `spFilter`
 
-Applies projection and predicate-style filtering to signal streams in a pipe-friendly way.
+Applies projection and predicate-style filtering to signal values.
 
 ```ts
 import { signal } from "@angular/core";
@@ -253,6 +259,8 @@ const b = signal(2);
 const merged = spMerge(a, b);
 const combined = spCombineLatest([a, b]);
 ```
+
+`spMerge` tracks its sources on the server as well as in the browser. It previously created its effects only in a browser, so under SSR it returned a signal permanently frozen at the first source's initial value.
 
 ## Developer Experience Utilities
 

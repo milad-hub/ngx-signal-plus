@@ -1,7 +1,8 @@
-import { signal } from '@angular/core';
+import { Signal, signal } from '@angular/core';
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import {
   debounceTime,
+  delay,
   distinctUntilChanged,
   filter,
   merge,
@@ -89,6 +90,25 @@ describe('signal operator gap behavior', () => {
 
     TestBed.resetTestingModule();
     tick(100);
+  }));
+
+  it('should clear pending delayed emissions when the context is destroyed', fakeAsync(() => {
+    let delayed!: Signal<number>;
+
+    TestBed.runInInjectionContext(() => {
+      const source = signal(0);
+      delayed = delay<number>(100)(source);
+
+      TestBed.flushEffects();
+      source.set(1);
+      TestBed.flushEffects();
+      expect(delayed()).toBe(0);
+    });
+
+    TestBed.resetTestingModule();
+    tick(100);
+
+    expect(delayed()).toBe(0);
   }));
 
   it('should serialize non-serializable values with a string fallback', () => {

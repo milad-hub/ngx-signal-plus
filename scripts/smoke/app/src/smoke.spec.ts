@@ -36,6 +36,20 @@ describe('ngx-signal-plus consumer smoke', () => {
     expect(app.doubled()).toBe(8);
   });
 
+  it('propagates through the effect-backed operators', () => {
+    expect(app.merged()).toBe(9);
+    expect(app.throttled()).toBe(1);
+    expect(app.skipped()).toBe(1);
+    expect(app.taken()).toBe(1);
+
+    app.source.set(7);
+    fixture.detectChanges();
+
+    expect(app.merged()).toBe(7);
+    expect(app.skipped()).toBe(7);
+    expect(app.taken()).toBe(7);
+  });
+
   it('validates a form group', () => {
     expect(app.form.isValid()).toBe(false);
     app.form.setValue({ name: 'signal' });

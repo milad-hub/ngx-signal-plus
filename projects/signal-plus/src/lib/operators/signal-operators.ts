@@ -15,37 +15,54 @@
  * - Compatible with Angular's change detection
  * - Safe for server-side rendering
  *
+ * An operator is a function from a signal to a signal, so it is applied by
+ * calling it with the source signal. Raw Angular signals have no `pipe` method;
+ * compose operators by nesting the calls.
+ *
  * @example Basic Usage
  * ```typescript
  * import { signal } from '@angular/core';
  * import { spMap, spFilter, spDebounceTime } from 'ngx-signal-plus';
  *
  * const source = signal(0);
- * const result = source.pipe(
- *   filter(x => x > 0),
- *   map(x => x * 2),
- *   debounceTime(300)
+ * const result = spDebounceTime<number>(300)(
+ *   spMap((x: number) => x * 2)(spFilter((x: number) => x > 0)(source))
  * );
  * ```
  *
  * @example Advanced Usage
  * ```typescript
+ * import { signal } from '@angular/core';
+ * import {
+ *   spCombineLatest,
+ *   spDistinctUntilChanged,
+ *   spFilter,
+ *   spMap,
+ * } from 'ngx-signal-plus';
+ *
  * // Combine multiple signals
  * const name = signal('John');
  * const age = signal(25);
- * const user = combineLatest([name, age]).pipe(
- *   map(([n, a]) => ({ name: n, age: a })),
- *   filter(u => u.age >= 18)
+ * const combined = spCombineLatest<string | number>([name, age]);
+ * const user = spFilter((u: { name: string; age: number }) => u.age >= 18)(
+ *   spMap(([n, a]: (string | number)[]) => ({
+ *     name: n as string,
+ *     age: a as number,
+ *   }))(combined)
  * );
  *
- * // Time-based operations
+ * // Distinct search terms, no injection context required
  * const search = signal('');
- * const results = search.pipe(
- *   debounceTime(300),
- *   distinctUntilChanged(),
- *   filter(term => term.length >= 2)
+ * const terms = spFilter((term: string) => term.length >= 2)(
+ *   spDistinctUntilChanged<string>()(search)
  * );
  * ```
+ *
+ * @remarks
+ * `spDebounceTime`, `spDelay`, `spThrottleTime`, `spSkip`, `spTake` and
+ * `spMerge` create effects, so they must be called from an injection context.
+ * `spMap`, `spFilter`, `spDistinctUntilChanged` and `spCombineLatest` are
+ * computed-based and may be called anywhere.
  */
 
 import {
@@ -57,9 +74,9 @@ import {
   runInInjectionContext,
   Signal,
   signal,
+  untracked,
   WritableSignal,
 } from '@angular/core';
-import { isBrowser } from '../utils/platform';
 
 /**
  * Type definition for signal operators that can transform signal types
@@ -86,8 +103,9 @@ export type SignalOperator<T, R = T> = (signal: Signal<T>) => Signal<R>;
  * ```typescript
  * const first = signal('John');
  * const last = signal('Doe');
- * const fullName = combineLatest([first, last])
- *   .pipe(map(([f, l]) => `${f} ${l}`));
+ * const fullName = spMap(([f, l]: string[]) => `${f} ${l}`)(
+ *   spCombineLatest([first, last])
+ * );
  * ```
  */
 export function combineLatest<T>(signals: Signal<T>[]): Signal<T[]> {
@@ -103,13 +121,13 @@ export function combineLatest<T>(signals: Signal<T>[]): Signal<T[]> {
  * - Updates when any input signal changes
  * - Maintains value type consistency
  * - Order of emissions is preserved
+ * - Requires an injection context, and tracks on the server as well as the browser
  *
  * @example
  * ```typescript
  * const clicks = signal(0);
  * const updates = signal(0);
- * const all = merge(clicks, updates)
- *   .pipe(distinctUntilChanged());
+ * const all = spDistinctUntilChanged<number>()(spMerge(clicks, updates));
  * ```
  */
 export function merge<T>(...signals: Signal<T>[]): Signal<T> {
@@ -117,21 +135,17 @@ export function merge<T>(...signals: Signal<T>[]): Signal<T> {
     return signal<T>(undefined as T);
   }
 
-  const lastChangedIndex = signal<number>(0);
   const output = signal<T>(signals[0]());
+  const injector = inject(Injector);
 
-  if (isBrowser()) {
-    const injector = inject(Injector);
-    runInInjectionContext(injector, () => {
-      signals.forEach((s, index) => {
-        effect(() => {
-          const value: T = s();
-          lastChangedIndex.set(index);
-          output.set(value);
-        });
+  runInInjectionContext(injector, () => {
+    signals.forEach((s) => {
+      effect(() => {
+        const value: T = s();
+        untracked(() => output.set(value));
       });
     });
-  }
+  });
 
   return output;
 }
@@ -148,16 +162,14 @@ export function merge<T>(...signals: Signal<T>[]): Signal<T> {
  *
  * @example
  * ```typescript
- * const delayed = source.pipe(
- *   delay(1000), // 1 second delay
- *   distinctUntilChanged()
- * );
+ * const delayed = spDistinctUntilChanged<number>()(spDelay<number>(1000)(source));
  * ```
  */
 export function delay<T>(time: number): SignalOperator<T, T> {
   return (input: Signal<T>) => {
     const output: WritableSignal<T> = signal<T>(input());
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const destroyRef: DestroyRef = inject(DestroyRef);
 
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
@@ -173,6 +185,13 @@ export function delay<T>(time: number): SignalOperator<T, T> {
           timeoutId = null;
         }, time);
       });
+
+      destroyRef.onDestroy(() => {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      });
     });
 
     return output;
@@ -187,14 +206,12 @@ export function delay<T>(time: number): SignalOperator<T, T> {
  * @remarks
  * - Emits first value immediately (leading-only throttle)
  * - Ignores values during throttle period (no trailing emission)
- * - Resets timer on completion
- * - Includes DestroyRef cleanup
+ * - Schedules no timer, so a destroyed context leaves no pending work
  *
  * @example
  * ```typescript
- * const throttled = scroll.pipe(
- *   throttleTime(100), // Max 10 updates per second
- *   map(e => e.scrollY)
+ * const throttled = spMap((e: ScrollEvent) => e.scrollY)(
+ *   spThrottleTime<ScrollEvent>(100)(scroll)
  * );
  * ```
  */
@@ -202,23 +219,19 @@ export function throttleTime<T>(time: number): SignalOperator<T, T> {
   return (input: Signal<T>) => {
     const output: WritableSignal<T> = signal<T>(input());
     let lastRun = 0;
-    const destroyRef: DestroyRef = inject(DestroyRef);
 
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
         const now: number = Date.now();
         const value: T = input();
 
-        if (now - lastRun >= time) {
-          output.set(value);
-          lastRun = now;
-        }
+        untracked(() => {
+          if (now - lastRun >= time) {
+            output.set(value);
+            lastRun = now;
+          }
+        });
       });
-    });
-
-    // Cleanup on destroy (reset lastRun to prevent stale state)
-    destroyRef.onDestroy(() => {
-      lastRun = 0;
     });
 
     return output;
@@ -237,10 +250,7 @@ export function throttleTime<T>(time: number): SignalOperator<T, T> {
  *
  * @example
  * ```typescript
- * const skipFirst = source.pipe(
- *   skip(1), // Skip first value
- *   filter(Boolean)
- * );
+ * const skipFirst = spFilter(Boolean)(spSkip<number>(1)(source));
  * ```
  */
 export function skip<T>(count: number): SignalOperator<T> {
@@ -251,11 +261,14 @@ export function skip<T>(count: number): SignalOperator<T> {
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
         const value: T = source();
-        skipCount++;
-        // Only emit after we've skipped enough values
-        if (skipCount >= count) {
-          skipped.set(value);
-        }
+
+        untracked(() => {
+          skipCount++;
+          // Only emit after we've skipped enough values
+          if (skipCount >= count) {
+            skipped.set(value);
+          }
+        });
       });
     });
 
@@ -275,10 +288,7 @@ export function skip<T>(count: number): SignalOperator<T> {
  *
  * @example
  * ```typescript
- * const first3 = source.pipe(
- *   take(3), // Take first 3 values
- *   map(String)
- * );
+ * const first3 = spMap(String)(spTake<number>(3)(source));
  * ```
  */
 export function take<T>(count: number): SignalOperator<T> {
@@ -289,11 +299,14 @@ export function take<T>(count: number): SignalOperator<T> {
     runInInjectionContext(inject(Injector), () => {
       effect(() => {
         const value: T = source();
-        // Always emit until count is reached
-        if (emitCount < count) {
-          taken.set(value);
-          emitCount++;
-        }
+
+        untracked(() => {
+          // Always emit until count is reached
+          if (emitCount < count) {
+            taken.set(value);
+            emitCount++;
+          }
+        });
       });
     });
 
@@ -313,9 +326,9 @@ export function take<T>(count: number): SignalOperator<T> {
  *
  * @example
  * ```typescript
- * const search = input.pipe(
- *   debounceTime(300), // Wait for typing to stop
- *   filter(term => term.length > 2)
+ * // Wait for typing to stop, then keep terms worth searching
+ * const search = spFilter((term: string) => term.length > 2)(
+ *   spDebounceTime<string>(300)(input)
  * );
  * ```
  */
@@ -378,10 +391,7 @@ export function debounceTime<T>(duration: number): SignalOperator<T> {
  *
  * @example
  * ```typescript
- * const unique = source.pipe(
- *   distinctUntilChanged(),
- *   filter(Boolean)
- * );
+ * const unique = spFilter(Boolean)(spDistinctUntilChanged<number>()(source));
  *
  * // Deep comparison for objects
  * signal.set({ a: 1 }); // Emits
@@ -432,9 +442,8 @@ export function distinctUntilChanged<T>(): SignalOperator<T> {
  *
  * @example
  * ```typescript
- * const doubled = numbers.pipe(
- *   map(n => n * 2),
- *   filter(n => n > 0)
+ * const doubled = spFilter((n: number) => n > 0)(
+ *   spMap((n: number) => n * 2)(numbers)
  * );
  * ```
  */
@@ -462,10 +471,7 @@ export function map<T, R>(fn: (value: T) => R): SignalOperator<T, R> {
  *
  * @example
  * ```typescript
- * const positive = numbers.pipe(
- *   filter(n => n > 0),
- *   map(String)
- * );
+ * const positive = spMap(String)(spFilter((n: number) => n > 0)(numbers));
  * ```
  */
 export function filter<T>(

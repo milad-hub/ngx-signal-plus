@@ -22,6 +22,7 @@ import {
   take,
   throttleTime,
 } from './signal-operators';
+import { _setServerModeForTesting } from '../utils/platform';
 
 describe('Signal Operators', () => {
   let injector: Injector;
@@ -1272,14 +1273,43 @@ describe('Signal Operators', () => {
   });
 
   describe('Server-Side Rendering', () => {
-    it('should handle server-side rendering', () => {
-      runTest(() => {
-        const source: WritableSignal<number> = signal(0);
-        const merged: Signal<number> = merge(source);
-        expect(merged()).toBe(0);
-        source.set(1);
-        expect(merged()).toBe(0);
-      });
+    it('should keep merge tracking on the server', () => {
+      _setServerModeForTesting(true);
+      try {
+        runTest(() => {
+          const source: WritableSignal<number> = signal(0);
+          const merged: Signal<number> = merge(source);
+          expect(merged()).toBe(0);
+
+          source.set(1);
+          TestBed.flushEffects();
+          expect(merged()).toBe(1);
+        });
+      } finally {
+        _setServerModeForTesting(false);
+      }
+    });
+
+    it('should merge several signals on the server', () => {
+      _setServerModeForTesting(true);
+      try {
+        runTest(() => {
+          const first: WritableSignal<number> = signal(1);
+          const second: WritableSignal<number> = signal(2);
+          const merged: Signal<number> = merge(first, second);
+
+          TestBed.flushEffects();
+          second.set(3);
+          TestBed.flushEffects();
+          expect(merged()).toBe(3);
+
+          first.set(4);
+          TestBed.flushEffects();
+          expect(merged()).toBe(4);
+        });
+      } finally {
+        _setServerModeForTesting(false);
+      }
     });
   });
 
