@@ -10,6 +10,19 @@ A few versions were bumped in this repository and never published. Their changes
 
 Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
 
+## [3.0.4]
+
+### Fixed
+
+- `enhance(signal)` is now connected to the signal it is given. It read the source once and built an independent signal from that value, so the two were never related again: changes to the source were invisible to the enhanced signal, and writes to the enhanced signal never reached the source. Every feature layered on top — persistence, validation, history — operated on a detached copy. The enhanced signal and a writable source now share one underlying cell, so propagation is immediate in both directions, synchronous, and needs no injection context.
+- Transforms and validators run on the enhanced signal's write path before the source is updated, so the source receives the transformed value and never receives one the validators rejected. `reset`, `undo` and `redo` write back the same way.
+- A change made to the source between `enhance(signal)` and `.build()` is no longer overwritten. The builder captured the value at `enhance()` time and wrote it back during `build()`, discarding anything the source received in between. A persisted value still takes precedence at build time, and is now written through to the source so the two agree.
+- A write made directly to the source now updates the enhanced signal's history, persistence and subscribers, not just its value, when `build()` runs in an injection context. Outside one the two still share a value and reads stay correct, but a direct source write updates only `value`.
+
+### Changed
+
+- **Behavior:** a signal enhanced from a read-only source — a `computed`, or any `Signal` without `set` and `update` — is now read through to that source, so its changes are visible through the enhanced signal. Writing to such a signal throws `SpError` `SRC_001` instead of silently updating a copy the source never sees. Code that wrote to an enhanced `computed` was already not affecting anything; it now says so.
+
 ## [3.0.3]
 
 ### Fixed

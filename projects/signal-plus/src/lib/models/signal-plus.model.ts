@@ -179,6 +179,8 @@ export interface BuilderOptions<T> {
   errorHandlers?: ErrorHandler[];
   /** Enable history persistence. Requires enableHistory to be true */
   persistHistory?: boolean;
+  /** Source signal this one was enhanced from. Kept in sync in both directions */
+  source?: Signal<T>;
 }
 
 /**

@@ -8,6 +8,7 @@ export enum SpErrorCode {
   STOR_002 = 'STOR_002',
   HIST_001 = 'HIST_001',
   HIST_002 = 'HIST_002',
+  SRC_001 = 'SRC_001',
 }
 
 export interface SpErrorContext {

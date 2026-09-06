@@ -72,16 +72,16 @@ Choose another approach when your team wants the NgRx Signal Store architecture,
 
 ## Core APIs
 
-| Category                              | Purpose                                       | Key APIs                                                                                                                                  |
-| ------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Signal creation and enhancement       | Create and extend signal-backed state.        | `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`, `enhance`                                                                          |
-| Validation, persistence, and history  | Add constraints, storage, and state history.  | `spValidators`, `spSchema`, `spSchemaValidator`, `spHistoryManager`, `spStorageManager`                                                   |
-| Forms and form groups                 | Build validated signal-backed form state.     | `spForm`, `spFormGroup`                                                                                                                   |
-| Async state and collections           | Model async values and mutable collections.   | `spAsync`, `spCollection`                                                                                                                 |
-| Reactive queries                      | Manage query, mutation, and pagination state. | `spQuery`, `spMutation`, `spInfiniteQuery`, `createQuery`, `createMutation`, `createInfiniteQuery`, `createDependentQuery`, `QueryClient` |
-| Transactions and batching             | Coordinate related state updates.             | `spTransaction`, `spBatch`                                                                                                                |
-| Middleware, debugging, and monitoring | Add hooks and inspect signal behavior.        | `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`, `spDebug`, `spMonitor`, `spEffect`                |
-| Operators and composition             | Transform and combine signal streams.         | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spCombine`, `spAll`, `spAny`               |
+| Category                              | Purpose                                                                                  | Key APIs                                                                                                                                  |
+| ------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Signal creation and enhancement       | Create and extend signal-backed state. `enhance` binds to its source in both directions. | `sp`, `spCounter`, `spToggle`, `spForm`, `spComputed`, `enhance`                                                                          |
+| Validation, persistence, and history  | Add constraints, storage, and state history.                                             | `spValidators`, `spSchema`, `spSchemaValidator`, `spHistoryManager`, `spStorageManager`                                                   |
+| Forms and form groups                 | Build validated signal-backed form state.                                                | `spForm`, `spFormGroup`                                                                                                                   |
+| Async state and collections           | Model async values and mutable collections.                                              | `spAsync`, `spCollection`                                                                                                                 |
+| Reactive queries                      | Manage query, mutation, and pagination state.                                            | `spQuery`, `spMutation`, `spInfiniteQuery`, `createQuery`, `createMutation`, `createInfiniteQuery`, `createDependentQuery`, `QueryClient` |
+| Transactions and batching             | Coordinate related state updates.                                                        | `spTransaction`, `spBatch`                                                                                                                |
+| Middleware, debugging, and monitoring | Add hooks and inspect signal behavior.                                                   | `spUseMiddleware`, `spRemoveMiddleware`, `spLoggerMiddleware`, `spAnalyticsMiddleware`, `spDebug`, `spMonitor`, `spEffect`                |
+| Operators and composition             | Transform and combine signal streams.                                                    | `spMap`, `spFilter`, `spDebounceTime`, `spThrottleTime`, `spDelay`, `spDistinctUntilChanged`, `spCombine`, `spAll`, `spAny`               |
 
 See the [API reference](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md) for the complete public API.
 

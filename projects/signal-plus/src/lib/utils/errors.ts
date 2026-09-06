@@ -51,6 +51,12 @@ export const SP_ERRORS: Record<SpErrorCode, SpErrorInfo> = {
     message: 'Cannot redo - no future states available',
     suggestion: 'Redo is only available after an undo operation',
   },
+  [SpErrorCode.SRC_001]: {
+    code: SpErrorCode.SRC_001,
+    message: 'Cannot write to a signal enhanced from a read-only source',
+    suggestion:
+      'Enhance a WritableSignal if the enhanced signal must accept writes, or read this one only',
+  },
 };
 
 export class SpError extends Error {

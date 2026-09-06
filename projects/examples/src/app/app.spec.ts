@@ -27,6 +27,16 @@ describe('examples application logic', () => {
     expect(app.cartSubtotal()).toBeGreaterThan(0);
   });
 
+  it('keeps the enhanced signal and its native source in sync both ways', () => {
+    const app = createApp();
+
+    app.nativeSource.set(4);
+    expect(app.enhancedNative.value).toBe(4);
+
+    app.enhancedNative.setValue(9);
+    expect(app.nativeSource()).toBe(9);
+  });
+
   it('notifies cart subscribers once per batched add', () => {
     const app = createApp();
     const seen: number[] = [];

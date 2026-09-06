@@ -108,7 +108,7 @@ console.log(age.value, age.isValid());
 
 ### `enhance(signal)`
 
-Wraps an existing Angular signal with the SignalBuilder API so you can add advanced behavior incrementally.
+Wraps an existing Angular signal with the SignalBuilder API so you can add advanced behavior incrementally. The enhanced signal and its source stay in sync in both directions: they share one underlying cell rather than the enhanced signal holding a copy.
 
 ```ts
 import { signal } from "@angular/core";
@@ -117,8 +117,27 @@ import { enhance } from "ngx-signal-plus";
 const base = signal(1);
 const enhanced = enhance(base).persist("enhanced-number").distinct().withHistory(5).build();
 
-enhanced.setValue(2);
-console.log(enhanced.value);
+base.set(2);
+console.log(enhanced.value); // 2 — source changes are visible immediately
+
+enhanced.setValue(3);
+console.log(base()); // 3 — writes flow back to the source
+```
+
+Because the two share a cell, value propagation is synchronous and needs no injection context. Transforms and validators run on the enhanced signal's write path, so the source receives the transformed value and never receives one the validators rejected. `reset`, `undo` and `redo` write back the same way.
+
+The source is read at `build()`, not at `enhance()`, so a change made between the two is preserved rather than overwritten. A persisted value still wins over the source at build time, and is written to the source so the two agree.
+
+A write made **directly to the source** also updates the enhanced signal's history, persistence and subscribers, provided `build()` ran in an injection context — it needs one to observe the source. Outside an injection context the two still share a value, but a direct source write updates only `value`, leaving history, persistence and subscribers untouched. Transforms are not applied to a value written directly to the source: the source is taken as the authority for its own writes, and re-transforming would write a different value back and never settle.
+
+A read-only source — a `computed`, or any `Signal` without `set`/`update` — is read through rather than copied, so its changes are still visible through the enhanced signal. Writing to a signal enhanced from a read-only source throws `SpError` `SRC_001` rather than silently diverging from it:
+
+```ts
+const readOnly = computed(() => base() * 10);
+const view = enhance(readOnly).withHistory().build();
+
+console.log(view.value); // follows readOnly
+view.setValue(5); // throws SP-SRC_001
 ```
 
 ## SignalBuilder (exported as `spSignalBuilder`)
