@@ -10,6 +10,23 @@ A few versions were bumped in this repository and never published. Their changes
 
 Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
 
+## [3.0.6]
+
+### Fixed
+
+- **Angular 16 through 18 can use the operators again.** `spMerge`, `spThrottleTime`, `spSkip` and `spTake` wrote signals synchronously inside `effect()`, which throws `NG0600: Writing to signals is not allowed in a computed or an effect by default` on those versions. The writes now run inside `untracked()`, following `spComputed`. The failure was not confined to the four operators: because it threw while the component's effects ran, every one of the consumer smoke application's specs failed on it, including the counter, the form group and the query. The Angular 16 smoke lane now passes 7 of 7 where it previously failed all of them.
+- `spDelay` now cancels a pending emission when the injection context is destroyed, through `DestroyRef`, the way `spDebounceTime` already did. A delayed write could previously land after the context that created it was gone.
+- `spMerge` no longer returns a permanently frozen signal on the server. It created its effects only when `isBrowser()` was true, so under SSR the merged signal held the first source's initial value forever and no input change ever reached it. It now tracks in both environments.
+
+### Changed
+
+- The Angular 16 smoke lane is a required CI check again. It was allowed to report green with a warning while this defect was known and scheduled; that exemption existed for this fix and ends with it. Both ends of the declared peer range are now gates.
+- `spThrottleTime` no longer injects `DestroyRef`. Its cleanup callback assigned `lastRun = 0` to a closure variable that was about to be unreachable, which cancelled nothing — the operator is leading-only and schedules no timer, so a destroyed context leaves no pending work. The no-op was removed rather than replaced, and the operator's documented behavior is unchanged.
+
+### Documentation
+
+- The operators module header and every operator example showed `source.pipe(operator(...))` on a raw Angular signal, which has no `pipe` method, and imported the internal unprefixed names instead of the exported `spMap`, `spFilter` and siblings. These ship to consumers inside `index.d.ts`. All of them now show the real calling convention, `spMap(fn)(source)`, and name which operators require an injection context.
+
 ## [3.0.5]
 
 ### Fixed

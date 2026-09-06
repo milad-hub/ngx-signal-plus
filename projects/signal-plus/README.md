@@ -109,7 +109,7 @@ Query results expose an idempotent `destroy()` method for manual cleanup. Signal
 
 ## Project Status
 
-The package declares Angular peer dependencies for Angular 16 through 21. The npm badge above shows the published version. The repository includes build, test, lint, and formatting scripts. Releases follow [Semantic Versioning](https://semver.org/); see the [changelog](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/CHANGELOG.md) for documented release history.
+The package declares Angular peer dependencies for Angular 16 through 21, and both ends of that range are verified on every change by consumer smoke builds that install the packed tarball into a throwaway application. The npm badge above shows the published version. The repository includes build, test, lint, and formatting scripts. Releases follow [Semantic Versioning](https://semver.org/); see the [changelog](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/CHANGELOG.md) for documented release history.
 
 ## Deprecation Policy
 

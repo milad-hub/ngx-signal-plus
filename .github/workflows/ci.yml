@@ -55,16 +55,15 @@ jobs:
       matrix:
         include:
           - lane: "16"
-            status: xfail
+            status: required
             note: >-
-              The bottom of the declared peer range. Expected red until Step 3.5
-              fixes B5, and scripts/smoke/targets.json carries the reason the
-              runner prints before the lane starts.
+              The bottom of the declared peer range. Promoted from xfail in Step
+              3.5, which fixed B5; it must stay green while the range starts at
+              16.
           - lane: "21"
             status: required
             note: >-
-              The top of the declared peer range. This lane is the only smoke
-              lane allowed to turn the workflow red, and it must stay green.
+              The top of the declared peer range. It must stay green.
           - lane: "22"
             status: advisory
             note: >-

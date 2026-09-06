@@ -10,7 +10,6 @@
     "minNode": "18.10.0",
     "moduleResolution": "node",
     "legacyPeerDeps": false,
-    "expectedFailure": "B5 - merge, throttleTime, skip and take write signals synchronously inside effect(), which throws NG0600 on Angular 16 through 18; the lane now builds and reaches the specs, and all six fail on this. Step 3.5 fixes it",
     "dependencies": {
       "@angular/platform-browser-dynamic": "16.2.12"
     },
