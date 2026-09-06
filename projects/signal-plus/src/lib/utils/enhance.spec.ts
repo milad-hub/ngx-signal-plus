@@ -1,10 +1,13 @@
 import {
   signal as angularSignal,
+  computed,
   Injector,
   NgZone,
   runInInjectionContext,
   WritableSignal,
 } from '@angular/core';
+import { SpErrorCode } from '../models/errors.model';
+import { SpError } from './errors';
 import {
   fakeAsync,
   flushMicrotasks,
@@ -773,5 +776,200 @@ describe('enhance - advanced scenarios', () => {
       expect(updateCount).toBe(2);
       subscription();
     }));
+  });
+
+  describe('source binding', () => {
+    it('should propagate source changes to the enhanced signal', () => {
+      const source: WritableSignal<number> = angularSignal(1);
+      const enhanced = enhance(source).build();
+
+      source.set(42);
+
+      expect(enhanced.value).toBe(42);
+      expect(enhanced.signal()).toBe(42);
+    });
+
+    it('should write enhanced changes back to the source', () => {
+      const source: WritableSignal<number> = angularSignal(1);
+      const enhanced = enhance(source).build();
+
+      enhanced.setValue(42);
+
+      expect(source()).toBe(42);
+    });
+
+    it('should write back through update, reset, undo and redo', () => {
+      const source: WritableSignal<number> = angularSignal(1);
+      const enhanced = enhance(source).withHistory().build();
+
+      enhanced.update((current) => current + 4);
+      expect(source()).toBe(5);
+
+      enhanced.setValue(9);
+      expect(source()).toBe(9);
+
+      enhanced.undo();
+      expect(source()).toBe(5);
+
+      enhanced.redo();
+      expect(source()).toBe(9);
+
+      enhanced.reset();
+      expect(source()).toBe(1);
+    });
+
+    it('should write the transformed value back to the source', () => {
+      const source: WritableSignal<number> = angularSignal(1);
+      const enhanced = enhance(source)
+        .transform((value) => value * 2)
+        .build();
+
+      enhanced.setValue(5);
+
+      expect(enhanced.value).toBe(10);
+      expect(source()).toBe(10);
+    });
+
+    it('should not write back a value the validator rejects', () => {
+      const source: WritableSignal<number> = angularSignal(1);
+      const enhanced = enhance(source)
+        .validate((value) => value >= 0)
+        .build();
+
+      expect(() => enhanced.setValue(-1)).toThrow();
+      expect(source()).toBe(1);
+    });
+
+    it('should persist across a source change', () => {
+      const source: WritableSignal<number> = angularSignal(1);
+      const enhanced = enhance(source)
+        .persist('enhance-source-persist')
+        .build();
+
+      source.set(7);
+      enhanced.setValue(8);
+
+      expect(localStorage.getItem('enhance-source-persist')).toBe('8');
+      expect(source()).toBe(8);
+    });
+
+    it('should read through a read-only source', () => {
+      const backing: WritableSignal<number> = angularSignal(1);
+      const readOnly = computed(() => backing() * 10);
+      const enhanced = enhance(readOnly).build();
+
+      expect(enhanced.value).toBe(10);
+
+      backing.set(3);
+
+      expect(enhanced.value).toBe(30);
+      expect(enhanced.signal()).toBe(30);
+    });
+
+    it('should fail loudly when writing through a read-only source', () => {
+      const backing: WritableSignal<number> = angularSignal(1);
+      const enhanced = enhance(computed(() => backing())).build();
+
+      expect(() => enhanced.setValue(5)).toThrowMatching(
+        (error: Error) => (error as SpError).code === SpErrorCode.SRC_001,
+      );
+      expect(() => enhanced.update((value) => value + 1)).toThrow();
+      expect(() => enhanced.reset()).toThrow();
+      expect(enhanced.value).toBe(1);
+    });
+
+    it('should not overwrite a source change made between enhance and build', () => {
+      const source: WritableSignal<number> = angularSignal(1);
+      const builder = enhance(source);
+
+      source.set(7);
+      const enhanced = builder.build();
+
+      expect(source()).toBe(7);
+      expect(enhanced.value).toBe(7);
+      expect(enhanced.initialValue).toBe(7);
+    });
+
+    it('should let a persisted value win over the source at build time', () => {
+      localStorage.setItem('enhance-restore-wins', JSON.stringify(99));
+      const source: WritableSignal<number> = angularSignal(1);
+
+      const enhanced = enhance(source).persist('enhance-restore-wins').build();
+
+      expect(enhanced.value).toBe(99);
+      expect(source()).toBe(99);
+    });
+
+    it('should record history, persist and notify when the source is written directly', () => {
+      TestBed.runInInjectionContext(() => {
+        const source: WritableSignal<number> = angularSignal(1);
+        const enhanced = enhance(source)
+          .withHistory()
+          .persist('enhance-source-observer')
+          .build();
+
+        const seen: number[] = [];
+        enhanced.subscribe((value) => seen.push(value));
+        seen.length = 0;
+
+        source.set(5);
+        TestBed.flushEffects();
+
+        expect(enhanced.value).toBe(5);
+        expect(enhanced.history()).toEqual([1, 5]);
+        expect(enhanced.previousValue).toBe(1);
+        expect(localStorage.getItem('enhance-source-observer')).toBe('5');
+        expect(seen).toEqual([5]);
+      });
+    });
+
+    it('should not double-record history for a write made through the enhanced signal', () => {
+      TestBed.runInInjectionContext(() => {
+        const source: WritableSignal<number> = angularSignal(1);
+        const enhanced = enhance(source).withHistory().build();
+
+        enhanced.setValue(2);
+        TestBed.flushEffects();
+
+        expect(enhanced.history()).toEqual([1, 2]);
+        expect(source()).toBe(2);
+      });
+    });
+
+    it('should not loop when a transform is configured and the source is written', () => {
+      TestBed.runInInjectionContext(() => {
+        const source: WritableSignal<number> = angularSignal(1);
+        const enhanced = enhance(source)
+          .transform((value) => value * 2)
+          .build();
+
+        source.set(5);
+        TestBed.flushEffects();
+
+        expect(source()).toBe(5);
+        expect(enhanced.value).toBe(5);
+      });
+    });
+
+    it('should stop observing the source after destroy', () => {
+      TestBed.runInInjectionContext(() => {
+        const source: WritableSignal<number> = angularSignal(1);
+        const enhanced = enhance(source).withHistory().build();
+
+        enhanced.destroy();
+        source.set(5);
+        TestBed.flushEffects();
+
+        expect(enhanced.history()).toEqual([]);
+      });
+    });
+
+    it('should keep a signal built without a source detached', () => {
+      const plain = new SignalBuilder(1).build();
+
+      plain.setValue(5);
+
+      expect(plain.value).toBe(5);
+    });
   });
 });

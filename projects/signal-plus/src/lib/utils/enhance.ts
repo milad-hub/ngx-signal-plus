@@ -102,5 +102,5 @@ import { SignalBuilder } from '../core/signal-builder';
  * ```
  */
 export function enhance<T>(signal: Signal<T>): SignalBuilder<T> {
-  return new SignalBuilder<T>(signal());
+  return new SignalBuilder<T>(signal(), signal);
 }

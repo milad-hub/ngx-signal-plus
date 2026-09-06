@@ -1,9 +1,14 @@
 import {
+  EffectRef,
+  Injector,
   Signal,
   WritableSignal,
   computed,
+  effect,
+  inject,
   isDevMode,
   signal,
+  untracked,
 } from '@angular/core';
 import {
   AsyncValidator,
@@ -31,6 +36,8 @@ import {
   _deferBatchNotification,
   _trackTransactionWrite,
 } from '../utils/transactions';
+import { SpErrorCode } from '../models/errors.model';
+import { spCreateError } from '../utils/errors';
 
 /**
  * @fileoverview Builder class for creating enhanced Angular signals
@@ -60,11 +67,13 @@ export class SignalBuilder<T> {
   /**
    * Creates a new SignalBuilder instance
    * @param initialValue Initial value for the signal
+   * @param source Signal this one is enhanced from, kept in sync in both directions
    */
-  constructor(initialValue: T) {
+  constructor(initialValue: T, source?: Signal<T>) {
     this.options = {
       initialValue,
       defaultValue: initialValue,
+      source,
       validators: [],
       transform: (value: T) => value,
       distinctUntilChanged: false,
@@ -275,12 +284,33 @@ export class SignalBuilder<T> {
 
     const conditionalClone = (value: T): T => this.cloneIfNeeded(value);
 
-    // Create signal with initial value (untransformed)
-    const writable: WritableSignal<T> = signal<T>(
-      structuredClone(this.options.initialValue),
-    );
+    const source: Signal<T> | undefined = this.options.source;
+    const writableSource = source as WritableSignal<T> | undefined;
+    const sourceIsWritable: boolean =
+      typeof writableSource?.set === 'function' &&
+      typeof writableSource?.update === 'function';
+
+    // A writable source backs the enhanced signal directly, so the two share one
+    // cell and stay in sync in both directions without an effect or a copy
+    const writable: WritableSignal<T> =
+      sourceIsWritable && writableSource
+        ? writableSource
+        : signal<T>(structuredClone(this.options.initialValue));
+
+    // A read-only source cannot be written, so reads pass through to it
+    const readValue: () => T = source && !sourceIsWritable ? source : writable;
+
+    // Stamped by every write this signal makes, so the source observer can tell
+    // its own writes from one made directly on the shared source
+    let lastSyncedValue: T = writable();
+    let sourceObserver: EffectRef | null = null;
+    const setCell: (value: T) => void = (value: T) => {
+      lastSyncedValue = value;
+      writable.set(value);
+    };
     let previousValue: T = structuredClone(this.options.initialValue);
     let initialValue: T = structuredClone(this.options.initialValue);
+    let restoredFromStorage = false;
     const history: WritableSignal<T[]> = signal([]);
     let debounceTimeout: number | undefined | null = null;
     let redoStack: T[] = [];
@@ -454,9 +484,10 @@ export class SignalBuilder<T> {
             parsedValue = parsedData;
           }
 
-          writable.set(parsedValue);
+          setCell(parsedValue);
           previousValue = parsedValue;
           initialValue = parsedValue;
+          restoredFromStorage = true;
 
           if (this.options.enableHistory && parsedHistory) {
             history.set(
@@ -498,7 +529,7 @@ export class SignalBuilder<T> {
             clearPendingDebounce();
           }
 
-          writable.set(parsedValue);
+          setCell(parsedValue);
           previousValue = parsedValue;
 
           if (this.options.enableHistory && parsedHistory) {
@@ -593,14 +624,15 @@ export class SignalBuilder<T> {
       };
     };
 
-    const updateValue: (val: T, skipValidation?: boolean) => void = (
+    const updateValue: (
       val: T,
-      skipValidation = false,
-    ) => {
+      skipValidation?: boolean,
+      skipTransform?: boolean,
+    ) => void = (val: T, skipValidation = false, skipTransform = false) => {
       try {
         // Apply transform first
         let transformedValue: T = val;
-        if (transform) {
+        if (transform && !skipTransform) {
           try {
             transformedValue = transform(val);
           } catch (error) {
@@ -649,7 +681,7 @@ export class SignalBuilder<T> {
             monitorEnabled && trackPerformance ? performance.now() : 0;
 
           previousValue = oldValue;
-          writable.set(transformedValue);
+          setCell(transformedValue);
 
           if (this.options.enableHistory && !isProcessingDebounce) {
             redoStack = [];
@@ -702,8 +734,15 @@ export class SignalBuilder<T> {
       }
     };
 
-    // Set initial value without applying transforms
-    writable.set(initialValue);
+    // Set initial value without applying transforms. A source-backed signal is
+    // seeded from the live source instead, so a change made between enhance()
+    // and build() is not overwritten by the value captured at enhance() time.
+    if (sourceIsWritable && !restoredFromStorage) {
+      initialValue = writable();
+      previousValue = writable();
+    } else {
+      setCell(initialValue);
+    }
 
     if (this.options.debugLabel) {
       spDebug.trackSignal(this.options.debugLabel, writable());
@@ -712,11 +751,23 @@ export class SignalBuilder<T> {
       spMonitor.trackSignal(signalName);
     }
 
+    // A write that cannot reach the source would silently desynchronise the two
+    const assertSourceWritable: () => void = () => {
+      if (source && !sourceIsWritable) {
+        throw spCreateError(SpErrorCode.SRC_001, {
+          signalName,
+          currentValue: writable(),
+        });
+      }
+    };
+
     const processValue: (value: T) => void = (value: T) => {
       // Prevent setValue after destroy
       if (isCleanedUp) {
         return;
       }
+
+      assertSourceWritable();
 
       _trackTransactionWrite(signalInstance, value);
 
@@ -766,7 +817,7 @@ export class SignalBuilder<T> {
     };
     const signalInstance: SignalPlus<T> = {
       get value() {
-        return writable();
+        return readValue();
       },
       get previousValue() {
         return previousValue;
@@ -774,7 +825,7 @@ export class SignalBuilder<T> {
       get initialValue() {
         return initialValue;
       },
-      signal: computed(() => writable()),
+      signal: computed(() => readValue()),
       writable,
       set: processValue,
       setValue: processValue,
@@ -805,6 +856,8 @@ export class SignalBuilder<T> {
           const resetValue: T =
             this.options.defaultValue ?? this.options.initialValue;
 
+          assertSourceWritable();
+
           _trackTransactionWrite(signalInstance, resetValue);
 
           // Clear history and redo stack
@@ -823,7 +876,7 @@ export class SignalBuilder<T> {
 
             // Update signal state
             previousValue = conditionalClone(writable());
-            writable.set(transformedValue);
+            setCell(transformedValue);
 
             // Update history
             if (this.options.enableHistory) {
@@ -907,6 +960,8 @@ export class SignalBuilder<T> {
         const currentHistory: T[] = history();
         const previousValue: T = currentHistory[currentHistory.length - 2];
 
+        assertSourceWritable();
+
         _trackTransactionWrite(signalInstance, previousValue);
 
         // Move current value to redo stack
@@ -916,7 +971,7 @@ export class SignalBuilder<T> {
 
         // Update history and current value
         history.set(currentHistory.slice(0, -1));
-        writable.set(conditionalClone(previousValue));
+        setCell(conditionalClone(previousValue));
 
         // Notify subscribers
         notifySubscribers(previousValue);
@@ -930,6 +985,8 @@ export class SignalBuilder<T> {
         // Get the value to redo
         const valueToRedo: T = redoStack[redoStack.length - 1] as T;
 
+        assertSourceWritable();
+
         _trackTransactionWrite(signalInstance, valueToRedo);
 
         redoStack.pop();
@@ -939,7 +996,7 @@ export class SignalBuilder<T> {
         history.set([...currentHistory, conditionalClone(valueToRedo)]);
 
         // Set the value
-        writable.set(conditionalClone(valueToRedo));
+        setCell(conditionalClone(valueToRedo));
 
         // Notify subscribers
         notifySubscribers(valueToRedo);
@@ -1024,6 +1081,12 @@ export class SignalBuilder<T> {
         // Step 2: Clear all subscribers
         safeCleanup('Clear subscribers', () => {
           subscribers.clear();
+        });
+
+        // Step 2.5: Stop observing the shared source
+        safeCleanup('Destroy source observer', () => {
+          sourceObserver?.destroy();
+          sourceObserver = null;
         });
 
         // Step 3: Cleanup storage event listener
@@ -1137,7 +1200,7 @@ export class SignalBuilder<T> {
 
         // Set the value immediately without going through processValue
         // This bypasses debounce, validation, and subscribers
-        writable.set(transformedValue);
+        setCell(transformedValue);
 
         // Update history manually if enabled
         if (this.options.enableHistory) {
@@ -1174,7 +1237,7 @@ export class SignalBuilder<T> {
       _restoreTransactionSnapshot: (snapshot: SignalTransactionSnapshot<T>) => {
         clearPendingDebounce();
 
-        writable.set(snapshot.value);
+        setCell(snapshot.value);
         if (this.options.enableHistory) {
           history.set([...snapshot.history]);
         }
@@ -1184,7 +1247,47 @@ export class SignalBuilder<T> {
       },
     };
 
+    if (sourceIsWritable && source) {
+      lastSyncedValue = writable();
+      const injector: Injector | null = this.optionalInjector();
+
+      // Without an injector there is nothing to own an effect. Reads still see
+      // source writes, because the two share a cell; only the bookkeeping below
+      // is skipped, which is what the API docs record as the limitation.
+      if (injector) {
+        sourceObserver = effect(
+          () => {
+            const next = source();
+            untracked(() => {
+              if (isCleanedUp || Object.is(next, lastSyncedValue)) {
+                return;
+              }
+
+              // Written straight to the shared source, so the value is already
+              // in the cell. Transform is skipped deliberately: re-transforming
+              // would write a different value back and never settle.
+              const priorValue = lastSyncedValue;
+              updateValue(next, true, true);
+
+              // updateValue reads the cell for the old value, which the source
+              // has already overwritten, so restore the one actually replaced
+              previousValue = priorValue;
+            });
+          },
+          { injector },
+        );
+      }
+    }
+
     return signalInstance;
+  }
+
+  private optionalInjector(): Injector | null {
+    try {
+      return inject(Injector, { optional: true });
+    } catch {
+      return null;
+    }
   }
 
   private cloneIfNeeded<V>(value: V): V {
