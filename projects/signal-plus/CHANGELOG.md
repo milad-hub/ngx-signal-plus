@@ -10,6 +10,16 @@ A few versions were bumped in this repository and never published. Their changes
 
 Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
 
+## [3.0.5]
+
+### Fixed
+
+- `spToggle(initial, key)` no longer erases the value it is supposed to restore. It wrote `initial` to the storage key on every construction, before the builder read that key back, so the saved state was destroyed each time the toggle was created and a reload always came up with the initial value. The key is now seeded only when it holds nothing, and the builder's own restore path runs first — so a toggle constructed after `setValue(true)` reports `true`.
+
+### Changed
+
+- **Storage format:** a persisted `spToggle` now writes the plain value (`true`) rather than `{"value":true}`. It previously wrote both, through two competing paths: the builder's own persistence wrote the plain value on every write, and a hand-written `setValue` override then overwrote it with the wrapped shape — but only for `setValue`, so `update`, `reset`, `undo` and `redo` left the plain value in place and the stored shape depended on which method you called. The override is gone and `spToggle` now uses the same format as every other persisted signal. Existing wrapped payloads are still read correctly, so a stored `{"value":true}` restores and is rewritten in the new shape on the next write; only code that parses the storage key itself is affected.
+
 ## [3.0.4]
 
 ### Fixed

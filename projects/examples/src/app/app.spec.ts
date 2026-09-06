@@ -37,6 +37,13 @@ describe('examples application logic', () => {
     expect(app.nativeSource()).toBe(9);
   });
 
+  it('restores the persisted feature toggle when the application is recreated', () => {
+    localStorage.removeItem('examples-feature-toggle');
+    createApp().featureToggle.setValue(true);
+
+    expect(createApp().featureToggle.value).toBe(true);
+  });
+
   it('notifies cart subscribers once per batched add', () => {
     const app = createApp();
     const seen: number[] = [];

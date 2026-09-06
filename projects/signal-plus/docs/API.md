@@ -88,6 +88,8 @@ darkMode.update((v) => !v);
 console.log(darkMode.value);
 ```
 
+When a key is given, the stored value is restored on construction, so a toggle created after a reload comes back as the user left it. The key is seeded with `initial` only when it holds nothing; an existing value always wins over `initial`. The stored payload is the plain JSON value (`true`), the same format every other persisted signal uses — an older `{"value":true}` payload is still read, and is rewritten in the plain form on the next write. A malformed payload leaves the toggle at `initial` and the key untouched. On the server nothing is read or written, and the toggle reports `initial`.
+
 ### `spForm`
 
 Provides ready-made form-oriented signal factories for text, email, and number input patterns.
