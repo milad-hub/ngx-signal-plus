@@ -111,20 +111,117 @@ export class Query<T = unknown> {
   }
 
   private createInitialState(): QueryState<T> {
-    return {
+    const seeded = this.options.initialData !== undefined;
+
+    return Query.withInvariants({
       data: this.options.initialData,
       error: null,
       isLoading: false,
       isFetching: false,
       isStale: true,
-      isSuccess: false,
+      isSuccess: seeded,
       isError: false,
-      isIdle: true,
+      isIdle: !seeded,
       dataUpdatedAt: 0,
       errorUpdatedAt: 0,
       fetchCount: 0,
       failureCount: 0,
-    };
+    });
+  }
+
+  /**
+   * Enforces the state machine's exclusivity rules on a candidate state
+   *
+   * @param state The candidate state, before invariants are applied
+   * @returns The same state with the mutually exclusive flags reconciled
+   *
+   * @remarks
+   * The status flags describe one of four positions — idle, loading, success,
+   * error — so at most one of them may be true. `isFetching` and `isStale` are
+   * deliberately outside that set: a background refetch of data already present
+   * is both fetching and successful, and staleness is orthogonal to all four.
+   *
+   * `isIdle` is derived rather than assigned. Idle means nothing has ever been
+   * attempted or seeded, so any fetch, any result, and any `initialData` ends
+   * it permanently.
+   */
+  private static withInvariants<S>(state: QueryState<S>): QueryState<S> {
+    const isError = state.isError;
+    const isSuccess = isError ? false : state.isSuccess;
+    const isLoading = isError || isSuccess ? false : state.isLoading;
+    const isIdle =
+      state.fetchCount === 0 &&
+      !isSuccess &&
+      !isError &&
+      !isLoading &&
+      !state.isFetching;
+
+    if (
+      isSuccess === state.isSuccess &&
+      isLoading === state.isLoading &&
+      isIdle === state.isIdle
+    ) {
+      return state;
+    }
+
+    return { ...state, isSuccess, isLoading, isIdle };
+  }
+
+  private static sameState<S>(a: QueryState<S>, b: QueryState<S>): boolean {
+    return (
+      a.data === b.data &&
+      a.error === b.error &&
+      a.isLoading === b.isLoading &&
+      a.isFetching === b.isFetching &&
+      a.isStale === b.isStale &&
+      a.isSuccess === b.isSuccess &&
+      a.isError === b.isError &&
+      a.isIdle === b.isIdle &&
+      a.dataUpdatedAt === b.dataUpdatedAt &&
+      a.errorUpdatedAt === b.errorUpdatedAt &&
+      a.fetchCount === b.fetchCount &&
+      a.failureCount === b.failureCount
+    );
+  }
+
+  /**
+   * The single write path for query state
+   *
+   * @param patch The fields this transition changes
+   *
+   * @remarks
+   * Every transition applies the invariants and notifies observers, so no
+   * caller can produce a contradictory state or change one silently. A patch
+   * that changes nothing notifies nobody.
+   */
+  private transition(patch: Partial<QueryState<T>>): void {
+    const next = Query.withInvariants({ ...this.state, ...patch });
+
+    if (Query.sameState(this.state, next)) {
+      return;
+    }
+
+    this.state = next;
+    this.notify();
+  }
+
+  /**
+   * Whether the stored data has aged past `staleTime`
+   *
+   * @returns True when the entry should be treated as stale right now
+   */
+  private isStaleNow(): boolean {
+    if (this.state.isStale) {
+      return true;
+    }
+
+    const staleTime = this.options.staleTime;
+
+    if (staleTime === undefined || this.state.data === undefined) {
+      return false;
+    }
+
+    return Date.now() - this.state.dataUpdatedAt > staleTime;
   }
 
   subscribe(observer: QueryObserver<T>): () => void {
@@ -139,7 +236,10 @@ export class Query<T = unknown> {
 
     this.scheduleRefetch();
 
-    if (this.state.isStale && observer.options.enabled !== false) {
+    // Derived rather than the stored flag: with no staleTime, or with one that
+    // schedules no timer, the stored flag stays false while the data ages out,
+    // and this is the only place that would notice
+    if (this.isStaleNow() && observer.options.enabled !== false) {
       this.fetch().catch(() => undefined);
     }
 
@@ -165,15 +265,13 @@ export class Query<T = unknown> {
     const abortController = new AbortController();
     this.abortController = abortController;
 
-    this.state = {
-      ...this.state,
+    this.transition({
       isLoading: this.state.data === undefined,
       isFetching: true,
       isError: false,
       error: null,
       fetchCount: this.state.fetchCount + 1,
-    };
-    this.notify();
+    });
 
     const fetchPromise = this.executeFetch(abortController.signal);
     this.fetchPromise = fetchPromise;
@@ -248,32 +346,31 @@ export class Query<T = unknown> {
   }
 
   private setData(data: T): void {
-    this.state = {
-      ...this.state,
+    this.transition({
       data,
+      error: null,
       isLoading: false,
       isFetching: false,
       isSuccess: true,
+      isError: false,
       isStale: false,
       dataUpdatedAt: Date.now(),
       failureCount: 0,
-    };
-    this.notify();
+    });
     this.scheduleRefetchInterval();
     this.scheduleStaleUpdate();
   }
 
   private setError(error: Error): void {
-    this.state = {
-      ...this.state,
+    this.transition({
       error,
       isLoading: false,
       isFetching: false,
       isError: true,
+      isSuccess: false,
       errorUpdatedAt: Date.now(),
       failureCount: this.state.failureCount + 1,
-    };
-    this.notify();
+    });
 
     if (this.options.onError) {
       this.options.onError(error);
@@ -292,25 +389,26 @@ export class Query<T = unknown> {
       typeof updater === 'function'
         ? (updater as (old: T | undefined) => T)(this.state.data)
         : (updater as T);
-    this.state = {
-      ...this.state,
+    this.transition({
       data: nextData,
+      error: null,
       isSuccess: true,
       isError: false,
       isLoading: false,
       isFetching: false,
       isStale: markStale ? true : this.state.isStale,
       dataUpdatedAt: Date.now(),
-    };
-    this.notify();
+    });
+
+    // Entries written straight into the cache never ran fetch(), so this is
+    // their only chance to schedule the transition to stale; without it the
+    // flip would be visible only to a getState() caller and never reach a
+    // subscribed observer
+    this.scheduleStaleUpdate();
   }
 
   invalidate(): void {
-    this.state = {
-      ...this.state,
-      isStale: true,
-    };
-    this.notify();
+    this.transition({ isStale: true });
 
     if (this.hasEnabledObservers()) {
       this.fetch().catch(() => undefined);
@@ -331,12 +429,7 @@ export class Query<T = unknown> {
       this.fetchPromise = null;
     }
     if (this.state.isFetching) {
-      this.state = {
-        ...this.state,
-        isFetching: false,
-        isLoading: false,
-      };
-      this.notify();
+      this.transition({ isFetching: false, isLoading: false });
     }
   }
 
@@ -379,10 +472,7 @@ export class Query<T = unknown> {
     if (this.options.staleTime && this.options.staleTime > 0) {
       const delay = this.options.staleTime;
       this.staleTimeout = setTimeout(() => {
-        if (!this.state.isStale) {
-          this.state = { ...this.state, isStale: true };
-          this.notify();
-        }
+        this.transition({ isStale: true });
       }, delay);
     }
   }
@@ -450,14 +540,25 @@ export class Query<T = unknown> {
     this.evictionHandler = handler;
   }
 
+  /**
+   * The current state, with staleness evaluated as of now
+   *
+   * @returns The stored state, or a stale-corrected copy of it
+   *
+   * @remarks
+   * Pure. This used to assign the corrected state back and skip `notify()`, so
+   * reading a query changed it and subscribed observers were never told. The
+   * transition to stale is now scheduled wherever data is written, and this
+   * only reports it.
+   */
   getState(): QueryState<T> {
-    if (this.state.data !== undefined && this.options.staleTime !== undefined) {
-      const timeSinceUpdate = Date.now() - this.state.dataUpdatedAt;
-      if (timeSinceUpdate > this.options.staleTime && !this.state.isStale) {
-        this.state = { ...this.state, isStale: true };
-      }
+    const isStale = this.isStaleNow();
+
+    if (isStale === this.state.isStale) {
+      return this.state;
     }
-    return this.state;
+
+    return { ...this.state, isStale };
   }
 
   destroy(): void {

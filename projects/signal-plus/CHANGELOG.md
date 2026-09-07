@@ -10,6 +10,19 @@ A few versions were bumped in this repository and never published. Their changes
 
 Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
 
+## [3.1.1]
+
+### Fixed
+
+- **`isIdle` was permanently true.** It was set once when a query was constructed and never written again, so a query reported `data`, `isSuccess` and `isIdle` all at once after a successful fetch. It is now derived from the lifecycle: idle means nothing has been attempted or seeded, and any fetch, any result, or any `initialData` ends it for good.
+- **A failed refetch no longer claims success.** `setError` set `isError` without clearing `isSuccess`, so after one success and one failure a query reported both, alongside the stale data. The four status signals — `isIdle`, `isLoading`, `isSuccess`, `isError` — are now mutually exclusive, enforced on every transition rather than at each call site.
+- **A query seeded with `initialData` reports a consistent state.** It copied the seed into `data` while leaving `isSuccess` false, `isIdle` true and `isLoading` reachable, so a seeded query claimed it had never succeeded. It now starts as successful and not idle, and stays stale so its first subscription still refetches.
+- **The transition to stale reaches observers for cache-only entries.** `getState()` flipped `isStale` inside the getter and skipped `notify()`, so reading a query changed it and subscribers kept reporting the previous value. `getState()` is now pure, and data written straight into the cache through `setQueryData` schedules the same stale transition a fetch does — which also stops such an entry going stale on the previous write's deadline instead of its own.
+
+### Changed
+
+- All query state now moves through one transition function that applies the exclusivity rules and notifies observers. A transition that changes nothing notifies nobody, so no state change is silent and no redundant notification is delivered.
+
 ## [3.1.0]
 
 ### Added
