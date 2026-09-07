@@ -6,7 +6,7 @@ This project follows [Semantic Versioning](https://semver.org/) and is formatted
 
 Every version heading below is a release of this package. Each is published to [npm](https://www.npmjs.com/package/ngx-signal-plus) when its branch merges to `main`, so the newest heading can briefly precede its own publish.
 
-A few versions were bumped in this repository and never published. Their changes still reached consumers, inside the next release that actually shipped, and they are documented under that release rather than under a heading of their own: **2.3.0** is included in 2.4.0, **2.9.1** and **2.9.2** in 2.9.3, and **2.9.4**, **2.9.5** and **2.9.6** in 3.0.0. A changelog records what consumers received, so there is no heading for a version nobody could install. 2.9.4 and 2.9.5 changed only repository tooling and are not described below, because they altered nothing a consumer can observe.
+A few versions were bumped in this repository and never published. Their changes still reached consumers, inside the next release that actually shipped, and they are documented under that release rather than under a heading of their own: **2.3.0** is included in 2.4.0, **2.9.1** and **2.9.2** in 2.9.3, and **2.9.4**, **2.9.5**, **2.9.6** and **2.9.7** in 3.0.0. A changelog records what consumers received, so there is no heading for a version nobody could install. 2.9.4, 2.9.5 and 2.9.7 changed only repository tooling and are not described below, because they altered nothing a consumer can observe.
 
 Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
 
