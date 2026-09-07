@@ -5,7 +5,8 @@ import {
   signal,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { QueryClient, setGlobalQueryClient } from './query-client';
+import { QueryClient } from './query-client';
+import { setGlobalQueryClient } from './global-query-client';
 import { createInfiniteQuery, spInfiniteQuery } from './sp-infinite-query';
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

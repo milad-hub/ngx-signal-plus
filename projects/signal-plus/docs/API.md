@@ -9,6 +9,7 @@ For interactive Angular 20 examples, see the [examples application](../../exampl
 - [Requirements](#requirements)
 - [Install](#install)
 - [Deprecation Policy](#deprecation-policy)
+- [Scoping Library State (`provideSignalPlus`)](#scoping-library-state-providesignalplus)
 - [Core Signal Creation](#core-signal-creation)
 - [Enhance Existing Angular Signals](#enhance-existing-angular-signals)
 - [SignalBuilder (exported as `spSignalBuilder`)](#signalbuilder-exported-as-spsignalbuilder)
@@ -44,6 +45,36 @@ npm install ngx-signal-plus
 ## Deprecation Policy
 
 Deprecated public APIs are marked in JSDoc and announced in the [changelog](../CHANGELOG.md). They remain available for at least one MINOR release and are removed only in a MAJOR release.
+
+## Scoping Library State (`provideSignalPlus`)
+
+The query client, the middleware registry, and the transaction and batch contexts are shared state. By default they live in module-level variables, which is correct in a browser — one page, one user — and wrong on a server, where one Node process serves every request: cached query data would cross users, a middleware registered while rendering one request would apply to all of them, and two concurrent requests would share one transaction flag.
+
+`provideSignalPlus()` binds all of it to an environment injector, which under SSR means one per request.
+
+```ts
+import { bootstrapApplication } from "@angular/platform-browser";
+import { provideSignalPlus } from "ngx-signal-plus";
+
+bootstrapApplication(AppComponent, {
+  providers: [provideSignalPlus({ defaultQueryOptions: { staleTime: 5000 } })],
+});
+```
+
+It is opt-in and nothing breaks without it: every entry point falls back to the module-level state, which is exactly how the library behaved before this provider existed.
+
+How a call site finds its scope:
+
+- Called where an injector is reachable — a constructor, a field initializer, `runInInjectionContext` — it uses the provided scope.
+- Called anywhere else, it uses the module fallback.
+- A signal captures its scope when `build()` runs, because the write paths that follow have no injection context of their own. This is what lets a transaction opened in a request roll back the signals that request built.
+- A transaction or batch opened outside an injection context still sees writes to signals built inside one, so mixing the two styles does not silently lose writes.
+
+`setGlobalQueryClient()` still works and still targets the module-level scope when called outside an injection context. Treat it as browser-only; under SSR pass `defaultQueryOptions` to `provideSignalPlus()` instead, so each request gets its own client.
+
+Middleware follows the scope it was registered in. Register inside the injector — in a component or an `APP_INITIALIZER` — for it to apply to that request only; register at module top level and it stays global, as before.
+
+Each scope creates its own `QueryClient` on first use, and that client's cache schedules a garbage-collection timer. The timer is browser-only — it is never scheduled on the server, so an SSR request leaves nothing running behind it — but it is not currently cancelled when an injector is destroyed. Use `provideSignalPlus()` at the application root rather than per route until scope teardown is wired into the query cache's eviction path.
 
 ## Core Signal Creation
 
@@ -820,10 +851,13 @@ console.log(state.value);
 
 The library guards browser-only operations such as `localStorage`, `window`, and DOM event listeners. Core signal, validation, collection, and query APIs can be imported during SSR. Features that schedule work still follow their documented lifecycle and should be destroyed with their Angular owner or explicit cleanup API.
 
+Guarding browser APIs is not by itself enough for server-side rendering. One Node process serves every request, so any state the library keeps in a module-level variable is shared by every user of that process. Add [`provideSignalPlus()`](#scoping-library-state-providesignalplus) so the query cache, the middleware registry and the transaction and batch contexts belong to the request's injector rather than to the process.
+
 ## Exported Types
 
 The package also exports all primary types for strong typing:
 
+- Scoping: `SignalPlusScope`, `SignalPlusScopeOptions`
 - Core: `ReadonlySignalPlus`, `SignalPlus`, `BuilderOptions`, `SignalOptions`, `SignalHistory`, `SignalState`, `Validator`, `Transform`, `ErrorHandler`, `AsyncValidator`
 - Developer Experience: `DebugSignalState`, `SpEffectOptions`, `SpEffectController`
 - Monitoring: `SpMonitorOptions`, `SignalPerformanceState`

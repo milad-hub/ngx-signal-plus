@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideSignalPlus, SignalPlusScope } from 'ngx-signal-plus';
 import { AppComponent } from './app.component';
 
 describe('ngx-signal-plus consumer smoke', () => {
@@ -8,6 +9,7 @@ describe('ngx-signal-plus consumer smoke', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
+      providers: [provideSignalPlus()],
     }).compileComponents();
     fixture = TestBed.createComponent(AppComponent);
     app = fixture.componentInstance;
@@ -54,6 +56,14 @@ describe('ngx-signal-plus consumer smoke', () => {
     expect(app.form.isValid()).toBe(false);
     app.form.setValue({ name: 'signal' });
     expect(app.form.isValid()).toBe(true);
+  });
+
+  it('scopes library state to the injector', () => {
+    const scope = TestBed.inject(SignalPlusScope);
+
+    expect(scope).toBeTruthy();
+    expect(scope.queryClient).toBeTruthy();
+    expect(app.counter._scope).toBe(scope);
   });
 
   it('resolves a query', async () => {

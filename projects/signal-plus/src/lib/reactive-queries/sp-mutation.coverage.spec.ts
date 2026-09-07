@@ -5,7 +5,7 @@ import {
   tick,
 } from '@angular/core/testing';
 import { MutationResult } from './interfaces';
-import { getGlobalQueryClient } from './query-client';
+import { getGlobalQueryClient } from './global-query-client';
 import { spMutation } from './sp-mutation';
 
 describe('spMutation gap behavior', () => {

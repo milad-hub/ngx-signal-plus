@@ -1,4 +1,4 @@
-import { SignalPlus } from './signal-plus.model';
+import { SignalPlus, SignalTransactionSnapshot } from './signal-plus.model';
 
 export interface TransactionContext {
   active: boolean;
@@ -27,4 +27,15 @@ export interface BatchContext {
 export interface PendingBatchNotification<T> {
   value: T;
   deliver: (value: T) => void;
+}
+
+/**
+ * The transaction context as a scope stores it, with the rollback bookkeeping
+ */
+export interface ScopedTransactionContext extends TransactionContext {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  snapshots: Map<SignalPlus<any>, SignalTransactionSnapshot<any>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  attemptedValues: Map<SignalPlus<any>, any>;
+  startTime: Date | null;
 }

@@ -16,6 +16,7 @@ Composable utilities for Angular Signals, including validation, persistence, his
 - **Reactive queries and mutations** — query, mutation, dependent-query, and infinite-query primitives.
 - **Transactions and batching** — coordinated updates and rollback support.
 - **Middleware, debugging, and monitoring** — opt-in signal instrumentation and hooks.
+- **SSR-safe state scoping** — `provideSignalPlus()` gives each request its own query cache, middleware registry, and transaction context.
 
 ## Installation
 
@@ -28,6 +29,21 @@ The package has a single entry point. Import everything from `ngx-signal-plus`; 
 ```typescript
 import { sp, spMap, spQuery, spFormGroup } from "ngx-signal-plus";
 ```
+
+## Server-side rendering
+
+The query cache, the middleware registry, and the transaction and batch contexts are shared state. By default they live in module-level variables, which is right in a browser and wrong on a server, where one Node process serves every request. Add `provideSignalPlus()` so each request's injector owns its own:
+
+```typescript
+import { bootstrapApplication } from "@angular/platform-browser";
+import { provideSignalPlus } from "ngx-signal-plus";
+
+bootstrapApplication(AppComponent, {
+  providers: [provideSignalPlus()],
+});
+```
+
+It is opt-in and nothing breaks without it — every entry point falls back to the module-level state. See the [API documentation](https://github.com/milad-hub/ngx-signal-plus/blob/main/projects/signal-plus/docs/API.md#scoping-library-state-providesignalplus) for how a call site finds its scope.
 
 ## Requirements
 

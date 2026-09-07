@@ -9,6 +9,7 @@ describe('public API', () => {
       .toEqual([
         'QueryClient',
         'SP_ERRORS',
+        'SignalPlusScope',
         'SpError',
         'createDependentQuery',
         'createInfiniteQuery',
@@ -17,6 +18,7 @@ describe('public API', () => {
         'enhance',
         'formatSpError',
         'getGlobalQueryClient',
+        'provideSignalPlus',
         'setGlobalQueryClient',
         'sp',
         'spAll',

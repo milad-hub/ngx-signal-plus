@@ -1,4 +1,5 @@
-import { QueryClient, setGlobalQueryClient } from './query-client';
+import { QueryClient } from './query-client';
+import { setGlobalQueryClient } from './global-query-client';
 import { createMutation, spMutation } from './sp-mutation';
 
 describe('spMutation', () => {

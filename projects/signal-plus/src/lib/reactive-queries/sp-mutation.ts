@@ -1,6 +1,6 @@
 import { computed, DestroyRef, inject, signal, untracked } from '@angular/core';
 import { MutationResult } from './interfaces';
-import { getGlobalQueryClient } from './query-client';
+import { getGlobalQueryClient } from './global-query-client';
 import { MutationOptions, MutationState } from './query-types';
 
 /**

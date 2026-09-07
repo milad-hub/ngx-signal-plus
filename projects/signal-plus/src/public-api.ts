@@ -12,7 +12,13 @@ export { sp, spCounter, spForm, spToggle } from './lib/utils/create';
 export { enhance } from './lib/utils/enhance';
 
 // Core Services
-export { spSignalBuilder, spSignalPlusService } from './lib/core';
+export {
+  provideSignalPlus,
+  SignalPlusScope,
+  spSignalBuilder,
+  spSignalPlusService,
+} from './lib/core';
+export type { SignalPlusScopeOptions } from './lib/core';
 
 // Models and Types
 export type {

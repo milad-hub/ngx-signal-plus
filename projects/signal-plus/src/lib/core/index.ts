@@ -6,3 +6,5 @@
 // Core services
 export { SignalBuilder as spSignalBuilder } from './signal-builder';
 export { SignalPlusService as spSignalPlusService } from './signal-plus.service';
+export { provideSignalPlus, SignalPlusScope } from './scope';
+export type { SignalPlusScopeOptions } from './scope';

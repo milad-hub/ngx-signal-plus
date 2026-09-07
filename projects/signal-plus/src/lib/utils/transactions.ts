@@ -24,17 +24,15 @@
  * ```
  */
 
-import {
-  SignalPlus,
-  SignalTransactionSnapshot,
-} from '../models/signal-plus.model';
-import {
-  BatchContext,
-  PendingBatchNotification,
-  TransactionContext,
-} from '../models/transactions.models';
+import { SignalPlus } from '../models/signal-plus.model';
 import { SpErrorCode } from '../models/errors.model';
 import { spCreateError } from './errors';
+import { SignalPlusScope, _resolveScope, _scopeForSignal } from '../core/scope';
+
+const transactionIsActive = (scope: SignalPlusScope): boolean =>
+  scope.transaction.active;
+
+const batchIsActive = (scope: SignalPlusScope): boolean => scope.batch.active;
 
 /**
  * Enhanced error class for transaction failures with detailed metadata
@@ -126,40 +124,6 @@ export class TransactionError extends Error {
   }
 }
 
-// Global state management for transactions and batching
-const state = {
-  transaction: {
-    active: false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    originalValues: new Map<SignalPlus<any>, any>(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    patchedSignals: new Map<SignalPlus<any>, (value: any) => void>(),
-    modifiedSignals: [],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    modifiedSet: new Set<SignalPlus<any>>(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    snapshots: new Map<SignalPlus<any>, SignalTransactionSnapshot<any>>(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    attemptedValues: new Map<SignalPlus<any>, any>(),
-    startTime: null as Date | null,
-  } as TransactionContext & {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    attemptedValues: Map<SignalPlus<any>, any>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    snapshots: Map<SignalPlus<any>, SignalTransactionSnapshot<any>>;
-    startTime: Date | null;
-  },
-
-  batch: {
-    active: false,
-    flushing: false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    signals: new Set<SignalPlus<any>>(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pending: new Map<SignalPlus<any>, PendingBatchNotification<any>>(),
-  } as BatchContext,
-};
-
 /**
  * Records a signal write against the active transaction so it can be rolled back
  * @param signal The signal being written
@@ -170,7 +134,7 @@ export function _trackTransactionWrite<T>(
   signal: SignalPlus<T>,
   value: T,
 ): void {
-  const txState = state.transaction;
+  const txState = _scopeForSignal(signal, transactionIsActive).transaction;
 
   if (!txState.active) {
     return;
@@ -202,7 +166,7 @@ export function _deferBatchNotification<T>(
   value: T,
   deliver: (value: T) => void,
 ): boolean {
-  const batchState = state.batch;
+  const batchState = _scopeForSignal(signal, batchIsActive).batch;
 
   if (!batchState.active) {
     // A write delivered outside the batch supersedes anything still queued for
@@ -220,8 +184,8 @@ export function _deferBatchNotification<T>(
  * Patches a signal to intercept setValue calls during a transaction
  * @param signal The signal to patch
  */
-function patchSignal<T>(signal: SignalPlus<T>): void {
-  const txState = state.transaction;
+function patchSignal<T>(signal: SignalPlus<T>, scope: SignalPlusScope): void {
+  const txState = scope.transaction;
 
   // Skip if already patched
   if (txState.patchedSignals.has(signal)) {
@@ -244,8 +208,8 @@ function patchSignal<T>(signal: SignalPlus<T>): void {
 /**
  * Restores the original setValue method for all patched signals
  */
-function restoreOriginalMethods(): void {
-  const txState = state.transaction;
+function restoreOriginalMethods(scope: SignalPlusScope): void {
+  const txState = scope.transaction;
 
   for (const [signal, originalSetValue] of txState.patchedSignals.entries()) {
     // Properly restore the original method
@@ -259,8 +223,8 @@ function restoreOriginalMethods(): void {
  * Rolls back all changes made during a transaction
  * @returns true if rollback was successful, false if errors occurred
  */
-function rollbackChanges(): boolean {
-  const txState = state.transaction;
+function rollbackChanges(scope: SignalPlusScope): boolean {
+  const txState = scope.transaction;
 
   // To avoid capturing rollback operations, temporarily disable transaction mode
   const wasActive = txState.active;
@@ -330,7 +294,8 @@ function rollbackChanges(): boolean {
  * ```
  */
 export function spTransaction<T>(fn: () => T): T {
-  const txState = state.transaction;
+  const scope = _resolveScope();
+  const txState = scope.transaction;
 
   // Prevent nested transactions
   if (txState.active) {
@@ -366,7 +331,7 @@ export function spTransaction<T>(fn: () => T): T {
     const attemptedValues = new Map(txState.attemptedValues);
 
     // Perform rollback (this clears the maps)
-    const rollbackSuccessful = rollbackChanges();
+    const rollbackSuccessful = rollbackChanges(scope);
     txState.active = false;
     txState.startTime = null;
 
@@ -387,7 +352,7 @@ export function spTransaction<T>(fn: () => T): T {
     throw transactionError;
   } finally {
     // Clean up patched signals
-    restoreOriginalMethods();
+    restoreOriginalMethods(scope);
     txState.modifiedSignals = [];
     txState.modifiedSet.clear();
     txState.startTime = null;
@@ -408,7 +373,7 @@ export function spTransaction<T>(fn: () => T): T {
  * ```
  */
 export function spBatch<T>(fn: () => T): T {
-  const batchState = state.batch;
+  const batchState = _resolveScope().batch;
 
   // A nested batch joins the outermost one, which owns the flush. A batch
   // opened by a subscriber during a flush joins that flush the same way.
@@ -460,7 +425,7 @@ export function spBatch<T>(fn: () => T): T {
  * @returns True if a transaction is active
  */
 export function spIsTransactionActive(): boolean {
-  return state.transaction.active;
+  return _resolveScope().transaction.active;
 }
 
 /**
@@ -469,7 +434,8 @@ export function spIsTransactionActive(): boolean {
  * @returns True if a transaction is active and this signal was written in it
  */
 export function spIsInTransaction<T>(signal: SignalPlus<T>): boolean {
-  return state.transaction.active && state.transaction.modifiedSet.has(signal);
+  const txState = _scopeForSignal(signal, transactionIsActive).transaction;
+  return txState.active && txState.modifiedSet.has(signal);
 }
 
 /**
@@ -478,9 +444,13 @@ export function spIsInTransaction<T>(signal: SignalPlus<T>): boolean {
  * @returns True if the signal is in an active batch
  */
 export function spIsInBatch<T>(signal?: SignalPlus<T>): boolean {
-  if (state.batch.active) {
+  const batchState = signal
+    ? _scopeForSignal(signal, batchIsActive).batch
+    : _resolveScope().batch;
+
+  if (batchState.active) {
     if (signal) {
-      state.batch.signals.add(signal);
+      batchState.signals.add(signal);
     }
     return true;
   }
@@ -493,19 +463,22 @@ export function spIsInBatch<T>(signal?: SignalPlus<T>): boolean {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function spGetModifiedSignals(): SignalPlus<any>[] {
-  if (!state.transaction.active) {
+  const txState = _resolveScope().transaction;
+
+  if (!txState.active) {
     return [];
   }
 
-  return [...state.transaction.modifiedSignals];
+  return [...txState.modifiedSignals];
 }
 
 /**
  * Clear transaction state (for testing purposes)
  */
-export function _resetTransactionState(): void {
-  const txState = state.transaction;
-  const batchState = state.batch;
+export function _resetTransactionState(scope?: SignalPlusScope): void {
+  const target = scope ?? _resolveScope();
+  const txState = target.transaction;
+  const batchState = target.batch;
 
   // Reset transaction state
   txState.active = false;
@@ -515,7 +488,7 @@ export function _resetTransactionState(): void {
   txState.attemptedValues.clear();
   txState.modifiedSignals = [];
   txState.modifiedSet.clear();
-  restoreOriginalMethods();
+  restoreOriginalMethods(target);
 
   // Reset batch state
   batchState.active = false;
@@ -535,10 +508,12 @@ export function _patchAllSignalsInTest<T>(signal: SignalPlus<T>): void {
 
   // For testing purposes, we need to make sure that setValue will work
   // with our transaction tracking mechanism
-  patchSignal(signal);
+  // Resolved the same way spTransaction resolves it, so the scope that stores
+  // the patch is always the scope restoreOriginalMethods will restore from
+  patchSignal(signal, _resolveScope());
 
   // Explicitly add this signal to the tracked list
-  if (state.batch.active) {
+  if (_scopeForSignal(signal, batchIsActive).batch.active) {
     spIsInBatch(signal);
   }
 }
