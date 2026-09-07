@@ -1,8 +1,8 @@
+import { QueryClient } from './query-client';
 import {
-  QueryClient,
   getGlobalQueryClient,
   setGlobalQueryClient,
-} from './query-client';
+} from './global-query-client';
 
 describe('QueryClient', () => {
   let queryClient: QueryClient;

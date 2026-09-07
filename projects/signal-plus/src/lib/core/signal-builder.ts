@@ -32,6 +32,7 @@ import { spMonitor } from '../utils/monitor';
 import { MiddlewareContext } from '../models/middleware.model';
 import { SpMonitorOptions } from '../models/developer-experience.model';
 import { spRunMiddleware, spRunMiddlewareError } from '../utils/middleware';
+import { SignalPlusScope, _resolveScope } from './scope';
 import {
   _deferBatchNotification,
   _trackTransactionWrite,
@@ -308,6 +309,10 @@ export class SignalBuilder<T> {
       lastSyncedValue = value;
       writable.set(value);
     };
+    // Captured here because build() may run in an injection context while the
+    // write paths below never do, and they need the same scope this signal
+    // belongs to
+    const scope: SignalPlusScope = _resolveScope(this.optionalInjector());
     let previousValue: T = structuredClone(this.options.initialValue);
     let initialValue: T = structuredClone(this.options.initialValue);
     let restoredFromStorage = false;
@@ -675,6 +680,7 @@ export class SignalBuilder<T> {
               oldValue,
               conditionalClone(transformedValue),
             ),
+            scope,
           );
 
           const monitorStart =
@@ -810,12 +816,14 @@ export class SignalBuilder<T> {
             conditionalClone(writable()),
             conditionalClone(value),
           ),
+          scope,
         );
         this.handleError(error as Error);
         throw error;
       }
     };
     const signalInstance: SignalPlus<T> = {
+      _scope: scope,
       get value() {
         return readValue();
       },
@@ -840,6 +848,7 @@ export class SignalBuilder<T> {
               conditionalClone(writable()),
               conditionalClone(writable()),
             ),
+            scope,
           );
           this.handleError(error as Error);
           throw error;

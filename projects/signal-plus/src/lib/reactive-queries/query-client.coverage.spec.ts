@@ -1,9 +1,9 @@
 import { fakeAsync, flushMicrotasks } from '@angular/core/testing';
+import { QueryClient } from './query-client';
 import {
-  QueryClient,
   getGlobalQueryClient,
   setGlobalQueryClient,
-} from './query-client';
+} from './global-query-client';
 
 describe('QueryClient gap behavior', () => {
   it('should serve seeded data through the synthetic query function', fakeAsync(() => {

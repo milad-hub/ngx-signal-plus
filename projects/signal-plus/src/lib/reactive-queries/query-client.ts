@@ -217,34 +217,3 @@ export class QueryClient {
     return this.queryCache.getStats();
   }
 }
-
-let globalQueryClient: QueryClient | null = null;
-
-/**
- * Gets the global QueryClient, creating one if needed.
- *
- * @returns The global QueryClient instance
- */
-export function getGlobalQueryClient(): QueryClient {
-  if (!globalQueryClient) {
-    globalQueryClient = new QueryClient();
-  }
-  return globalQueryClient;
-}
-
-/**
- * Sets the global QueryClient instance.
- *
- * @param client - QueryClient to use globally
- *
- * @example
- * ```typescript
- * const queryClient = new QueryClient({
- *   defaultOptions: { staleTime: 5000, retry: 3 }
- * });
- * setGlobalQueryClient(queryClient);
- * ```
- */
-export function setGlobalQueryClient(client: QueryClient): void {
-  globalQueryClient = client;
-}

@@ -1,4 +1,5 @@
 import { Signal, WritableSignal } from '@angular/core';
+import type { SignalPlusScope } from '../core/scope';
 import { SpMonitorOptions } from './developer-experience.model';
 
 /**
@@ -384,6 +385,14 @@ export interface ReadonlySignalPlus<T> {
    * @param snapshot - The snapshot to restore
    */
   _restoreTransactionSnapshot?(snapshot: SignalTransactionSnapshot<T>): void;
+
+  /**
+   * @internal
+   * The scope this signal was built in, captured when an injection context was
+   * available. Write paths have no injection context of their own, so this is
+   * how a write finds the transaction, batch and middleware state that owns it.
+   */
+  _scope?: SignalPlusScope;
 }
 
 /**

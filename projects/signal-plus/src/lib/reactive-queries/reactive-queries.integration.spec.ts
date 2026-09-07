@@ -1,6 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { QueryClient, setGlobalQueryClient } from './query-client';
+import { QueryClient } from './query-client';
+import { setGlobalQueryClient } from './global-query-client';
 import { createMutation, spMutation } from './sp-mutation';
 import { createQuery, spQuery } from './sp-query';
 

@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { InfiniteQueryResult } from './interfaces';
-import { getGlobalQueryClient } from './query-client';
+import { getGlobalQueryClient } from './global-query-client';
 import { InfiniteQueryOptions } from './query-types';
 
 export function spInfiniteQuery<TData, TPageParam>(

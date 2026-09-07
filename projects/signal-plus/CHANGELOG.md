@@ -10,6 +10,24 @@ A few versions were bumped in this repository and never published. Their changes
 
 Versions `1.0.0-beta.0` through `1.2.10` are tagged in git but have no GitHub release page. The entries below — including the combined `1.2.x` heading — are the record for that era; the tags remain for anyone who wants the exact tree.
 
+## [3.1.0]
+
+### Added
+
+- `provideSignalPlus()` binds the library's shared state — the query client, the middleware registry, and the transaction and batch contexts — to an environment injector, which under server-side rendering means one per request. `SignalPlusScope` and `SignalPlusScopeOptions` are exported alongside it, and the provider accepts `defaultQueryOptions` for the scope's own `QueryClient`.
+
+### Fixed
+
+- **Library state no longer crosses SSR requests.** All of the above lived in module-level variables. One Node process serves every request, so one user's cached query data was served to the next, a middleware registered while rendering one request applied to all of them, and two concurrent requests shared a single transaction flag — while the package advertised SSR safety. Guarding `localStorage` and `window`, which the library already did, does not address this: the state was shared even when every browser API was correctly avoided.
+
+### Changed
+
+- Resolution is opt-in and backward compatible. Without `provideSignalPlus()` every entry point resolves the same module-level state as before, so callers outside an injection context are unaffected. With it, a call site that can reach an injector uses that injector's scope; everything else uses the fallback.
+- A signal captures its scope when `build()` runs, because the write paths that follow have no injection context of their own. This is what lets a transaction opened in one request roll back the signals that request built, and leave another request's signals alone.
+- A transaction or batch opened outside an injection context still sees writes to signals built inside one, so mixing the two styles loses no writes.
+- `getGlobalQueryClient()` and `setGlobalQueryClient()` keep their names and behavior for existing callers, and now resolve the current scope rather than a process-wide variable. Called outside an injection context they still target the module-level client. They are documented as browser-only; under SSR configure the client through `provideSignalPlus()` instead. They moved to their own module internally, so no import path a consumer uses has changed.
+- `spRunMiddleware` and `spRunMiddlewareError` take an optional scope argument, used by the signal write paths to run the middleware registered in the signal's own scope. Existing calls that omit it behave as before.
+
 ## [3.0.6]
 
 ### Fixed

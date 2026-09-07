@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { QueryResult } from './interfaces';
 import { Query } from './query-cache';
-import { getGlobalQueryClient } from './query-client';
+import { getGlobalQueryClient } from './global-query-client';
 import { QueryObserver, QueryOptions, QueryState } from './query-types';
 
 /**

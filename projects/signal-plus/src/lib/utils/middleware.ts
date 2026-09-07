@@ -6,34 +6,38 @@ import {
   MiddlewareContext,
   SignalMiddleware,
 } from '../models/middleware.model';
-
-const middlewareRegistry: SignalMiddleware[] = [];
+import { SignalPlusScope, _resolveScope } from '../core/scope';
 
 export function spUseMiddleware<T = unknown>(
   middleware: SignalMiddleware<T>,
 ): void {
-  if (!middlewareRegistry.some((m) => m.name === middleware.name)) {
-    middlewareRegistry.push(middleware as SignalMiddleware);
+  const registry = _resolveScope().middleware;
+  if (!registry.some((m) => m.name === middleware.name)) {
+    registry.push(middleware as SignalMiddleware);
   }
 }
 
 export function spRemoveMiddleware(name: string): boolean {
-  const index = middlewareRegistry.findIndex((m) => m.name === name);
+  const registry = _resolveScope().middleware;
+  const index = registry.findIndex((m) => m.name === name);
   if (index === -1) return false;
-  middlewareRegistry.splice(index, 1);
+  registry.splice(index, 1);
   return true;
 }
 
 export function spClearMiddleware(): void {
-  middlewareRegistry.length = 0;
+  _resolveScope().middleware.length = 0;
 }
 
 export function spGetMiddlewareCount(): number {
-  return middlewareRegistry.length;
+  return _resolveScope().middleware.length;
 }
 
-export function spRunMiddleware<T>(context: MiddlewareContext<T>): void {
-  for (const m of middlewareRegistry) {
+export function spRunMiddleware<T>(
+  context: MiddlewareContext<T>,
+  scope?: SignalPlusScope,
+): void {
+  for (const m of (scope ?? _resolveScope()).middleware) {
     try {
       m.onSet?.(context as MiddlewareContext);
     } catch {
@@ -45,8 +49,9 @@ export function spRunMiddleware<T>(context: MiddlewareContext<T>): void {
 export function spRunMiddlewareError<T>(
   error: Error,
   context: MiddlewareContext<T>,
+  scope?: SignalPlusScope,
 ): void {
-  for (const m of middlewareRegistry) {
+  for (const m of (scope ?? _resolveScope()).middleware) {
     try {
       m.onError?.(error, context as MiddlewareContext);
     } catch {
