@@ -23,6 +23,32 @@ describe('ngx-signal-plus consumer smoke', () => {
     expect(() => app.throttled()).not.toThrow();
     expect(() => app.skipped()).not.toThrow();
     expect(() => app.taken()).not.toThrow();
+    expect(() => app.filtered()).not.toThrow();
+    expect(() => app.debounced()).not.toThrow();
+    expect(() => app.delayed()).not.toThrow();
+    expect(() => app.distinct()).not.toThrow();
+    expect(() => app.combined()).not.toThrow();
+  });
+
+  it('runs every exported operator', () => {
+    expect(app.doubled()).toBe(2);
+    expect(app.merged()).toBe(9);
+    expect(app.throttled()).toBe(1);
+    expect(app.skipped()).toBe(1);
+    expect(app.taken()).toBe(1);
+    expect(app.filtered()).toBe(1);
+    expect(app.debounced()).toBe(1);
+    expect(app.delayed()).toBe(1);
+    expect(app.distinct()).toBe(1);
+    expect(app.combined()).toEqual([1, 2]);
+
+    app.source.set(3);
+    fixture.detectChanges();
+
+    expect(app.doubled()).toBe(6);
+    expect(app.filtered()).toBe(3);
+    expect(app.distinct()).toBe(3);
+    expect(app.combined()).toEqual([3, 2]);
   });
 
   it('records history and undoes a write', () => {
