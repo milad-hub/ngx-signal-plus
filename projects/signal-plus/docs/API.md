@@ -610,6 +610,23 @@ await usersQuery.refetch();
 usersQuery.invalidate();
 ```
 
+#### Query state
+
+A query occupies exactly one of four positions, and the signals naming them are mutually exclusive — never two at once:
+
+| Signal      | Meaning                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------- |
+| `isIdle`    | Nothing has been attempted or seeded. Any fetch, any result, and any `initialData` ends it permanently. |
+| `isLoading` | A fetch is in flight and there is no data to show yet.                                                  |
+| `isSuccess` | The last fetch, or a direct cache write, produced data.                                                 |
+| `isError`   | The last fetch failed. `data` may still hold the previous value, but the query does not claim success.  |
+
+`isFetching` and `isStale` sit outside that set on purpose. A background refetch of data already present is both fetching and successful, and staleness is orthogonal to all four.
+
+A query created with `initialData` starts as `isSuccess`, not `isIdle`, and starts stale so it still refetches on its first subscription. A failed refetch after a success reports `isError` with `isSuccess` false.
+
+Every state change reaches subscribed observers, including the transition to stale for entries written straight into the cache with `setQueryData`. Reading a query with `getState()` never changes it.
+
 ### `spMutation` / `createMutation`
 
 Defines tracked write operations with loading/error/success state and retry hooks.
